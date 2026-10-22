@@ -4,7 +4,8 @@
     "skins": "Skins",
     "docs": "Docs",
     "login": "Sign in",
-    "settings": "Settings"
+    "settings": "Settings",
+    "mods": "Mods / Packs"
   },
   "home": {
     "hero1": "Your skin,",
@@ -37,6 +38,11 @@
   "settings": {
     "title": "Personalization",
     "locked": "Theme customization is disabled by the administrator"
+  },
+  "mods": {
+    "title": "Mods & Modpacks",
+    "desc": "Distribute mods and modpacks to your server / group.",
+    "placeholder": "Mod distribution is under development"
   },
   "auth": {
     "registerTitle": "Create account",

@@ -2,6 +2,7 @@
 
 import { useTranslations, useLocale } from "next-intl";
 import { useTheme } from "@/lib/theme-provider";
+import { useSiteConfig } from "@/lib/site-config";
 import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import {
   DropdownMenu,
@@ -14,6 +15,7 @@ import { Button } from "@/components/ui/button";
 export function SiteHeader() {
   const t = useTranslations();
   const { allowAdjust } = useTheme();
+  const { has } = useSiteConfig();
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -31,12 +33,21 @@ export function SiteHeader() {
         </div>
 
         <div className="flex items-center gap-4 text-sm text-text-muted">
-          <a href="#features" className="hover:text-text">
-            {t("nav.features")}
-          </a>
-          <a href="#" className="hover:text-text">
-            {t("nav.skins")}
-          </a>
+          {has("skin") && (
+            <>
+              <a href="#features" className="hover:text-text">
+                {t("nav.features")}
+              </a>
+              <Link href="/skins" className="hover:text-text">
+                {t("nav.skins")}
+              </Link>
+            </>
+          )}
+          {has("mods") && (
+            <Link href="/mods" className="hover:text-text">
+              {t("nav.mods")}
+            </Link>
+          )}
           <a href="#" className="hover:text-text">
             {t("nav.docs")}
           </a>
