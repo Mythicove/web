@@ -1,8 +1,8 @@
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
-const HOARD_BASE = process.env.NEXT_PUBLIC_HOARD_API_URL ?? "http://localhost:8081";
+// 单 API 域名：mirror 与 hoard 的路由不冲突，经同一反代按路径分流。
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
+  const res = await fetch(`${API_URL}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -74,7 +74,7 @@ export const apiClient = {
     api<SkinLibItem[]>(`/skinlib?offset=${offset}&limit=${limit}`),
 
   uploadSkin: async (name: string, model: string, file: File, token: string) => {
-    const res = await fetch(`${BASE}/skin/${name}?model=${model}`, {
+    const res = await fetch(`${API_URL}/skin/${name}?model=${model}`, {
       method: "POST",
       headers: { Authorization: `Bearer ${token}` },
       body: await file.arrayBuffer(),
@@ -82,18 +82,18 @@ export const apiClient = {
     if (!res.ok) throw new Error(`upload ${res.status}`);
   },
 
-  skinUrl: (name: string) => `${BASE}/skin/${name}`,
+  skinUrl: (name: string) => `${API_URL}/skin/${name}`,
 };
 
 export const hoardClient = {
   listMods: async (): Promise<HoardProject[]> => {
-    const res = await fetch(`${HOARD_BASE}/api/mods`);
+    const res = await fetch(`${API_URL}/api/mods`);
     if (!res.ok) throw new Error(`API ${res.status}`);
     return res.json();
   },
 
   uploadMod: async (form: FormData, adminToken: string) => {
-    const res = await fetch(`${HOARD_BASE}/api/mods`, {
+    const res = await fetch(`${API_URL}/api/mods`, {
       method: "POST",
       headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : undefined,
       body: form,
@@ -101,6 +101,6 @@ export const hoardClient = {
     if (!res.ok) throw new Error(`upload ${res.status}`);
   },
 
-  downloadUrl: (id: string) => `${HOARD_BASE}/api/mods/${id}/download`,
-  mrpackUrl: (id: string, vid: string) => `${HOARD_BASE}/v2/project/${id}/version/${vid}/mrpack`,
+  downloadUrl: (id: string) => `${API_URL}/api/mods/${id}/download`,
+  mrpackUrl: (id: string, vid: string) => `${API_URL}/v2/project/${id}/version/${vid}/mrpack`,
 };
