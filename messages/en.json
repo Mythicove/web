@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "features": "Features",
+    "skins": "Skins",
+    "docs": "Docs",
+    "login": "Sign in",
+    "settings": "Settings"
+  },
+  "home": {
+    "hero1": "Your skin,",
+    "hero2": "visible on offline servers",
+    "desc": "Upload skins and capes, plug into the Yggdrasil API, and clients load them automatically. Premium players keep their real identity.",
+    "ctaUpload": "Upload skin",
+    "ctaLibrary": "Browse skins",
+    "featuresTitle": "What it does",
+    "f1tag": "Core",
+    "f1title": "Skins on offline servers",
+    "f1body": "Plug into the Yggdrasil API, configure authlib-injector once, and clients load the skins and capes you upload.",
+    "f2tag": "Premium",
+    "f2title": "1.19+ premium compatible",
+    "f2body": "Bind a Microsoft account. Premium players keep their real UUID, with skins falling back to Mojang.",
+    "f3tag": "Community",
+    "f3title": "Share to the skin library",
+    "f3body": "Publish skins to the public library, like and comment, and share them with players on the same server.",
+    "footer": "Mythicove · Blue-Purple Fantasy · Open source"
+  },
+  "theme": {
+    "mode": "Mode",
+    "light": "Light",
+    "dark": "Dark",
+    "auto": "Auto",
+    "palette": "Palette"
+  },
+  "lang": {
+    "label": "Language"
+  },
+  "settings": {
+    "title": "Personalization",
+    "locked": "Theme customization is disabled by the administrator"
+  },
+  "auth": {
+    "registerTitle": "Create account",
+    "loginTitle": "Sign in",
+    "email": "Email",
+    "password": "Password",
+    "nickname": "Nickname",
+    "playerName": "Player name",
+    "submit": "Submit",
+    "registerOk": "Account created. Check your email to verify.",
+    "loginOk": "Signed in. Token saved.",
+    "skinsTitle": "Skin library",
+    "empty": "No skins yet.",
+    "noDesc": "No description"
+  }
+}

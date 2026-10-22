@@ -1,0 +1,26 @@
+{
+  "light": {
+    "primary": "",
+    "primary-hover": "",
+    "accent": "",
+    "highlight": "",
+    "bg": "",
+    "surface": "",
+    "surface-raised": "",
+    "border": "",
+    "text": "",
+    "text-muted": ""
+  },
+  "dark": {
+    "primary": "",
+    "primary-hover": "",
+    "accent": "",
+    "highlight": "",
+    "bg": "",
+    "surface": "",
+    "surface-raised": "",
+    "border": "",
+    "text": "",
+    "text-muted": ""
+  }
+}

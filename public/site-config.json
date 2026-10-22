@@ -1,0 +1,7 @@
+{
+  "theme": {
+    "default": "default",
+    "allowAdjust": true,
+    "selectable": ["default", "ocean", "emerald", "rose", "amber", "slate"]
+  }
+}

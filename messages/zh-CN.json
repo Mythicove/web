@@ -1,0 +1,55 @@
+{
+  "nav": {
+    "features": "功能",
+    "skins": "皮肤库",
+    "docs": "文档",
+    "login": "登录 / 注册",
+    "settings": "设置"
+  },
+  "home": {
+    "hero1": "你的皮肤，",
+    "hero2": "离线服也能看见",
+    "desc": "上传皮肤和披风，接入 Yggdrasil API，客户端自动加载。正版玩家保留真实身份。",
+    "ctaUpload": "上传皮肤",
+    "ctaLibrary": "查看皮肤库",
+    "featuresTitle": "它能做什么",
+    "f1tag": "核心",
+    "f1title": "离线服也能用皮肤",
+    "f1body": "接入 Yggdrasil API，服务端配一次 authlib-injector，客户端自动加载你上传的皮肤和披风。",
+    "f2tag": "正版",
+    "f2title": "1.19+ 正版兼容",
+    "f2body": "绑定 Microsoft 账号，正版玩家保留真实 UUID，皮肤走 Mojang 兜底。",
+    "f3tag": "社区",
+    "f3title": "皮肤库分享",
+    "f3body": "把皮肤发布到公开皮肤库，点赞、评论，分享给同服玩家。",
+    "footer": "Mythicove · 蓝紫幻境 · 开源"
+  },
+  "theme": {
+    "mode": "模式",
+    "light": "浅色",
+    "dark": "深色",
+    "auto": "自动",
+    "palette": "主题色"
+  },
+  "lang": {
+    "label": "语言"
+  },
+  "settings": {
+    "title": "个性化设置",
+    "locked": "管理员未开放主题调整"
+  },
+  "auth": {
+    "registerTitle": "注册账号",
+    "loginTitle": "登录",
+    "email": "邮箱",
+    "password": "密码",
+    "nickname": "昵称",
+    "playerName": "玩家名",
+    "submit": "提交",
+    "registerOk": "注册成功，请查收邮箱完成验证。",
+    "loginOk": "登录成功，令牌已保存。",
+    "skinsTitle": "皮肤库",
+    "empty": "暂无皮肤。",
+    "noDesc": "暂无描述"
+  }
+}
