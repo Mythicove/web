@@ -53,10 +53,8 @@ export function SiteHeader() {
           </a>
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                {locale === "zh-CN" ? "中文" : "EN"}
-              </Button>
+            <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
+              {locale === "zh-CN" ? "中文" : "EN"}
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => switchLocale("zh-CN")}>中文</DropdownMenuItem>
@@ -70,12 +68,16 @@ export function SiteHeader() {
             </Link>
           )}
 
-          <a
-            href="#"
+          <Link href="/profile" className="hover:text-text">
+            {t("nav.profile")}
+          </Link>
+
+          <Link
+            href="/login"
             className="rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-hover"
           >
             {t("nav.login")}
-          </a>
+          </Link>
         </div>
       </nav>
     </header>

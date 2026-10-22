@@ -5,7 +5,8 @@
     "docs": "Docs",
     "login": "Sign in",
     "settings": "Settings",
-    "mods": "Mods / Packs"
+    "mods": "Mods / Packs",
+    "profile": "Upload skin"
   },
   "home": {
     "hero1": "Your skin,",
@@ -42,7 +43,23 @@
   "mods": {
     "title": "Mods & Modpacks",
     "desc": "Distribute mods and modpacks to your server / group.",
-    "placeholder": "Mod distribution is under development"
+    "uploadTitle": "Title",
+    "version": "Version",
+    "adminToken": "Admin token",
+    "file": "File",
+    "upload": "Upload",
+    "download": "Download",
+    "empty": "No mods yet. Upload the first one."
+  },
+  "profile": {
+    "title": "Upload skin",
+    "playerName": "Player name",
+    "model": "Model",
+    "file": "Skin file (PNG)",
+    "upload": "Upload",
+    "uploadOk": "Uploaded",
+    "notLoggedIn": "Please sign in first",
+    "noFile": "Choose a file"
   },
   "auth": {
     "registerTitle": "Create account",

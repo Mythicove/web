@@ -5,7 +5,8 @@
     "docs": "文档",
     "login": "登录 / 注册",
     "settings": "设置",
-    "mods": "模组 / 整合包"
+    "mods": "模组 / 整合包",
+    "profile": "上传皮肤"
   },
   "home": {
     "hero1": "你的皮肤，",
@@ -42,7 +43,23 @@
   "mods": {
     "title": "模组与整合包",
     "desc": "为你的服务器 / 群组分发 mod 和整合包。",
-    "placeholder": "mod 分发功能开发中"
+    "uploadTitle": "标题",
+    "version": "版本号",
+    "adminToken": "管理令牌",
+    "file": "文件",
+    "upload": "上传",
+    "download": "下载",
+    "empty": "还没有 mod，先上传一个。"
+  },
+  "profile": {
+    "title": "上传皮肤",
+    "playerName": "玩家名",
+    "model": "模型",
+    "file": "皮肤文件 (PNG)",
+    "upload": "上传",
+    "uploadOk": "上传成功",
+    "notLoggedIn": "请先登录",
+    "noFile": "请选择文件"
   },
   "auth": {
     "registerTitle": "注册账号",

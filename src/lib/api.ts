@@ -1,4 +1,5 @@
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const HOARD_BASE = process.env.NEXT_PUBLIC_HOARD_API_URL ?? "http://localhost:8081";
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -8,9 +9,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   });
-  if (!res.ok) {
-    throw new Error(`API ${res.status}: ${await res.text()}`);
-  }
+  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
@@ -24,11 +23,16 @@ export interface RegisterBody {
   inviteCode?: string;
 }
 
+export interface Player {
+  id: string;
+  name: string;
+}
+
 export interface AuthenticateResponse {
   accessToken: string;
   clientToken: string;
-  availableProfiles: { id: string; name: string }[];
-  selectedProfile?: { id: string; name: string };
+  availableProfiles: Player[];
+  selectedProfile?: Player;
 }
 
 export interface SkinLibItem {
@@ -39,6 +43,18 @@ export interface SkinLibItem {
   description: string;
   model: string;
   likes: number;
+}
+
+export interface HoardProject {
+  id: string;
+  slug: string;
+  title: string;
+  description: string;
+  project_type: string;
+  loaders?: string[];
+  game_versions?: string[];
+  downloads: number;
+  published: string;
 }
 
 export const apiClient = {
@@ -65,4 +81,26 @@ export const apiClient = {
     });
     if (!res.ok) throw new Error(`upload ${res.status}`);
   },
+
+  skinUrl: (name: string) => `${BASE}/skin/${name}`,
+};
+
+export const hoardClient = {
+  listMods: async (): Promise<HoardProject[]> => {
+    const res = await fetch(`${HOARD_BASE}/api/mods`);
+    if (!res.ok) throw new Error(`API ${res.status}`);
+    return res.json();
+  },
+
+  uploadMod: async (form: FormData, adminToken: string) => {
+    const res = await fetch(`${HOARD_BASE}/api/mods`, {
+      method: "POST",
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : undefined,
+      body: form,
+    });
+    if (!res.ok) throw new Error(`upload ${res.status}`);
+  },
+
+  downloadUrl: (id: string) => `${HOARD_BASE}/api/mods/${id}/download`,
+  mrpackUrl: (id: string, vid: string) => `${HOARD_BASE}/v2/project/${id}/version/${vid}/mrpack`,
 };
