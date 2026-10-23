@@ -65,8 +65,9 @@ jobs:
             -v ${{ github.workspace }}/e2e/Caddyfile:/etc/caddy/Caddyfile:ro \
             --add-host host.docker.internal:$(hostname -i) \
             caddy:2-alpine
-          for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:8090/ && echo "caddy up" && break || sleep 1; done
-          curl -sf -o /dev/null http://localhost:8090/ || { echo "caddy failed to start"; docker logs e2e-caddy; exit 1; }
+          # caddy proxies to mirror which starts later: any HTTP response (even 502) proves caddy is up
+          for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:8090/ && echo "caddy up" && break || sleep 1; done
+          curl -s -o /dev/null http://localhost:8090/ || { echo "caddy failed to start"; docker logs e2e-caddy; exit 1; }
       - name: start mirror
         run: |
           MIRROR_LISTEN_ADDR=:18080 \
