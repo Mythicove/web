@@ -21,7 +21,7 @@ export default function LoginPage() {
   const [forgotSent, setForgotSent] = useState(false);
 
   useEffect(() => {
-    completeOAuthLogin();
+    void completeOAuthLogin();
     apiClient
       .listLoginMethods()
       .then((r) => setMethods(r.methods.filter((m) => m.enabled)))

@@ -8,12 +8,12 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { apiClient, type AuthenticateResponse } from "@/lib/api";
 
-const STORAGE_KEY = "mythicove-auth";
+const META_KEY = "mythicove-auth";
 
+// 会话元数据（非敏感）。accessToken 存于 httpOnly cookie（mythic_session），
+// 由 /api/auth/* route handler 设置，JS 不可读；API 调用凭 credentials 携带。
 export interface AuthState {
-  accessToken: string;
   clientToken: string;
   playerName?: string;
   playerId?: string;
@@ -23,15 +23,15 @@ interface AuthContextValue {
   auth: AuthState | null;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
-  completeOAuthLogin: () => void;
-  logout: () => void;
+  completeOAuthLogin: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 function load(): AuthState | null {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(STORAGE_KEY);
+  const raw = localStorage.getItem(META_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw) as AuthState;
@@ -41,53 +41,60 @@ function load(): AuthState | null {
 }
 
 function save(auth: AuthState | null) {
-  if (auth) localStorage.setItem(STORAGE_KEY, JSON.stringify(auth));
-  else localStorage.removeItem(STORAGE_KEY);
-}
-
-function fromResponse(res: AuthenticateResponse): AuthState {
-  return {
-    accessToken: res.accessToken,
-    clientToken: res.clientToken,
-    playerName: res.selectedProfile?.name ?? res.availableProfiles[0]?.name,
-    playerId: res.selectedProfile?.id ?? res.availableProfiles[0]?.id,
-  };
+  if (auth) localStorage.setItem(META_KEY, JSON.stringify(auth));
+  else localStorage.removeItem(META_KEY);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<AuthState | null>(null);
 
   useEffect(() => {
-    // 从 localStorage 恢复会话（外部系统同步）。
+    // 从 localStorage 恢复会话元数据（token 本体在 httpOnly cookie 中）。
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setAuth(load());
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await apiClient.authenticate(email, password);
-    const next = fromResponse(res);
-    save(next);
-    setAuth(next);
+    const res = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
+    if (!res.ok) throw new Error(`login failed: ${res.status}`);
+    const meta = (await res.json()) as AuthState;
+    save(meta);
+    setAuth(meta);
   }, []);
 
-  const completeOAuthLogin = useCallback(() => {
+  const completeOAuthLogin = useCallback(async () => {
     const hash = window.location.hash;
     const match = /accessToken=([^&]+)/.exec(hash);
     if (!match) return;
-    const next: AuthState = { accessToken: match[1], clientToken: "" };
-    save(next);
-    setAuth(next);
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
+    const res = await fetch("/api/auth/session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ accessToken: match[1] }),
+    });
+    if (!res.ok) return;
+    const meta = (await res.json()) as AuthState;
+    save(meta);
+    setAuth(meta);
   }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
     save(null);
     setAuth(null);
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // cookie 清除失败不阻塞本地登出
+    }
   }, []);
 
   return (
     <AuthContext.Provider
-      value={{ auth, isAuthenticated: !!auth?.accessToken, login, completeOAuthLogin, logout }}
+      value={{ auth, isAuthenticated: !!auth, login, completeOAuthLogin, logout }}
     >
       {children}
     </AuthContext.Provider>

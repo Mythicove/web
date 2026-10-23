@@ -45,6 +45,15 @@ test("skin station full loop", async ({ page }) => {
   await page.getByRole("button", { name: "Submit" }).click();
   await expect(page.getByText("Signed in.")).toBeVisible({ timeout: 15_000 });
 
+  // 4b. 会话加固：token 不落 localStorage；httpOnly cookie 对 JS 不可读
+  //（后续上传/发布步骤凭 cookie 认证成功，即证明 cookie 随请求携带）
+  const raw = await page.evaluate(() => localStorage.getItem("mythicove-auth"));
+  expect(raw).toBeTruthy();
+  expect(raw).not.toContain("accessToken");
+  expect(JSON.parse(raw!).playerName).toBe(playerName);
+  const visibleCookies = await page.evaluate(() => document.cookie);
+  expect(visibleCookies).not.toContain("mythic_session");
+
   // 5. 上传皮肤
   await page.goto("/en/profile");
   await page

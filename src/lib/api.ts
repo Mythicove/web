@@ -46,6 +46,8 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const base = typeof window === "undefined" ? SERVER_API_URL : API_URL;
   const res = await fetch(`${base}${path}`, {
     ...init,
+    // 会话凭 httpOnly cookie（mythic_session）携带；开发跨端口为 same-site，生产同源。
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...(init?.headers ?? {}),
@@ -84,12 +86,6 @@ export const apiClient = {
       body: JSON.stringify({ token, password }),
     }),
 
-  authenticate: (email: string, password: string) =>
-    api<AuthenticateResponse>("/authserver/authenticate", {
-      method: "POST",
-      body: JSON.stringify({ username: email, password }),
-    }),
-
   oauthUrl: (provider: string, redirectUrl: string) =>
     `${API_URL}/oauth/${provider}/auth?state=${encodeURIComponent(redirectUrl)}`,
 
@@ -109,26 +105,23 @@ export const apiClient = {
 
   getSkinLib: (id: string) => api<SkinLibItem>(`/skinlib/${id}`),
 
-  publishSkin: (playerName: string, description: string, token: string) =>
+  publishSkin: (playerName: string, description: string) =>
     api<SkinLibItem>("/skinlib", {
       method: "POST",
-      headers: authHeaders(token),
       body: JSON.stringify({ playerName, description }),
     }),
 
   listComments: (id: string) => api<SkinComment[]>(`/skinlib/${id}/comments`),
 
-  applySkin: (id: string, playerName: string, token: string) =>
+  applySkin: (id: string, playerName: string) =>
     api<void>(`/skinlib/${id}/apply`, {
       method: "POST",
-      headers: authHeaders(token),
       body: JSON.stringify({ playerName }),
     }),
 
-  report: (targetType: "skin" | "comment", targetID: string, reason: string, token: string) =>
+  report: (targetType: "skin" | "comment", targetID: string, reason: string) =>
     api<void>("/reports", {
       method: "POST",
-      headers: authHeaders(token),
       body: JSON.stringify({ targetType, targetID, reason }),
     }),
 
@@ -137,26 +130,25 @@ export const apiClient = {
   likeSkin: (id: string) =>
     api<void>(`/skinlib/${id}/like`, { method: "POST" }),
 
-  commentSkin: (id: string, content: string, token: string) =>
+  commentSkin: (id: string, content: string) =>
     api<void>(`/skinlib/${id}/comment`, {
       method: "POST",
-      headers: authHeaders(token),
       body: JSON.stringify({ content }),
     }),
 
-  uploadSkin: async (name: string, model: string, file: File, token: string) => {
+  uploadSkin: async (name: string, model: string, file: File) => {
     const res = await fetch(`${API_URL}/skin/${name}?model=${model}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
       body: await file.arrayBuffer(),
     });
     if (!res.ok) throw new Error(`upload ${res.status}`);
   },
 
-  uploadCape: async (name: string, file: File, token: string) => {
+  uploadCape: async (name: string, file: File) => {
     const res = await fetch(`${API_URL}/cape/${name}`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}` },
+      credentials: "include",
       body: await file.arrayBuffer(),
     });
     if (!res.ok) throw new Error(`upload ${res.status}`);
@@ -166,8 +158,8 @@ export const apiClient = {
   capeUrl: (name: string) => `${API_URL}/cape/${name}`,
   avatarUrl: (uuid: string) => `${API_URL}/avatars/${uuid}`,
 
-  // 管理后台：token 由调用方显式传入（登录会话 accessToken 或手动管理令牌），
-  // 后端 AdminAuth 两者都接受。
+  // 管理后台：token 传手动管理令牌；传空字符串则凭 httpOnly 会话 cookie
+  // （管理员用户登录态），后端 AdminAuth 两者都接受。
   admin: {
     listUsers: (token: string, q = "", offset = 0, limit = 20) =>
       api<{ users: AdminUser[]; total: number }>(

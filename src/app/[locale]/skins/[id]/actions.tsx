@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 export function SkinActions({ item }: { item: SkinLibItem }) {
   const t = useTranslations("skinDetail");
   const router = useRouter();
-  const { auth } = useAuth();
+  const { auth, isAuthenticated } = useAuth();
   const [likes, setLikes] = useState(item.likes);
   const [liked, setLiked] = useState(false);
   const [applied, setApplied] = useState(false);
@@ -33,9 +33,9 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
 
   const apply = async () => {
     setError(null);
-    if (!auth?.accessToken || !auth.playerName) return;
+    if (!isAuthenticated || !auth?.playerName) return;
     try {
-      await apiClient.applySkin(item.id, auth.playerName, auth.accessToken);
+      await apiClient.applySkin(item.id, auth.playerName);
       setApplied(true);
       router.refresh();
     } catch (e) {
@@ -45,9 +45,9 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
 
   const submitReport = async () => {
     setError(null);
-    if (!auth?.accessToken) return;
+    if (!isAuthenticated) return;
     try {
-      await apiClient.report("skin", item.id, reportReason, auth.accessToken);
+      await apiClient.report("skin", item.id, reportReason);
       setReported(true);
       setReporting(false);
     } catch (e) {
@@ -61,7 +61,7 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
         <Button onClick={like} disabled={liked}>
           {liked ? t("liked") : t("like")} ({likes})
         </Button>
-        {auth?.accessToken && auth.playerName ? (
+        {isAuthenticated && auth?.playerName ? (
           <Button variant="outline" onClick={apply} disabled={applied}>
             {applied ? t("applyOk", { player: auth.playerName }) : t("apply")}
           </Button>
@@ -75,7 +75,7 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
         >
           {t("download")}
         </a>
-        {auth?.accessToken && !reported && (
+        {isAuthenticated && !reported && (
           <Button variant="outline" onClick={() => setReporting((v) => !v)}>
             {t("report")}
           </Button>
@@ -103,15 +103,15 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
 export function SkinCommentBox({ itemId }: { itemId: string }) {
   const t = useTranslations("skinDetail");
   const router = useRouter();
-  const { auth } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [comment, setComment] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
     setError(null);
-    if (!auth?.accessToken || !comment.trim()) return;
+    if (!isAuthenticated || !comment.trim()) return;
     try {
-      await apiClient.commentSkin(itemId, comment, auth.accessToken);
+      await apiClient.commentSkin(itemId, comment);
       setComment("");
       router.refresh();
     } catch (e) {
@@ -119,7 +119,7 @@ export function SkinCommentBox({ itemId }: { itemId: string }) {
     }
   };
 
-  if (!auth?.accessToken) {
+  if (!isAuthenticated) {
     return <p className="mt-4 text-sm text-text-muted">{t("commentHint")}</p>;
   }
   return (

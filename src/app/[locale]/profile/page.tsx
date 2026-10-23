@@ -24,14 +24,12 @@ export default function ProfilePage() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const token = auth?.accessToken;
-
   const publish = async () => {
-    if (!token) return setError(t("notLoggedIn"));
+    if (!isAuthenticated) return setError(t("notLoggedIn"));
     setError(null);
     setStatus(null);
     try {
-      await apiClient.publishSkin(playerName, publishDesc, token);
+      await apiClient.publishSkin(playerName, publishDesc);
       setStatus(t("publishOk"));
     } catch (e) {
       setError(String(e));
@@ -39,12 +37,12 @@ export default function ProfilePage() {
   };
 
   const uploadSkin = async () => {
-    if (!token) return setError(t("notLoggedIn"));
+    if (!isAuthenticated) return setError(t("notLoggedIn"));
     if (!skinFile) return setError(t("noFile"));
     setError(null);
     setStatus(null);
     try {
-      await apiClient.uploadSkin(playerName, model, skinFile, token);
+      await apiClient.uploadSkin(playerName, model, skinFile);
       setStatus(t("uploadOk"));
     } catch (e) {
       setError(String(e));
@@ -52,12 +50,12 @@ export default function ProfilePage() {
   };
 
   const uploadCape = async () => {
-    if (!token) return setError(t("notLoggedIn"));
+    if (!isAuthenticated) return setError(t("notLoggedIn"));
     if (!capeFile) return setError(t("noFile"));
     setError(null);
     setStatus(null);
     try {
-      await apiClient.uploadCape(playerName, capeFile, token);
+      await apiClient.uploadCape(playerName, capeFile);
       setStatus(t("uploadOk"));
     } catch (e) {
       setError(String(e));

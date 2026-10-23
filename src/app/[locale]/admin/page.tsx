@@ -37,7 +37,7 @@ const MIRROR_TOKEN_KEY = "adminToken";
 
 export default function AdminPage() {
   const t = useTranslations("admin");
-  const { auth } = useAuth();
+  const { isAuthenticated } = useAuth();
   const [manualToken, setManualToken] = useState("");
   const [hoardToken, setHoardToken] = useState("");
 
@@ -57,7 +57,7 @@ export default function AdminPage() {
   };
 
   // Mirror 管理面板：优先用登录会话（后端校验 role=admin），手贴 token 作救援通道。
-  const mirrorToken = auth?.accessToken ?? manualToken;
+  const mirrorToken = isAuthenticated ? "" : manualToken;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -66,7 +66,7 @@ export default function AdminPage() {
         <div className="mx-auto max-w-5xl px-6 py-12">
           <h1 className="font-display text-2xl font-semibold">{t("title")}</h1>
 
-          {auth?.accessToken ? (
+          {isAuthenticated ? (
             <p className="mt-2 text-sm text-success">{t("useSession")}</p>
           ) : (
             <div className="mt-4 flex max-w-xs flex-col gap-1.5">
