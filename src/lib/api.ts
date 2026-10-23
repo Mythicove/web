@@ -18,6 +18,7 @@ export type SkinLibItem = mirror["schemas"]["SkinLibItem"];
 export type SkinLibPage = mirror["schemas"]["SkinLibPage"];
 export type SkinComment = mirror["schemas"]["SkinComment"];
 export type AuditEntry = mirror["schemas"]["AuditEntry"];
+export type Report = mirror["schemas"]["Report"];
 export type AdminUser = mirror["schemas"]["AdminUser"];
 export type HoardProject = hoard["schemas"]["Project"];
 export type HoardVersion = hoard["schemas"]["Version"];
@@ -124,6 +125,13 @@ export const apiClient = {
       body: JSON.stringify({ playerName }),
     }),
 
+  report: (targetType: "skin" | "comment", targetID: string, reason: string, token: string) =>
+    api<void>("/reports", {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({ targetType, targetID, reason }),
+    }),
+
   skinTextureUrl: (key: string) => `${API_URL}/textures/${key}`,
 
   likeSkin: (id: string) =>
@@ -213,6 +221,32 @@ export const apiClient = {
         `/api/admin/audit?offset=${offset}&limit=${limit}`,
         { headers: authHeaders(token) },
       ),
+    reports: (token: string, status = "", offset = 0, limit = 50) =>
+      api<{ reports: Report[]; total: number }>(
+        `/api/admin/reports?status=${encodeURIComponent(status)}&offset=${offset}&limit=${limit}`,
+        { headers: authHeaders(token) },
+      ),
+    resolveReport: (token: string, id: string, status: "dismissed" | "acted") =>
+      api<void>(`/api/admin/reports/${id}/resolve`, {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({ status }),
+      }),
+    skins: (token: string, status = "", offset = 0, limit = 50) =>
+      api<{ items: SkinLibItem[]; total: number }>(
+        `/api/admin/skins?status=${encodeURIComponent(status)}&offset=${offset}&limit=${limit}`,
+        { headers: authHeaders(token) },
+      ),
+    setSkinStatus: (
+      token: string,
+      id: string,
+      status: "listed" | "unlisted" | "under_review",
+    ) =>
+      api<void>(`/api/admin/skins/${id}/status`, {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify({ status }),
+      }),
   },
 };
 

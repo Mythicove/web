@@ -12,6 +12,8 @@ import {
   type AuditEntry,
   type HoardProject,
   type LoginMethod,
+  type Report,
+  type SkinLibItem,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
@@ -84,6 +86,8 @@ export default function AdminPage() {
               <TabsTrigger value="announcement">{t("tab.announcement")}</TabsTrigger>
               <TabsTrigger value="invites">{t("tab.invites")}</TabsTrigger>
               <TabsTrigger value="mods">{t("tab.mods")}</TabsTrigger>
+              <TabsTrigger value="reports">{t("tab.reports")}</TabsTrigger>
+              <TabsTrigger value="moderation">{t("tab.moderation")}</TabsTrigger>
               <TabsTrigger value="audit">{t("tab.audit")}</TabsTrigger>
             </TabsList>
             <TabsContent value="users">
@@ -100,6 +104,12 @@ export default function AdminPage() {
             </TabsContent>
             <TabsContent value="mods">
               <ModsPanel token={hoardToken} onToken={saveHoard} />
+            </TabsContent>
+            <TabsContent value="reports">
+              <ReportsPanel token={mirrorToken} />
+            </TabsContent>
+            <TabsContent value="moderation">
+              <ModerationPanel token={mirrorToken} />
             </TabsContent>
             <TabsContent value="audit">
               <AuditPanel token={mirrorToken} />
@@ -462,5 +472,258 @@ function AuditPanel({ token }: { token: string }) {
         )}
       </TableBody>
     </Table>
+  );
+}
+
+const REPORT_FILTERS = ["pending", "dismissed", "acted", ""] as const;
+const SKIN_FILTERS = ["under_review", "listed", "unlisted", ""] as const;
+
+function FilterRow({
+  options,
+  value,
+  onChange,
+  label,
+}: {
+  options: readonly string[];
+  value: string;
+  onChange: (v: string) => void;
+  label: (v: string) => string;
+}) {
+  return (
+    <div className="mb-3 flex gap-2">
+      {options.map((o) => (
+        <Button key={o || "all"} size="sm" variant={value === o ? "default" : "outline"} onClick={() => onChange(o)}>
+          {label(o)}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+function ReportsPanel({ token }: { token: string }) {
+  const t = useTranslations("admin");
+  const errText = useErrText();
+  const [status, setStatus] = useState<string>("pending");
+  const [reports, setReports] = useState<Report[]>([]);
+
+  const load = () => {
+    if (!token) return;
+    apiClient.admin
+      .reports(token, status, 0, 100)
+      .then((r) => setReports(r.reports))
+      .catch((e) => toast.error(errText(e)));
+  };
+  useEffect(load, [token, status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const dismiss = async (id: string) => {
+    try {
+      await apiClient.admin.resolveReport(token, id, "dismissed");
+      toast.success(t("saved"));
+      load();
+    } catch (e) {
+      toast.error(errText(e));
+    }
+  };
+
+  const removeAndClose = async (rep: Report) => {
+    try {
+      try {
+        if (rep.target_type === "skin") {
+          await apiClient.admin.deleteSkinLib(token, rep.target_id);
+        } else {
+          await apiClient.admin.deleteComment(token, rep.target_id);
+        }
+      } catch (e) {
+        // 目标可能已被删除：404 时仍继续结案
+        if (!(e instanceof ApiError && e.status === 404)) throw e;
+      }
+      await apiClient.admin.resolveReport(token, rep.id, "acted");
+      toast.success(t("saved"));
+      load();
+    } catch (e) {
+      toast.error(errText(e));
+    }
+  };
+
+  if (!token) return <p className="text-sm text-text-muted">{t("needToken")}</p>;
+
+  const filterLabel = (v: string) =>
+    v === ""
+      ? t("colStatus")
+      : v === "pending"
+        ? t("statusUnderReview")
+        : v === "dismissed"
+          ? t("dismiss")
+          : t("acted");
+
+  return (
+    <div>
+      <FilterRow options={REPORT_FILTERS} value={status} onChange={setStatus} label={filterLabel} />
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("colTime")}</TableHead>
+            <TableHead>{t("colReporter")}</TableHead>
+            <TableHead>{t("colType")}</TableHead>
+            <TableHead>{t("colReason")}</TableHead>
+            <TableHead>{t("colStatus")}</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {reports.map((r) => (
+            <TableRow key={r.id}>
+              <TableCell className="whitespace-nowrap text-xs text-text-muted">
+                {new Date(r.created_at).toLocaleString()}
+              </TableCell>
+              <TableCell className="text-xs">{r.reporter_name || r.reporter_user_id}</TableCell>
+              <TableCell className="text-xs">
+                {r.target_type === "skin" ? t("typeSkin") : t("typeComment")}
+              </TableCell>
+              <TableCell className="max-w-[24rem] truncate text-xs" title={r.reason}>
+                {r.reason || "—"}
+              </TableCell>
+              <TableCell>
+                <Badge variant={r.status === "pending" ? "default" : "secondary"}>{r.status}</Badge>
+              </TableCell>
+              <TableCell>
+                {r.status === "pending" && (
+                  <div className="flex gap-1.5">
+                    <Button size="sm" variant="outline" onClick={() => dismiss(r.id)}>
+                      {t("dismiss")}
+                    </Button>
+                    <Button size="sm" variant="destructive" onClick={() => removeAndClose(r)}>
+                      {t("removeContent")}
+                    </Button>
+                  </div>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+          {reports.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={6} className="text-sm text-text-muted">
+                {t("reportsEmpty")}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
+function ModerationPanel({ token }: { token: string }) {
+  const t = useTranslations("admin");
+  const errText = useErrText();
+  const [status, setStatus] = useState<string>("under_review");
+  const [items, setItems] = useState<SkinLibItem[]>([]);
+
+  const load = () => {
+    if (!token) return;
+    apiClient.admin
+      .skins(token, status, 0, 100)
+      .then((r) => setItems(r.items))
+      .catch((e) => toast.error(errText(e)));
+  };
+  useEffect(load, [token, status]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const setStatusAction = async (id: string, next: "listed" | "unlisted" | "under_review") => {
+    try {
+      await apiClient.admin.setSkinStatus(token, id, next);
+      toast.success(t("saved"));
+      load();
+    } catch (e) {
+      toast.error(errText(e));
+    }
+  };
+
+  const remove = async (id: string) => {
+    try {
+      await apiClient.admin.deleteSkinLib(token, id);
+      toast.success(t("saved"));
+      load();
+    } catch (e) {
+      toast.error(errText(e));
+    }
+  };
+
+  if (!token) return <p className="text-sm text-text-muted">{t("needToken")}</p>;
+
+  const filterLabel = (v: string) =>
+    v === ""
+      ? t("colStatus")
+      : v === "under_review"
+        ? t("statusUnderReview")
+        : v === "listed"
+          ? t("statusListed")
+          : t("statusUnlisted");
+
+  return (
+    <div>
+      <FilterRow options={SKIN_FILTERS} value={status} onChange={setStatus} label={filterLabel} />
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t("colTime")}</TableHead>
+            <TableHead>{t("colUser")}</TableHead>
+            <TableHead>{t("colReason")}</TableHead>
+            <TableHead>{t("colStatus")}</TableHead>
+            <TableHead />
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {items.map((it) => (
+            <TableRow key={it.id}>
+              <TableCell className="whitespace-nowrap text-xs text-text-muted">
+                {new Date(it.created_at).toLocaleString()}
+              </TableCell>
+              <TableCell className="text-xs">{it.player_name}</TableCell>
+              <TableCell className="max-w-[24rem] truncate text-xs" title={it.description}>
+                {it.description || "—"}
+              </TableCell>
+              <TableCell>
+                <Badge variant={it.status === "listed" ? "secondary" : "default"}>
+                  {it.status === "listed"
+                    ? t("statusListed")
+                    : it.status === "under_review"
+                      ? t("statusUnderReview")
+                      : t("statusUnlisted")}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <div className="flex gap-1.5">
+                  {it.status !== "listed" && (
+                    <Button size="sm" variant="outline" onClick={() => setStatusAction(it.id, "listed")}>
+                      {t("approve")}
+                    </Button>
+                  )}
+                  {it.status === "listed" && (
+                    <Button size="sm" variant="outline" onClick={() => setStatusAction(it.id, "unlisted")}>
+                      {t("unlist")}
+                    </Button>
+                  )}
+                  {it.status === "unlisted" && (
+                    <Button size="sm" variant="outline" onClick={() => setStatusAction(it.id, "under_review")}>
+                      {t("requeue")}
+                    </Button>
+                  )}
+                  <Button size="sm" variant="destructive" onClick={() => remove(it.id)}>
+                    {t("delete")}
+                  </Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          ))}
+          {items.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={5} className="text-sm text-text-muted">
+                {t("moderationEmpty")}
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
 }

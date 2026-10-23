@@ -790,6 +790,91 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 举报皮肤条目或评论（登录用户；同一目标仅一次） */
+        post: operations["createReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 举报列表（pending 优先；status 过滤 pending|dismissed|acted，空=全部） */
+        get: operations["adminListReports"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/reports/{id}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 标记举报处理结果（删除目标内容复用 skinlib/comments DELETE 端点） */
+        post: operations["adminResolveReport"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/skins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 管理端皮肤列表（status 过滤 listed|under_review|unlisted，空=全部） */
+        get: operations["adminListSkins"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/skins/{id}/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 设置皮肤条目状态（批准上架/下架/退回审核） */
+        post: operations["adminSetSkinStatus"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/batch-import": {
         parameters: {
             query?: never;
@@ -829,8 +914,26 @@ export interface components {
             /** @enum {string} */
             model: "default" | "slim";
             likes: number;
+            /** @enum {string} */
+            status: "listed" | "under_review" | "unlisted";
             /** @description RFC3339 时间戳 */
             created_at: string;
+        };
+        Report: {
+            id: string;
+            reporter_user_id: string;
+            reporter_name: string;
+            /** @enum {string} */
+            target_type: "skin" | "comment";
+            target_id: string;
+            reason: string;
+            /** @enum {string} */
+            status: "pending" | "dismissed" | "acted";
+            reviewed_by: string;
+            /** @description RFC3339 时间戳 */
+            created_at: string;
+            /** @description RFC3339 时间戳（未处理时缺省） */
+            reviewed_at?: string;
         };
         SkinLibPage: {
             items: components["schemas"]["SkinLibItem"][];
@@ -1308,6 +1411,15 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Error"];
+            /** @description 超出存储配额（QuotaExceededException） */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     getCape: {
@@ -1846,6 +1958,24 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+            /** @description 玩家或皮肤不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description 超出发布数量配额 */
+            413: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     getSkinlibItem: {
@@ -2262,6 +2392,171 @@ export interface operations {
                 };
             };
             403: components["responses"]["Error"];
+        };
+    };
+    createReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    targetType: "skin" | "comment";
+                    targetID: string;
+                    reason?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 已受理 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            /** @description 目标不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+            /** @description 重复举报 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    adminListReports: {
+        parameters: {
+            query?: {
+                status?: string;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        reports: components["schemas"]["Report"][];
+                        /** Format: int64 */
+                        total: number;
+                    };
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminResolveReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "dismissed" | "acted";
+                };
+            };
+        };
+        responses: {
+            /** @description 已处理 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    adminListSkins: {
+        parameters: {
+            query?: {
+                status?: string;
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["SkinLibItem"][];
+                        /** Format: int64 */
+                        total: number;
+                    };
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminSetSkinStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    status: "listed" | "unlisted" | "under_review";
+                };
+            };
+        };
+        responses: {
+            /** @description 已更新 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     adminBatchImport: {

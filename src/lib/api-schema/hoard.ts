@@ -440,6 +440,7 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             403: components["responses"]["Error"];
+            413: components["responses"]["Error"];
         };
     };
     getMod: {

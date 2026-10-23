@@ -133,7 +133,11 @@
     "noComments": "No comments yet.",
     "apply": "Apply to my skin",
     "applyOk": "Applied to {player}",
-    "applyNeedLogin": "Sign in to apply this skin to your player"
+    "applyNeedLogin": "Sign in to apply this skin to your player",
+    "report": "Report",
+    "reportReason": "Reason (optional)",
+    "reportSubmit": "Submit report",
+    "reportOk": "Reported, thanks"
   },
   "admin": {
     "title": "Admin",
@@ -155,7 +159,9 @@
       "announcement": "Announcement",
       "invites": "Invite codes",
       "mods": "Mod review",
-      "audit": "Audit log"
+      "audit": "Audit log",
+      "reports": "Reports",
+      "moderation": "Skin moderation"
     },
     "colTime": "Time",
     "colActor": "Actor",
@@ -171,6 +177,22 @@
     "saved": "Saved",
     "inviteCount": "Count",
     "generate": "Generate",
-    "delete": "Delete"
+    "delete": "Delete",
+    "colReporter": "Reporter",
+    "colReason": "Reason",
+    "colType": "Type",
+    "typeSkin": "Skin",
+    "typeComment": "Comment",
+    "dismiss": "Dismiss",
+    "acted": "Acted",
+    "removeContent": "Remove content & close",
+    "reportsEmpty": "No reports.",
+    "approve": "Approve",
+    "unlist": "Unlist",
+    "requeue": "Back to review",
+    "statusListed": "listed",
+    "statusUnderReview": "under review",
+    "statusUnlisted": "unlisted",
+    "moderationEmpty": "No entries with this status."
   }
 }

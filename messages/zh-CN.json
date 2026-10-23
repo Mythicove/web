@@ -133,7 +133,11 @@
     "noComments": "暂无评论。",
     "apply": "应用到我的皮肤",
     "applyOk": "已应用到 {player}",
-    "applyNeedLogin": "登录后即可把该皮肤应用到你的玩家"
+    "applyNeedLogin": "登录后即可把该皮肤应用到你的玩家",
+    "report": "举报",
+    "reportReason": "举报理由（可选）",
+    "reportSubmit": "提交举报",
+    "reportOk": "已举报，感谢反馈"
   },
   "admin": {
     "title": "管理后台",
@@ -155,7 +159,9 @@
       "announcement": "公告",
       "invites": "邀请码",
       "mods": "模组审核",
-      "audit": "审计日志"
+      "audit": "审计日志",
+      "reports": "举报",
+      "moderation": "皮肤审核"
     },
     "colTime": "时间",
     "colActor": "操作者",
@@ -171,6 +177,22 @@
     "saved": "已保存",
     "inviteCount": "数量",
     "generate": "生成",
-    "delete": "删除"
+    "delete": "删除",
+    "colReporter": "举报人",
+    "colReason": "理由",
+    "colType": "类型",
+    "typeSkin": "皮肤",
+    "typeComment": "评论",
+    "dismiss": "驳回",
+    "acted": "已处理",
+    "removeContent": "删除内容并结案",
+    "reportsEmpty": "暂无举报。",
+    "approve": "批准上架",
+    "unlist": "下架",
+    "requeue": "退回审核",
+    "statusListed": "已上架",
+    "statusUnderReview": "审核中",
+    "statusUnlisted": "已下架",
+    "moderationEmpty": "该状态下暂无条目。"
   }
 }

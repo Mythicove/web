@@ -16,6 +16,9 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
   const [liked, setLiked] = useState(false);
   const [applied, setApplied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reporting, setReporting] = useState(false);
+  const [reportReason, setReportReason] = useState("");
+  const [reported, setReported] = useState(false);
 
   const like = async () => {
     if (liked) return;
@@ -35,6 +38,18 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
       await apiClient.applySkin(item.id, auth.playerName, auth.accessToken);
       setApplied(true);
       router.refresh();
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  const submitReport = async () => {
+    setError(null);
+    if (!auth?.accessToken) return;
+    try {
+      await apiClient.report("skin", item.id, reportReason, auth.accessToken);
+      setReported(true);
+      setReporting(false);
     } catch (e) {
       setError(String(e));
     }
@@ -60,7 +75,26 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
         >
           {t("download")}
         </a>
+        {auth?.accessToken && !reported && (
+          <Button variant="outline" onClick={() => setReporting((v) => !v)}>
+            {t("report")}
+          </Button>
+        )}
+        {reported && <span className="text-xs text-text-muted">{t("reportOk")}</span>}
       </div>
+      {reporting && (
+        <div className="flex gap-2">
+          <Input
+            value={reportReason}
+            onChange={(e) => setReportReason(e.target.value)}
+            placeholder={t("reportReason")}
+            maxLength={1000}
+          />
+          <Button variant="outline" onClick={submitReport}>
+            {t("reportSubmit")}
+          </Button>
+        </div>
+      )}
       {error && <p className="text-sm text-danger">{error}</p>}
     </div>
   );
