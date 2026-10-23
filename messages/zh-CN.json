@@ -154,8 +154,15 @@
       "loginMethods": "登录方式",
       "announcement": "公告",
       "invites": "邀请码",
-      "mods": "模组审核"
+      "mods": "模组审核",
+      "audit": "审计日志"
     },
+    "colTime": "时间",
+    "colActor": "操作者",
+    "colAction": "操作",
+    "colTarget": "对象",
+    "colIP": "IP",
+    "auditEmpty": "暂无审计记录。",
     "enabled": "已启用",
     "disabled": "已禁用",
     "annTitle": "标题",

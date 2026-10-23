@@ -9,6 +9,7 @@ import {
   ApiError,
   type AdminUser,
   type Announcement,
+  type AuditEntry,
   type HoardProject,
   type LoginMethod,
 } from "@/lib/api";
@@ -83,6 +84,7 @@ export default function AdminPage() {
               <TabsTrigger value="announcement">{t("tab.announcement")}</TabsTrigger>
               <TabsTrigger value="invites">{t("tab.invites")}</TabsTrigger>
               <TabsTrigger value="mods">{t("tab.mods")}</TabsTrigger>
+              <TabsTrigger value="audit">{t("tab.audit")}</TabsTrigger>
             </TabsList>
             <TabsContent value="users">
               <UsersPanel token={mirrorToken} />
@@ -98,6 +100,9 @@ export default function AdminPage() {
             </TabsContent>
             <TabsContent value="mods">
               <ModsPanel token={hoardToken} onToken={saveHoard} />
+            </TabsContent>
+            <TabsContent value="audit">
+              <AuditPanel token={mirrorToken} />
             </TabsContent>
           </Tabs>
         </div>
@@ -403,5 +408,59 @@ function ModsPanel({ token, onToken }: { token: string; onToken: (v: string) => 
         ))}
       </div>
     </div>
+  );
+}
+
+function AuditPanel({ token }: { token: string }) {
+  const t = useTranslations("admin");
+  const errText = useErrText();
+  const [entries, setEntries] = useState<AuditEntry[]>([]);
+
+  useEffect(() => {
+    if (!token) return;
+    apiClient.admin
+      .audit(token, 0, 100)
+      .then((r) => setEntries(r.entries))
+      .catch((e) => toast.error(errText(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
+
+  if (!token) return <p className="text-sm text-text-muted">{t("needToken")}</p>;
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t("colTime")}</TableHead>
+          <TableHead>{t("colActor")}</TableHead>
+          <TableHead>{t("colAction")}</TableHead>
+          <TableHead>{t("colTarget")}</TableHead>
+          <TableHead>{t("colIP")}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {entries.map((e) => (
+          <TableRow key={e.id}>
+            <TableCell className="whitespace-nowrap text-xs text-text-muted">
+              {new Date(e.created_at).toLocaleString()}
+            </TableCell>
+            <TableCell className="text-xs">{e.actor}</TableCell>
+            <TableCell className="text-xs font-medium">{e.action}</TableCell>
+            <TableCell className="text-xs">
+              {e.target}
+              {e.detail && <span className="text-text-muted"> · {e.detail}</span>}
+            </TableCell>
+            <TableCell className="text-xs text-text-muted">{e.actor_ip}</TableCell>
+          </TableRow>
+        ))}
+        {entries.length === 0 && (
+          <TableRow>
+            <TableCell colSpan={5} className="text-sm text-text-muted">
+              {t("auditEmpty")}
+            </TableCell>
+          </TableRow>
+        )}
+      </TableBody>
+    </Table>
   );
 }

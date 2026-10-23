@@ -154,8 +154,15 @@
       "loginMethods": "Login methods",
       "announcement": "Announcement",
       "invites": "Invite codes",
-      "mods": "Mod review"
+      "mods": "Mod review",
+      "audit": "Audit log"
     },
+    "colTime": "Time",
+    "colActor": "Actor",
+    "colAction": "Action",
+    "colTarget": "Target",
+    "colIP": "IP",
+    "auditEmpty": "No audit entries yet.",
     "enabled": "Enabled",
     "disabled": "Disabled",
     "annTitle": "Title",

@@ -17,6 +17,7 @@ export type Announcement = mirror["schemas"]["Announcement"];
 export type SkinLibItem = mirror["schemas"]["SkinLibItem"];
 export type SkinLibPage = mirror["schemas"]["SkinLibPage"];
 export type SkinComment = mirror["schemas"]["SkinComment"];
+export type AuditEntry = mirror["schemas"]["AuditEntry"];
 export type AdminUser = mirror["schemas"]["AdminUser"];
 export type HoardProject = hoard["schemas"]["Project"];
 export type HoardVersion = hoard["schemas"]["Version"];
@@ -207,6 +208,11 @@ export const apiClient = {
         method: "DELETE",
         headers: authHeaders(token),
       }),
+    audit: (token: string, offset = 0, limit = 50) =>
+      api<{ entries: AuditEntry[]; total: number }>(
+        `/api/admin/audit?offset=${offset}&limit=${limit}`,
+        { headers: authHeaders(token) },
+      ),
   },
 };
 

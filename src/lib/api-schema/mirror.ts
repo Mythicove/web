@@ -773,6 +773,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/audit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 管理操作审计日志（时间倒序） */
+        get: operations["adminListAudit"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/batch-import": {
         parameters: {
             query?: never;
@@ -828,6 +845,17 @@ export interface components {
             user_id: string;
             author_name: string;
             content: string;
+            /** @description RFC3339 时间戳 */
+            created_at: string;
+        };
+        AuditEntry: {
+            id: string;
+            /** @description "token" 或 "user:<id>" */
+            actor: string;
+            actor_ip: string;
+            action: string;
+            target: string;
+            detail: string;
             /** @description RFC3339 时间戳 */
             created_at: string;
         };
@@ -2204,6 +2232,34 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminListAudit: {
+        parameters: {
+            query?: {
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        entries: components["schemas"]["AuditEntry"][];
+                        /** Format: int64 */
+                        total: number;
+                    };
+                };
             };
             403: components["responses"]["Error"];
         };
