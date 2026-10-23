@@ -6,6 +6,7 @@ import { apiClient, type SkinLibItem } from "@/lib/api";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SiteHeader } from "@/components/site-header";
+import { Link } from "@/i18n/navigation";
 
 export default function SkinsPage() {
   const t = useTranslations("auth");
@@ -31,18 +32,25 @@ export default function SkinsPage() {
           )}
           <div className="mt-6 grid gap-6 md:grid-cols-3">
             {items.map((item) => (
-              <Card key={item.id} className="bg-surface">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-display font-medium">{item.player_name}</span>
-                    <Badge variant="secondary">{item.model}</Badge>
-                  </div>
-                  <p className="mt-2 line-clamp-2 text-sm text-text-muted">
-                    {item.description || t("noDesc")}
-                  </p>
-                  <div className="mt-4 text-xs text-text-muted">{item.likes} likes</div>
-                </CardContent>
-              </Card>
+              <Link key={item.id} href={`/skins/${item.id}`} className="block">
+                <Card className="bg-surface transition hover:bg-surface-raised">
+                  <CardContent className="p-5">
+                    <img
+                      src={apiClient.skinTextureUrl(item.texture_key)}
+                      alt={item.player_name}
+                      className="h-40 w-full rounded-md object-contain bg-bg"
+                    />
+                    <div className="mt-4 flex items-center justify-between">
+                      <span className="font-display font-medium">{item.player_name}</span>
+                      <Badge variant="secondary">{item.model}</Badge>
+                    </div>
+                    <p className="mt-2 line-clamp-2 text-sm text-text-muted">
+                      {item.description || t("noDesc")}
+                    </p>
+                    <div className="mt-3 text-xs text-text-muted">{item.likes} likes</div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
           </div>
         </div>

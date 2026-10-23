@@ -6,7 +6,9 @@
     "login": "Sign in",
     "settings": "Settings",
     "mods": "Mods / Packs",
-    "profile": "Upload skin"
+    "profile": "Upload skin",
+    "account": "Account",
+    "logout": "Sign out"
   },
   "home": {
     "hero1": "Your skin,",
@@ -49,14 +51,21 @@
     "file": "File",
     "upload": "Upload",
     "download": "Download",
-    "empty": "No mods yet. Upload the first one."
+    "empty": "No mods yet. Upload the first one.",
+    "loaders": "Loaders",
+    "gameVersions": "Game versions",
+    "search": "Search",
+    "versions": "Versions"
   },
   "profile": {
     "title": "Upload skin",
     "playerName": "Player name",
     "model": "Model",
     "file": "Skin file (PNG)",
-    "upload": "Upload",
+    "cape": "Cape file (PNG)",
+    "upload": "Upload skin",
+    "uploadCape": "Upload cape",
+    "preview": "Preview",
     "uploadOk": "Uploaded",
     "notLoggedIn": "Please sign in first",
     "noFile": "Choose a file"
@@ -70,9 +79,43 @@
     "playerName": "Player name",
     "submit": "Submit",
     "registerOk": "Account created. Check your email to verify.",
-    "loginOk": "Signed in. Token saved.",
+    "loginOk": "Signed in.",
+    "or": "or",
+    "oauthWith": "Sign in with {provider}",
     "skinsTitle": "Skin library",
     "empty": "No skins yet.",
     "noDesc": "No description"
+  },
+  "skinDetail": {
+    "like": "Like",
+    "liked": "Liked",
+    "download": "Download texture",
+    "comment": "Add a comment",
+    "commentHint": "Leave a comment (requires sign in)",
+    "submit": "Submit",
+    "loading": "Loading…",
+    "notFound": "Skin not found",
+    "noDesc": "No description"
+  },
+  "admin": {
+    "title": "Admin",
+    "token": "Admin token",
+    "needToken": "Enter an admin token to manage the site.",
+    "tab": {
+      "users": "Users",
+      "loginMethods": "Login methods",
+      "announcement": "Announcement",
+      "invites": "Invite codes",
+      "mods": "Mod review"
+    },
+    "enabled": "Enabled",
+    "disabled": "Disabled",
+    "annTitle": "Title",
+    "annBody": "Body",
+    "save": "Save",
+    "saved": "Saved",
+    "inviteCount": "Count",
+    "generate": "Generate",
+    "delete": "Delete"
   }
 }

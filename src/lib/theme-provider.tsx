@@ -61,6 +61,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       .catch(() => {});
 
     const savedMode = localStorage.getItem(STORAGE_MODE);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (savedMode) setModeState(savedMode as Mode);
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     setSystemDark(mq.matches);

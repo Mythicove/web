@@ -3,6 +3,7 @@
 import { useTranslations, useLocale } from "next-intl";
 import { useTheme } from "@/lib/theme-provider";
 import { useSiteConfig } from "@/lib/site-config";
+import { useAuth } from "@/lib/auth";
 import { usePathname, useRouter, Link } from "@/i18n/navigation";
 import {
   DropdownMenu,
@@ -16,6 +17,7 @@ export function SiteHeader() {
   const t = useTranslations();
   const { allowAdjust } = useTheme();
   const { has } = useSiteConfig();
+  const { auth, isAuthenticated, logout } = useAuth();
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
@@ -48,9 +50,6 @@ export function SiteHeader() {
               {t("nav.mods")}
             </Link>
           )}
-          <a href="#" className="hover:text-text">
-            {t("nav.docs")}
-          </a>
 
           <DropdownMenu>
             <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
@@ -68,16 +67,30 @@ export function SiteHeader() {
             </Link>
           )}
 
-          <Link href="/profile" className="hover:text-text">
-            {t("nav.profile")}
-          </Link>
-
-          <Link
-            href="/login"
-            className="rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-hover"
-          >
-            {t("nav.login")}
-          </Link>
+          {isAuthenticated ? (
+            <>
+              {has("skin") && (
+                <Link href="/profile" className="hover:text-text">
+                  {t("nav.profile")}
+                </Link>
+              )}
+              <DropdownMenu>
+                <DropdownMenuTrigger render={<Button variant="ghost" size="sm" />}>
+                  {auth?.playerName ?? t("nav.account")}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={logout}>{t("nav.logout")}</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <Link
+              href="/login"
+              className="rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-hover"
+            >
+              {t("nav.login")}
+            </Link>
+          )}
         </div>
       </nav>
     </header>

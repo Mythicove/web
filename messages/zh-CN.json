@@ -6,7 +6,9 @@
     "login": "登录 / 注册",
     "settings": "设置",
     "mods": "模组 / 整合包",
-    "profile": "上传皮肤"
+    "profile": "上传皮肤",
+    "account": "账户",
+    "logout": "退出登录"
   },
   "home": {
     "hero1": "你的皮肤，",
@@ -49,14 +51,21 @@
     "file": "文件",
     "upload": "上传",
     "download": "下载",
-    "empty": "还没有 mod，先上传一个。"
+    "empty": "还没有 mod，先上传一个。",
+    "loaders": "加载器",
+    "gameVersions": "游戏版本",
+    "search": "搜索",
+    "versions": "版本"
   },
   "profile": {
     "title": "上传皮肤",
     "playerName": "玩家名",
     "model": "模型",
     "file": "皮肤文件 (PNG)",
-    "upload": "上传",
+    "cape": "披风文件 (PNG)",
+    "upload": "上传皮肤",
+    "uploadCape": "上传披风",
+    "preview": "预览",
     "uploadOk": "上传成功",
     "notLoggedIn": "请先登录",
     "noFile": "请选择文件"
@@ -70,9 +79,43 @@
     "playerName": "玩家名",
     "submit": "提交",
     "registerOk": "注册成功，请查收邮箱完成验证。",
-    "loginOk": "登录成功，令牌已保存。",
+    "loginOk": "登录成功。",
+    "or": "或",
+    "oauthWith": "使用 {provider} 登录",
     "skinsTitle": "皮肤库",
     "empty": "暂无皮肤。",
     "noDesc": "暂无描述"
+  },
+  "skinDetail": {
+    "like": "点赞",
+    "liked": "已点赞",
+    "download": "下载贴图",
+    "comment": "写评论",
+    "commentHint": "留下评论（需登录）",
+    "submit": "提交",
+    "loading": "加载中…",
+    "notFound": "未找到该皮肤",
+    "noDesc": "暂无描述"
+  },
+  "admin": {
+    "title": "管理后台",
+    "token": "管理令牌",
+    "needToken": "请输入管理令牌以管理站点。",
+    "tab": {
+      "users": "用户",
+      "loginMethods": "登录方式",
+      "announcement": "公告",
+      "invites": "邀请码",
+      "mods": "模组审核"
+    },
+    "enabled": "已启用",
+    "disabled": "已禁用",
+    "annTitle": "标题",
+    "annBody": "正文",
+    "save": "保存",
+    "saved": "已保存",
+    "inviteCount": "数量",
+    "generate": "生成",
+    "delete": "删除"
   }
 }
