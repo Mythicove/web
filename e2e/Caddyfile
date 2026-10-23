@@ -1,0 +1,27 @@
+# E2E 本地单域名反代：hoard 与 mirror 按路径分流（与生产 Caddyfile.prod 同构）。
+# 容器内经 host.docker.internal 访问宿主服务（Linux 需 --add-host=host.docker.internal:host-gateway）。
+{
+	admin off
+	auto_https off
+}
+
+:8090 {
+	handle /auth/* {
+		reverse_proxy host.docker.internal:18081
+	}
+	handle /api/mods* {
+		reverse_proxy host.docker.internal:18081
+	}
+	handle /api/team* {
+		reverse_proxy host.docker.internal:18081
+	}
+	handle /api/user* {
+		reverse_proxy host.docker.internal:18081
+	}
+	handle /v2/* {
+		reverse_proxy host.docker.internal:18081
+	}
+	handle {
+		reverse_proxy host.docker.internal:18080
+	}
+}

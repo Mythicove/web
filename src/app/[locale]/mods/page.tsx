@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { hoardClient, type HoardProject, type HoardVersion } from "@/lib/api";
+import { useHoardUser } from "@/lib/hoard-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -12,6 +14,7 @@ import { SiteHeader } from "@/components/site-header";
 
 export default function ModsPage() {
   const t = useTranslations("mods");
+  const { user, loaded, logout } = useHoardUser();
   const [mods, setMods] = useState<HoardProject[]>([]);
   const [versions, setVersions] = useState<Record<string, HoardVersion[]>>({});
   const [q, setQ] = useState("");
@@ -56,7 +59,32 @@ export default function ModsPage() {
       <SiteHeader />
       <main className="flex-1">
         <div className="mx-auto max-w-6xl px-6 py-12">
-          <h1 className="font-display text-2xl font-semibold">{t("title")}</h1>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h1 className="font-display text-2xl font-semibold">{t("title")}</h1>
+            {loaded &&
+              (user ? (
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="text-text-muted">
+                    {t("signedInAs", { name: user.username })}
+                  </span>
+                  <Link href="mods/upload">
+                    <Button size="sm">{t("uploadMod")}</Button>
+                  </Link>
+                  <Link href="mods/settings">
+                    <Button size="sm" variant="outline">
+                      {t("settings")}
+                    </Button>
+                  </Link>
+                  <Button size="sm" variant="outline" onClick={() => void logout()}>
+                    {t("ssoLogout")}
+                  </Button>
+                </div>
+              ) : (
+                <a href={hoardClient.loginUrl()}>
+                  <Button size="sm">{t("ssoLogin")}</Button>
+                </a>
+              ))}
+          </div>
 
           <form
             onSubmit={submit}
@@ -106,7 +134,9 @@ export default function ModsPage() {
               <Card key={m.id} className="bg-surface">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between">
-                    <span className="font-display font-medium">{m.title}</span>
+                    <Link href={`/mods/${m.id}`} className="font-display font-medium hover:underline">
+                      {m.title}
+                    </Link>
                     <Badge variant="secondary">{m.project_type}</Badge>
                   </div>
                   <p className="mt-2 line-clamp-2 text-sm text-text-muted">{m.description}</p>

@@ -24,6 +24,11 @@ export type HoardProject = hoard["schemas"]["Project"];
 export type HoardVersion = hoard["schemas"]["Version"];
 export type HoardFile = hoard["schemas"]["File"];
 export type HoardSearchResponse = hoard["schemas"]["SearchResponse"];
+export type HoardUser = hoard["schemas"]["User"];
+export type HoardUserTeam = hoard["schemas"]["UserTeam"];
+export type HoardTeamMember = hoard["schemas"]["TeamMember"];
+export type HoardPAT = hoard["schemas"]["PAT"];
+export type HoardDependency = hoard["schemas"]["Dependency"];
 
 export interface SearchResult<T> {
   hits: T[];
@@ -242,6 +247,14 @@ export const apiClient = {
   },
 };
 
+// hoardApi 是 hoard 端点的 fetch 包装：SSO 会话凭 httpOnly cookie（credentials）携带。
+async function hoardApi<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, { credentials: "include", ...init });
+  if (!res.ok) throw new ApiError(res.status, `API ${res.status}: ${await res.text()}`);
+  if (res.status === 204) return undefined as T;
+  return (await res.json()) as T;
+}
+
 export const hoardClient = {
   search: async (q = "", offset = 0, limit = 20) => {
     const res = await fetch(
@@ -256,6 +269,72 @@ export const hoardClient = {
     if (!res.ok) throw new Error(`API ${res.status}`);
     return (await res.json()) as HoardVersion[];
   },
+
+  project: (id: string) => hoardApi<HoardProject>(`/v2/project/${id}`),
+
+  dependencies: (id: string) => hoardApi<HoardDependency[]>(`/v2/project/${id}/dependencies`),
+
+  iconUrl: (id: string) => `${API_URL}/api/mods/${id}/icon`,
+
+  // ---- SSO 会话（httpOnly cookie，credentials 携带）----
+  loginUrl: () => `${API_URL}/auth/oidc/login`,
+
+  me: () => hoardApi<HoardUser>("/auth/me"),
+
+  logoutHoard: async () => {
+    await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
+  },
+
+  // ---- 团队 ----
+  myTeams: () => hoardApi<HoardUserTeam[]>("/api/user/teams"),
+
+  createTeam: (name: string) =>
+    hoardApi<{ id: string }>("/api/team", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name }),
+    }),
+
+  teamMembers: (id: string) => hoardApi<HoardTeamMember[]>(`/api/team/${id}/members`),
+
+  addTeamMember: (id: string, sub: string, role: string) =>
+    hoardApi<void>(`/api/team/${id}/members`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ sub, role }),
+    }),
+
+  removeTeamMember: (id: string, sub: string) =>
+    hoardApi<void>(`/api/team/${id}/members/${sub}`, { method: "DELETE" }),
+
+  // ---- PAT ----
+  listPATs: () => hoardApi<HoardPAT[]>("/api/user/pats"),
+
+  createPAT: (name: string, scopes: string[], expiresInDays: number) =>
+    hoardApi<{ id: string; token: string }>("/api/user/pats", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name, scopes, expires_in_days: expiresInDays }),
+    }),
+
+  deletePAT: (id: string) => hoardApi<void>(`/api/user/pats/${id}`, { method: "DELETE" }),
+
+  // ---- 用户级上传（Modrinth 形 multipart）----
+  createProject: async (data: Record<string, unknown>, file: File) => {
+    const form = new FormData();
+    form.set("data", JSON.stringify(data));
+    form.set("file", file);
+    return hoardApi<HoardProject>("/v2/project", { method: "POST", body: form });
+  },
+
+  addVersion: async (data: Record<string, unknown>, file: File) => {
+    const form = new FormData();
+    form.set("data", JSON.stringify(data));
+    form.set("file", file);
+    return hoardApi<HoardVersion>("/v2/version", { method: "POST", body: form });
+  },
+
+  deleteProject: (id: string) => hoardApi<void>(`/v2/project/${id}`, { method: "DELETE" }),
 
   uploadMod: async (form: FormData, adminToken?: string) => {
     const res = await fetch(`${API_URL}/api/mods`, {

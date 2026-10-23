@@ -293,6 +293,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v2/project": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 用户级创建项目（Modrinth 形 multipart：data JSON + file；自动建团队并归属） */
+        post: operations["createUserProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v2/version": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 用户级发版（multipart：data JSON 含 project_id + file；须为项目团队成员） */
+        post: operations["createUserVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v2/project/{id}": {
         parameters: {
             query?: never;
@@ -302,6 +336,58 @@ export interface paths {
         };
         /** 按 id 或 slug 取项目 */
         get: operations["getProject"];
+        put?: never;
+        post?: never;
+        /** 删除项目（团队 owner 或站点 admin） */
+        delete: operations["deleteUserProject"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/mods/{id}/icon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 项目 icon 直出（jar 内解析；无 icon 时 404） */
+        get: operations["getModIconApi"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v2/project/{id}/icon": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 项目 icon 直出（/api/mods/{id}/icon 的 v2 别名） */
+        get: operations["getProjectIcon"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v2/project/{id}/dependencies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 项目全部版本的依赖（Modrinth 形） */
+        get: operations["getProjectDependencies"];
         put?: never;
         post?: never;
         delete?: never;
@@ -451,6 +537,17 @@ export interface components {
             last_used?: string;
             created_at: string;
         };
+        Dependency: {
+            id: string;
+            /** @description 目标版本（可空） */
+            version_id?: string;
+            /** @description 目标项目（可空） */
+            project_id?: string;
+            /** @enum {string} */
+            dependency_type: "required" | "optional" | "incompatible" | "embedded";
+            /** @description embedded 依赖的展示文件名 */
+            file_name?: string;
+        };
         SearchResponse: {
             hits: components["schemas"]["Project"][];
             offset: number;
@@ -462,6 +559,12 @@ export interface components {
             id: string;
             /** @description 归属团队 id（存量管理员上传为空） */
             team?: string;
+            /** @description 从 jar 元数据解析（fabric/quilt/forge/neoforge） */
+            license?: string;
+            /** @description icon 直出 URL（jar 内解析所得；无 icon 时缺省） */
+            icon_url?: string;
+            /** @description 表单与 jar 元数据冲突标旗（title/description/loader/game_versions_mismatch） */
+            metadata_flags?: string[];
             slug: string;
             title: string;
             description?: string;
@@ -1173,6 +1276,85 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    createUserProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** @description JSON（title/description/body/project_type/client_side/server_side/loaders[]/game_versions[]/categories[]/version_name/version_number/version_type/changelog/dependencies[]） */
+                    data: string;
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 已创建 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            /** @description PAT 缺 UPLOAD scope */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            413: components["responses"]["Error"];
+        };
+    };
+    createUserVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    /** @description JSON（project_id/name/version_number/version_type/changelog/loaders[]/game_versions[]/dependencies[]） */
+                    data: string;
+                    /** Format: binary */
+                    file: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 已创建 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Version"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            /** @description 非团队成员或 PAT 缺 UPLOAD scope */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+            413: components["responses"]["Error"];
+        };
+    };
     getProject: {
         parameters: {
             query?: never;
@@ -1192,6 +1374,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Project"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    deleteUserProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 项目 id 或 slug */
+                id: components["parameters"]["ProjectID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            /** @description 非 owner/admin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    getModIconApi: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 项目 id 或 slug */
+                id: components["parameters"]["ProjectID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PNG */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    getProjectIcon: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 项目 id 或 slug */
+                id: components["parameters"]["ProjectID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PNG */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    getProjectDependencies: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 项目 id 或 slug */
+                id: components["parameters"]["ProjectID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Dependency"][];
                 };
             };
             404: components["responses"]["Error"];

@@ -2,6 +2,18 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与语义化版本。
 
+## [0.3.0] - 2026-10-23
+
+Phase 3（Hoard 用户体系前端）。
+
+### 新增
+
+- mods 模块 **SSO 登录**（OIDC 跳转 + `useHoardUser` 登录态，与 skins 的 Yggdrasil 会话并存）
+- **mod 详情页** `/mods/[id]`：icon/license/元数据冲突旗标、版本列表（changelog/文件下载/.mrpack）、依赖列表、团队成员内联发版、admin 删除
+- **上传向导** `/mods/upload`：创建项目（jar 元数据自动填充缺失字段）
+- **团队与令牌管理** `/mods/settings`：建团队、成员增删、PAT 创建（明文仅一次）/撤销
+- E2E 新增 `mods-sso.spec.ts`（SSO 授权码流 + consent + 上传 + 元数据断言 + 团队/PAT），CI 编排升级（caddy 单域名反代 + hoard + OIDC client 注册）
+
 ## [0.2.0] - 2026-10-23
 
 Phase 2（生产化与运维基线）。
