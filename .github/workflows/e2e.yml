@@ -66,6 +66,7 @@ jobs:
             --add-host host.docker.internal:$(hostname -i) \
             caddy:2-alpine
           for i in $(seq 1 30); do curl -sf -o /dev/null http://localhost:8090/ && echo "caddy up" && break || sleep 1; done
+          curl -sf -o /dev/null http://localhost:8090/ || { echo "caddy failed to start"; docker logs e2e-caddy; exit 1; }
       - name: start mirror
         run: |
           MIRROR_LISTEN_ADDR=:18080 \
@@ -80,6 +81,7 @@ jobs:
           MIRROR_ADMIN_TOKEN=e2e-admin \
           nohup /tmp/mirror-server > /tmp/mirror.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:18080/healthz >/dev/null && echo "mirror up" && break || sleep 1; done
+          curl -sf http://localhost:18080/healthz >/dev/null || { echo "mirror failed to start"; cat /tmp/mirror.log; exit 1; }
       - name: register hoard OIDC client
         run: |
           SECRET_HASH=$(printf 'hoard-e2e-secret' | sha256sum | cut -d' ' -f1)
@@ -100,6 +102,7 @@ jobs:
           HOARD_CORS_ORIGINS=http://localhost:3110 \
           nohup /tmp/hoard-server > /tmp/hoard.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:18081/healthz >/dev/null && echo "hoard up" && break || sleep 1; done
+          curl -sf http://localhost:18081/healthz >/dev/null || { echo "hoard failed to start"; cat /tmp/hoard.log; exit 1; }
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.2
@@ -115,8 +118,9 @@ jobs:
           NEXT_PUBLIC_API_URL: "http://localhost:8090"
       - name: start web
         run: |
-          API_URL_INTERNAL=http://localhost:8090 nohup pnpm start -- -p 3110 > /tmp/web.log 2>&1 &
+          API_URL_INTERNAL=http://localhost:8090 nohup pnpm exec next start -p 3110 > /tmp/web.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:3110/en/login >/dev/null && echo "web up" && break || sleep 1; done
+          curl -sf http://localhost:3110/en/login >/dev/null || { echo "web failed to start"; cat /tmp/web.log; exit 1; }
       - name: install browsers
         run: pnpm exec playwright install --with-deps chromium
       - name: run e2e

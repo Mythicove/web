@@ -46,7 +46,7 @@ Start-Process $env:TEMP\hoard-e2e.exe   // 须在 caddy 之后启动（discovery
 
 // 6. web（本目录）
 $env:NEXT_PUBLIC_API_URL='http://localhost:8090'; pnpm build
-$env:API_URL_INTERNAL='http://localhost:8090'; pnpm start -- -p 3110
+$env:API_URL_INTERNAL='http://localhost:8090'; pnpm exec next start -p 3110
 
 // 7. 跑测试
 pnpm exec playwright install chromium   // 首次
