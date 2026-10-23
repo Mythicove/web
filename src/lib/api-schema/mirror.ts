@@ -522,11 +522,62 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 皮肤库列表 */
+        /** 皮肤库列表（搜索/排序/分页） */
         get: operations["listSkinlib"];
         put?: never;
         /** 把玩家当前皮肤发布到皮肤库 */
         post: operations["publishSkin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skinlib/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 皮肤库条目详情 */
+        get: operations["getSkinlibItem"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skinlib/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 条目评论列表（时间升序） */
+        get: operations["listSkinComments"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skinlib/{id}/apply": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 把皮肤库条目应用到自己名下的玩家 */
+        post: operations["applySkin"];
         delete?: never;
         options?: never;
         head?: never;
@@ -705,6 +756,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/comments/{cid}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 删除皮肤库评论（审核） */
+        delete: operations["adminDeleteComment"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/batch-import": {
         parameters: {
             query?: never;
@@ -744,6 +812,24 @@ export interface components {
             /** @enum {string} */
             model: "default" | "slim";
             likes: number;
+            /** @description RFC3339 时间戳 */
+            created_at: string;
+        };
+        SkinLibPage: {
+            items: components["schemas"]["SkinLibItem"][];
+            /** Format: int64 */
+            total: number;
+            offset: number;
+            limit: number;
+        };
+        SkinComment: {
+            id: string;
+            item_id: string;
+            user_id: string;
+            author_name: string;
+            content: string;
+            /** @description RFC3339 时间戳 */
+            created_at: string;
         };
         AdminUser: {
             id: string;
@@ -1683,6 +1769,9 @@ export interface operations {
     listSkinlib: {
         parameters: {
             query?: {
+                /** @description 关键词（匹配玩家名/描述） */
+                q?: string;
+                sort?: "newest" | "likes";
                 offset?: number;
                 limit?: number;
             };
@@ -1698,7 +1787,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["SkinLibItem"][];
+                    "application/json": components["schemas"]["SkinLibPage"];
                 };
             };
         };
@@ -1729,6 +1818,80 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+        };
+    };
+    getSkinlibItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkinLibItem"];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    listSkinComments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkinComment"][];
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    applySkin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    playerName: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 已应用 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     likeSkin: {
@@ -2009,6 +2172,27 @@ export interface operations {
             header?: never;
             path: {
                 id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminDeleteComment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cid: string;
             };
             cookie?: never;
         };

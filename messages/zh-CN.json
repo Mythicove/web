@@ -99,10 +99,21 @@
     "registerOk": "注册成功，请查收邮箱完成验证。",
     "loginOk": "登录成功。",
     "or": "或",
-    "oauthWith": "使用 {provider} 登录",
-    "skinsTitle": "皮肤库",
+    "oauthWith": "使用 {provider} 登录"
+  },
+  "skins": {
+    "title": "皮肤库",
+    "searchPlaceholder": "按玩家名或描述搜索…",
+    "search": "搜索",
+    "sortNewest": "最新",
+    "sortLikes": "最多点赞",
     "empty": "暂无皮肤。",
-    "noDesc": "暂无描述"
+    "noDesc": "暂无描述",
+    "likes": "{count} 次点赞",
+    "prev": "上一页",
+    "next": "下一页",
+    "pageInfo": "第 {page} / {total} 页",
+    "loadFailed": "皮肤库加载失败，API 是否可达？"
   },
   "skinDetail": {
     "like": "点赞",
@@ -111,9 +122,13 @@
     "comment": "写评论",
     "commentHint": "留下评论（需登录）",
     "submit": "提交",
-    "loading": "加载中…",
-    "notFound": "未找到该皮肤",
-    "noDesc": "暂无描述"
+    "noDesc": "暂无描述",
+    "publishedAt": "发布于 {date}",
+    "commentsTitle": "评论",
+    "noComments": "暂无评论。",
+    "apply": "应用到我的皮肤",
+    "applyOk": "已应用到 {player}",
+    "applyNeedLogin": "登录后即可把该皮肤应用到你的玩家"
   },
   "admin": {
     "title": "管理后台",

@@ -4,6 +4,8 @@ import type { components as mirror } from "@/lib/api-schema/mirror";
 import type { components as hoard } from "@/lib/api-schema/hoard";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+// SSR/RSC 服务端取数走内部地址（容器内 localhost 不是 API），未配置时退回公共地址。
+const SERVER_API_URL = process.env.API_URL_INTERNAL ?? API_URL;
 
 export const apiBase = API_URL;
 
@@ -13,6 +15,8 @@ export type AuthenticateResponse = mirror["schemas"]["AuthenticateResponse"];
 export type LoginMethod = mirror["schemas"]["LoginMethod"];
 export type Announcement = mirror["schemas"]["Announcement"];
 export type SkinLibItem = mirror["schemas"]["SkinLibItem"];
+export type SkinLibPage = mirror["schemas"]["SkinLibPage"];
+export type SkinComment = mirror["schemas"]["SkinComment"];
 export type AdminUser = mirror["schemas"]["AdminUser"];
 export type HoardProject = hoard["schemas"]["Project"];
 export type HoardVersion = hoard["schemas"]["Version"];
@@ -27,7 +31,8 @@ export interface SearchResult<T> {
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const base = typeof window === "undefined" ? SERVER_API_URL : API_URL;
+  const res = await fetch(`${base}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -81,8 +86,25 @@ export const apiClient = {
 
   announcement: () => api<Announcement>("/api/announcement"),
 
-  listSkinLib: (offset = 0, limit = 20) =>
-    api<SkinLibItem[]>(`/skinlib?offset=${offset}&limit=${limit}`),
+  listSkinLib: (opts: { q?: string; sort?: "newest" | "likes"; offset?: number; limit?: number } = {}) => {
+    const p = new URLSearchParams();
+    if (opts.q) p.set("q", opts.q);
+    if (opts.sort) p.set("sort", opts.sort);
+    p.set("offset", String(opts.offset ?? 0));
+    p.set("limit", String(opts.limit ?? 20));
+    return api<SkinLibPage>(`/skinlib?${p.toString()}`);
+  },
+
+  getSkinLib: (id: string) => api<SkinLibItem>(`/skinlib/${id}`),
+
+  listComments: (id: string) => api<SkinComment[]>(`/skinlib/${id}/comments`),
+
+  applySkin: (id: string, playerName: string, token: string) =>
+    api<void>(`/skinlib/${id}/apply`, {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({ playerName }),
+    }),
 
   skinTextureUrl: (key: string) => `${API_URL}/textures/${key}`,
 
@@ -159,6 +181,11 @@ export const apiClient = {
       }),
     deleteSkinLib: (id: string) =>
       api<void>(`/api/admin/skinlib/${id}`, {
+        method: "DELETE",
+        headers: authHeaders(localStorage.getItem("adminToken") ?? undefined),
+      }),
+    deleteComment: (cid: string) =>
+      api<void>(`/api/admin/comments/${cid}`, {
         method: "DELETE",
         headers: authHeaders(localStorage.getItem("adminToken") ?? undefined),
       }),

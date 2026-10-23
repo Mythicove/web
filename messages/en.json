@@ -99,10 +99,21 @@
     "registerOk": "Account created. Check your email to verify.",
     "loginOk": "Signed in.",
     "or": "or",
-    "oauthWith": "Sign in with {provider}",
-    "skinsTitle": "Skin library",
+    "oauthWith": "Sign in with {provider}"
+  },
+  "skins": {
+    "title": "Skin library",
+    "searchPlaceholder": "Search by player name or description…",
+    "search": "Search",
+    "sortNewest": "Newest",
+    "sortLikes": "Most liked",
     "empty": "No skins yet.",
-    "noDesc": "No description"
+    "noDesc": "No description",
+    "likes": "{count} likes",
+    "prev": "Previous",
+    "next": "Next",
+    "pageInfo": "Page {page} / {total}",
+    "loadFailed": "Failed to load the skin library. Is the API reachable?"
   },
   "skinDetail": {
     "like": "Like",
@@ -111,9 +122,13 @@
     "comment": "Add a comment",
     "commentHint": "Leave a comment (requires sign in)",
     "submit": "Submit",
-    "loading": "Loading…",
-    "notFound": "Skin not found",
-    "noDesc": "No description"
+    "noDesc": "No description",
+    "publishedAt": "Published {date}",
+    "commentsTitle": "Comments",
+    "noComments": "No comments yet.",
+    "apply": "Apply to my skin",
+    "applyOk": "Applied to {player}",
+    "applyNeedLogin": "Sign in to apply this skin to your player"
   },
   "admin": {
     "title": "Admin",
