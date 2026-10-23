@@ -1,0 +1,92 @@
+name: e2e
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    name: playwright full-stack
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: mirror
+          POSTGRES_PASSWORD: mirror
+          POSTGRES_DB: mirror_e2e
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U mirror"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+      mailpit:
+        image: axllent/mailpit
+        ports:
+          - 8025:8025
+          - 1025:1025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: Mythicove/mythic-mirror
+          path: mirror
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache-dependency-path: mirror/go.sum
+      - name: build mirror
+        working-directory: mirror
+        run: go build -o /tmp/mirror-server ./cmd/server
+      - name: start mirror
+        run: |
+          MIRROR_LISTEN_ADDR=:18080 \
+          MIRROR_DATABASE_URL='postgres://mirror:mirror@localhost:5432/mirror_e2e?sslmode=disable' \
+          MIRROR_KEY_PATH=/tmp/mirror-key.pem \
+          MIRROR_TEXTURES_DIR=/tmp/mirror-tex \
+          MIRROR_MAIL_DRIVER=smtp \
+          MIRROR_SMTP_ADDR=localhost:1025 \
+          MIRROR_SMTP_FROM=mirror@e2e.local \
+          MIRROR_WEB_URL=http://localhost:3110 \
+          MIRROR_BASE_URL=http://localhost:18080 \
+          nohup /tmp/mirror-server > /tmp/mirror.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:18080/healthz >/dev/null && echo "mirror up" && break || sleep 1; done
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+      - name: install
+        run: pnpm install --frozen-lockfile
+      - name: build web
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_API_URL: "http://localhost:18080"
+      - name: start web
+        run: |
+          API_URL_INTERNAL=http://localhost:18080 nohup pnpm start -- -p 3110 > /tmp/web.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:3110/en/login >/dev/null && echo "web up" && break || sleep 1; done
+      - name: install browsers
+        run: pnpm exec playwright install --with-deps chromium
+      - name: run e2e
+        run: pnpm exec playwright test
+      - name: upload logs on failure
+        if: failure()
+        run: |
+          cp /tmp/mirror.log /tmp/web.log test-results/ 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: e2e-artifacts
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

@@ -107,6 +107,13 @@ export const apiClient = {
 
   getSkinLib: (id: string) => api<SkinLibItem>(`/skinlib/${id}`),
 
+  publishSkin: (playerName: string, description: string, token: string) =>
+    api<SkinLibItem>("/skinlib", {
+      method: "POST",
+      headers: authHeaders(token),
+      body: JSON.stringify({ playerName, description }),
+    }),
+
   listComments: (id: string) => api<SkinComment[]>(`/skinlib/${id}/comments`),
 
   applySkin: (id: string, playerName: string, token: string) =>

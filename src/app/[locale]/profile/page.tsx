@@ -14,14 +14,29 @@ import { SkinPreview } from "@/components/skin-preview";
 export default function ProfilePage() {
   const t = useTranslations("profile");
   const { auth, isAuthenticated } = useAuth();
-  const [playerName, setPlayerName] = useState(auth?.playerName ?? "");
+  // auth 从 localStorage 异步恢复，玩家名以 auth 为准，用户可覆盖。
+  const [playerNameOverride, setPlayerNameOverride] = useState<string | null>(null);
+  const playerName = playerNameOverride ?? auth?.playerName ?? "";
   const [model, setModel] = useState("default");
   const [skinFile, setSkinFile] = useState<File | null>(null);
   const [capeFile, setCapeFile] = useState<File | null>(null);
+  const [publishDesc, setPublishDesc] = useState("");
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const token = auth?.accessToken;
+
+  const publish = async () => {
+    if (!token) return setError(t("notLoggedIn"));
+    setError(null);
+    setStatus(null);
+    try {
+      await apiClient.publishSkin(playerName, publishDesc, token);
+      setStatus(t("publishOk"));
+    } catch (e) {
+      setError(String(e));
+    }
+  };
 
   const uploadSkin = async () => {
     if (!token) return setError(t("notLoggedIn"));
@@ -66,7 +81,7 @@ export default function ProfilePage() {
                 <Label>{t("playerName")}</Label>
                 <Input
                   value={playerName}
-                  onChange={(e) => setPlayerName(e.target.value)}
+                  onChange={(e) => setPlayerNameOverride(e.target.value)}
                   placeholder="Steve"
                 />
               </div>
@@ -103,6 +118,18 @@ export default function ProfilePage() {
               </div>
               <Button variant="outline" className="w-full" onClick={uploadCape}>
                 {t("uploadCape")}
+              </Button>
+
+              <div className="space-y-1.5 border-t border-border pt-4">
+                <Label>{t("publishDesc")}</Label>
+                <Input
+                  value={publishDesc}
+                  onChange={(e) => setPublishDesc(e.target.value)}
+                  placeholder={t("publishDescPlaceholder")}
+                />
+              </div>
+              <Button variant="outline" className="w-full" onClick={publish}>
+                {t("publish")}
               </Button>
 
               {error && <p className="text-sm text-danger">{error}</p>}

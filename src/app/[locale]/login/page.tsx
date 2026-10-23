@@ -69,16 +69,18 @@ export default function LoginPage() {
             ) : (
               <>
                 <div className="space-y-1.5">
-                  <Label>{t("email")}</Label>
+                  <Label htmlFor="email">{t("email")}</Label>
                   <Input
+                    id="email"
                     value={form.email}
                     onChange={(e) => setForm({ ...form, email: e.target.value })}
                     placeholder="you@example.com"
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label>{t("password")}</Label>
+                  <Label htmlFor="password">{t("password")}</Label>
                   <Input
+                    id="password"
                     type="password"
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
