@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { apiClient, type SkinLibPage } from "@/lib/api";
+import { apiClient } from "@/lib/api";
 import { SiteHeader } from "@/components/site-header";
 import { Link } from "@/i18n/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,18 +20,14 @@ export default async function SkinsPage({ searchParams }: PageProps) {
   const page = Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1);
   const q = sp.q?.trim() || undefined;
 
-  let data: SkinLibPage | null = null;
-  try {
-    data = await apiClient.listSkinLib({
-      q,
-      sort,
-      offset: (page - 1) * LIMIT,
-      limit: LIMIT,
-    });
-  } catch {
-    data = null;
-  }
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / LIMIT)) : 1;
+  // 取数失败直接抛错，交给 skins/error.tsx 边界（带重试）。
+  const data = await apiClient.listSkinLib({
+    q,
+    sort,
+    offset: (page - 1) * LIMIT,
+    limit: LIMIT,
+  });
+  const totalPages = Math.max(1, Math.ceil(data.total / LIMIT));
 
   const pageHref = (over: { q?: string; sort?: string; page?: number }) => {
     const query: Record<string, string> = {};
@@ -52,14 +48,11 @@ export default async function SkinsPage({ searchParams }: PageProps) {
           <h1 className="font-display text-2xl font-semibold">{t("title")}</h1>
           <SkinFilters q={q ?? ""} sort={sort} />
 
-          {data === null && (
-            <p className="mt-6 text-sm text-danger">{t("loadFailed")}</p>
-          )}
-          {data !== null && data.items.length === 0 && (
+          {data.items.length === 0 && (
             <p className="mt-6 text-sm text-text-muted">{t("empty")}</p>
           )}
 
-          {data !== null && data.items.length > 0 && (
+          {data.items.length > 0 && (
             <>
               <div className="mt-6 grid gap-6 md:grid-cols-3">
                 {data.items.map((item) => (

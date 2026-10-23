@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
-import { apiClient, type SkinComment } from "@/lib/api";
+import { apiClient, ApiError, type SkinComment } from "@/lib/api";
 import { SiteHeader } from "@/components/site-header";
 import { SkinPreview } from "@/components/skin-preview";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -18,14 +18,15 @@ export default async function SkinDetailPage({ params }: PageProps) {
   let item;
   try {
     item = await apiClient.getSkinLib(id);
-  } catch {
-    notFound();
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) notFound();
+    throw e; // 其余错误交给 skins/error.tsx 边界
   }
   let comments: SkinComment[] = [];
   try {
     comments = await apiClient.listComments(id);
   } catch {
-    comments = [];
+    comments = []; // 评论属次要内容，失败降级为空列表
   }
 
   const published = item.created_at

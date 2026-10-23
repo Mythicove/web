@@ -113,7 +113,8 @@
     "prev": "Previous",
     "next": "Next",
     "pageInfo": "Page {page} / {total}",
-    "loadFailed": "Failed to load the skin library. Is the API reachable?"
+    "loadFailed": "Failed to load the skin library. Is the API reachable?",
+    "retry": "Retry"
   },
   "skinDetail": {
     "like": "Like",
@@ -134,6 +135,16 @@
     "title": "Admin",
     "token": "Admin token",
     "needToken": "Enter an admin token to manage the site.",
+    "useSession": "Using your signed-in admin session.",
+    "notAdmin": "Your account does not have admin privileges.",
+    "colUser": "User",
+    "colPlayers": "Players",
+    "colRole": "Role",
+    "colStatus": "Status",
+    "unverified": "unverified",
+    "hoardToken": "Hoard admin token",
+    "hoardTokenHint": "Mod review uses HOARD_ADMIN_TOKEN (Hoard has no user system yet).",
+    "noMods": "No mods yet.",
     "tab": {
       "users": "Users",
       "loginMethods": "Login methods",

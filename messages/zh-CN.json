@@ -113,7 +113,8 @@
     "prev": "上一页",
     "next": "下一页",
     "pageInfo": "第 {page} / {total} 页",
-    "loadFailed": "皮肤库加载失败，API 是否可达？"
+    "loadFailed": "皮肤库加载失败，API 是否可达？",
+    "retry": "重试"
   },
   "skinDetail": {
     "like": "点赞",
@@ -134,6 +135,16 @@
     "title": "管理后台",
     "token": "管理令牌",
     "needToken": "请输入管理令牌以管理站点。",
+    "useSession": "正在使用你的管理员登录会话。",
+    "notAdmin": "你的账号没有管理员权限。",
+    "colUser": "用户",
+    "colPlayers": "玩家",
+    "colRole": "角色",
+    "colStatus": "状态",
+    "unverified": "未验证",
+    "hoardToken": "Hoard 管理令牌",
+    "hoardTokenHint": "模组审核使用 HOARD_ADMIN_TOKEN（Hoard 暂无用户体系）。",
+    "noMods": "暂无模组。",
     "tab": {
       "users": "用户",
       "loginMethods": "登录方式",

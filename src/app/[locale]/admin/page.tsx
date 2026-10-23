@@ -2,38 +2,59 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import {
   apiClient,
   hoardClient,
+  ApiError,
   type AdminUser,
   type Announcement,
   type HoardProject,
   type LoginMethod,
 } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { SiteHeader } from "@/components/site-header";
 
-type Tab = "users" | "loginMethods" | "announcement" | "invites" | "mods";
+const HOARD_TOKEN_KEY = "hoardAdminToken";
+const MIRROR_TOKEN_KEY = "adminToken";
 
 export default function AdminPage() {
   const t = useTranslations("admin");
-  const [token, setToken] = useState("");
-  const [tab, setTab] = useState<Tab>("users");
+  const { auth } = useAuth();
+  const [manualToken, setManualToken] = useState("");
+  const [hoardToken, setHoardToken] = useState("");
 
   useEffect(() => {
-    // 从 localStorage 恢复管理令牌。
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setToken(localStorage.getItem("adminToken") ?? "");
+    setManualToken(localStorage.getItem(MIRROR_TOKEN_KEY) ?? "");
+    setHoardToken(localStorage.getItem(HOARD_TOKEN_KEY) ?? "");
   }, []);
 
-  const saveToken = (v: string) => {
-    setToken(v);
-    localStorage.setItem("adminToken", v);
+  const saveManual = (v: string) => {
+    setManualToken(v);
+    localStorage.setItem(MIRROR_TOKEN_KEY, v);
   };
+  const saveHoard = (v: string) => {
+    setHoardToken(v);
+    localStorage.setItem(HOARD_TOKEN_KEY, v);
+  };
+
+  // Mirror 管理面板：优先用登录会话（后端校验 role=admin），手贴 token 作救援通道。
+  const mirrorToken = auth?.accessToken ?? manualToken;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -41,134 +62,173 @@ export default function AdminPage() {
       <main className="flex-1">
         <div className="mx-auto max-w-5xl px-6 py-12">
           <h1 className="font-display text-2xl font-semibold">{t("title")}</h1>
-          <div className="mt-4 flex max-w-xs flex-col gap-1.5">
-            <Label>{t("token")}</Label>
-            <Input value={token} onChange={(e) => saveToken(e.target.value)} type="password" />
-          </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            {(["users", "loginMethods", "announcement", "invites", "mods"] as Tab[]).map((x) => (
-              <button
-                key={x}
-                onClick={() => setTab(x)}
-                className={`rounded-md border px-4 py-2 text-sm ${
-                  tab === x ? "border-primary bg-primary text-white" : "border-border hover:bg-surface"
-                }`}
-              >
-                {t(`tab.${x}`)}
-              </button>
-            ))}
-          </div>
+          {auth?.accessToken ? (
+            <p className="mt-2 text-sm text-success">{t("useSession")}</p>
+          ) : (
+            <div className="mt-4 flex max-w-xs flex-col gap-1.5">
+              <Label>{t("token")}</Label>
+              <Input
+                value={manualToken}
+                onChange={(e) => saveManual(e.target.value)}
+                type="password"
+              />
+            </div>
+          )}
 
-          <div className="mt-6">
-            {tab === "users" && <UsersPanel token={token} />}
-            {tab === "loginMethods" && <LoginMethodsPanel token={token} />}
-            {tab === "announcement" && <AnnouncementPanel token={token} />}
-            {tab === "invites" && <InvitesPanel token={token} />}
-            {tab === "mods" && <ModsPanel token={token} />}
-          </div>
+          <Tabs defaultValue="users" className="mt-6">
+            <TabsList>
+              <TabsTrigger value="users">{t("tab.users")}</TabsTrigger>
+              <TabsTrigger value="loginMethods">{t("tab.loginMethods")}</TabsTrigger>
+              <TabsTrigger value="announcement">{t("tab.announcement")}</TabsTrigger>
+              <TabsTrigger value="invites">{t("tab.invites")}</TabsTrigger>
+              <TabsTrigger value="mods">{t("tab.mods")}</TabsTrigger>
+            </TabsList>
+            <TabsContent value="users">
+              <UsersPanel token={mirrorToken} />
+            </TabsContent>
+            <TabsContent value="loginMethods">
+              <LoginMethodsPanel token={mirrorToken} />
+            </TabsContent>
+            <TabsContent value="announcement">
+              <AnnouncementPanel token={mirrorToken} />
+            </TabsContent>
+            <TabsContent value="invites">
+              <InvitesPanel token={mirrorToken} />
+            </TabsContent>
+            <TabsContent value="mods">
+              <ModsPanel token={hoardToken} onToken={saveHoard} />
+            </TabsContent>
+          </Tabs>
         </div>
       </main>
     </div>
   );
 }
 
+// errText 把错误翻译成用户可读提示；403 特指非管理员。
+function useErrText() {
+  const t = useTranslations("admin");
+  return (e: unknown) =>
+    e instanceof ApiError && e.status === 403 ? t("notAdmin") : String(e);
+}
+
 function UsersPanel({ token }: { token: string }) {
   const t = useTranslations("admin");
+  const errText = useErrText();
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
+  useEffect(() => {
     if (!token) return;
     apiClient.admin
-      .listUsers("", 0, 100)
+      .listUsers(token, "", 0, 100)
       .then((r) => setUsers(r.users))
-      .catch((e) => setError(String(e)));
-  };
-  useEffect(load, [token]);
+      .catch((e) => toast.error(errText(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
-  const update = async (u: AdminUser, role: string, status: string) => {
+  const update = async (
+    u: AdminUser,
+    role: AdminUser["role"],
+    status: AdminUser["status"],
+  ) => {
     try {
-      await apiClient.admin.updateUser(u.id, role, status);
-      load();
+      await apiClient.admin.updateUser(token, u.id, role, status);
+      setUsers((prev) => prev.map((x) => (x.id === u.id ? { ...x, role, status } : x)));
+      toast.success(t("saved"));
     } catch (e) {
-      setError(String(e));
+      toast.error(errText(e));
     }
   };
 
   if (!token) return <p className="text-sm text-text-muted">{t("needToken")}</p>;
-  if (error) return <p className="text-sm text-danger">{error}</p>;
 
   return (
-    <div className="space-y-2">
-      {users.map((u) => (
-        <div key={u.id} className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{u.nickname || u.email}</span>
-              <Badge variant={u.role === "admin" ? "default" : "secondary"}>{u.role}</Badge>
-              {u.status !== "active" && <Badge variant="destructive">{u.status}</Badge>}
-            </div>
-            <div className="text-xs text-text-muted">
-              {u.email} · {u.player_names.join(", ")}
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <select
-              value={u.role}
-              onChange={(e) => update(u, e.target.value, u.status)}
-              className="rounded-md border border-border bg-bg px-2 py-1 text-xs"
-            >
-              <option value="user">user</option>
-              <option value="admin">admin</option>
-            </select>
-            <select
-              value={u.status}
-              onChange={(e) => update(u, u.role, e.target.value)}
-              className="rounded-md border border-border bg-bg px-2 py-1 text-xs"
-            >
-              <option value="active">active</option>
-              <option value="banned">banned</option>
-              <option value="suspended">suspended</option>
-            </select>
-          </div>
-        </div>
-      ))}
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>{t("colUser")}</TableHead>
+          <TableHead>{t("colPlayers")}</TableHead>
+          <TableHead>{t("colRole")}</TableHead>
+          <TableHead>{t("colStatus")}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {users.map((u) => (
+          <TableRow key={u.id}>
+            <TableCell>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{u.nickname || u.email}</span>
+                {!u.verified && <Badge variant="secondary">{t("unverified")}</Badge>}
+              </div>
+              <div className="text-xs text-text-muted">{u.email}</div>
+            </TableCell>
+            <TableCell className="text-xs text-text-muted">
+              {u.player_names.join(", ")}
+            </TableCell>
+            <TableCell>
+              <select
+                value={u.role}
+                onChange={(e) => update(u, e.target.value as AdminUser["role"], u.status)}
+                className="rounded-md border border-border bg-bg px-2 py-1 text-xs"
+              >
+                <option value="user">user</option>
+                <option value="admin">admin</option>
+              </select>
+            </TableCell>
+            <TableCell>
+              <select
+                value={u.status}
+                onChange={(e) => update(u, u.role, e.target.value as AdminUser["status"])}
+                className="rounded-md border border-border bg-bg px-2 py-1 text-xs"
+              >
+                <option value="active">active</option>
+                <option value="banned">banned</option>
+                <option value="suspended">suspended</option>
+              </select>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 }
 
 function LoginMethodsPanel({ token }: { token: string }) {
   const t = useTranslations("admin");
+  const errText = useErrText();
   const [methods, setMethods] = useState<LoginMethod[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
+  useEffect(() => {
     if (!token) return;
     apiClient.admin
-      .loginMethods()
+      .loginMethods(token)
       .then((r) => setMethods(r.methods))
-      .catch((e) => setError(String(e)));
-  };
-  useEffect(load, [token]);
+      .catch((e) => toast.error(errText(e)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const toggle = async (id: string) => {
     const next = methods.map((m) => (m.id === id ? { ...m, enabled: !m.enabled } : m));
     setMethods(next);
     try {
-      await apiClient.admin.updateLoginMethods(next);
+      await apiClient.admin.updateLoginMethods(token, next);
+      toast.success(t("saved"));
     } catch (e) {
-      setError(String(e));
+      setMethods(methods);
+      toast.error(errText(e));
     }
   };
 
   if (!token) return <p className="text-sm text-text-muted">{t("needToken")}</p>;
-  if (error) return <p className="text-sm text-danger">{error}</p>;
 
   return (
     <div className="space-y-2">
       {methods.map((m) => (
-        <div key={m.id} className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3">
+        <div
+          key={m.id}
+          className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3"
+        >
           <span className="font-medium">{m.label}</span>
           <Button variant={m.enabled ? "default" : "outline"} onClick={() => toggle(m.id)}>
             {m.enabled ? t("enabled") : t("disabled")}
@@ -181,22 +241,24 @@ function LoginMethodsPanel({ token }: { token: string }) {
 
 function AnnouncementPanel({ token }: { token: string }) {
   const t = useTranslations("admin");
+  const errText = useErrText();
   const [a, setA] = useState<Announcement>({ title: "", body: "", enabled: false });
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!token) return;
     apiClient.admin
-      .announcement()
+      .announcement(token)
       .then(setA)
       .catch(() => {});
   }, [token]);
 
   const save = async () => {
     try {
-      await apiClient.admin.setAnnouncement(a);
-      setSaved(true);
-    } catch {}
+      await apiClient.admin.setAnnouncement(token, a);
+      toast.success(t("saved"));
+    } catch (e) {
+      toast.error(errText(e));
+    }
   };
 
   if (!token) return <p className="text-sm text-text-muted">{t("needToken")}</p>;
@@ -221,7 +283,6 @@ function AnnouncementPanel({ token }: { token: string }) {
           {t("enabled")}
         </label>
         <Button onClick={save}>{t("save")}</Button>
-        {saved && <p className="text-sm text-success">{t("saved")}</p>}
       </CardContent>
     </Card>
   );
@@ -229,14 +290,18 @@ function AnnouncementPanel({ token }: { token: string }) {
 
 function InvitesPanel({ token }: { token: string }) {
   const t = useTranslations("admin");
+  const errText = useErrText();
   const [count, setCount] = useState(5);
   const [codes, setCodes] = useState<string[]>([]);
 
   const generate = async () => {
     try {
-      const r = await apiClient.admin.inviteCodes(count);
+      const r = await apiClient.admin.inviteCodes(token, count);
       setCodes(r.codes);
-    } catch {}
+      toast.success(t("saved"));
+    } catch (e) {
+      toast.error(errText(e));
+    }
   };
 
   if (!token) return <p className="text-sm text-text-muted">{t("needToken")}</p>;
@@ -263,69 +328,80 @@ function InvitesPanel({ token }: { token: string }) {
   );
 }
 
-function ModsPanel({ token }: { token: string }) {
+function ModsPanel({ token, onToken }: { token: string; onToken: (v: string) => void }) {
   const t = useTranslations("admin");
   const [mods, setMods] = useState<HoardProject[]>([]);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = () => {
+  useEffect(() => {
     if (!token) return;
     hoardClient
       .search("", 0, 100)
       .then((r) => setMods(r.hits))
-      .catch((e) => setError(String(e)));
-  };
-  useEffect(load, [token]);
+      .catch((e) => toast.error(String(e)));
+  }, [token]);
 
-  const setStatus = async (id: string, status: string) => {
+  const setStatus = async (id: string, status: NonNullable<HoardProject["status"]>) => {
     try {
       await hoardClient.setStatus(id, status, token);
-      load();
+      setMods((prev) => prev.map((m) => (m.id === id ? { ...m, status } : m)));
+      toast.success(t("saved"));
     } catch (e) {
-      setError(String(e));
+      toast.error(String(e));
     }
   };
 
   const del = async (id: string) => {
     try {
       await hoardClient.deleteMod(id, token);
-      load();
+      setMods((prev) => prev.filter((m) => m.id !== id));
+      toast.success(t("saved"));
     } catch (e) {
-      setError(String(e));
+      toast.error(String(e));
     }
   };
 
-  if (!token) return <p className="text-sm text-text-muted">{t("needToken")}</p>;
-  if (error) return <p className="text-sm text-danger">{error}</p>;
-
   return (
-    <div className="space-y-2">
-      {mods.map((m) => (
-        <div key={m.id} className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-medium">{m.title}</span>
-              <Badge variant="secondary">{m.status ?? "listed"}</Badge>
+    <div className="space-y-4">
+      <div className="flex max-w-xs flex-col gap-1.5">
+        <Label>{t("hoardToken")}</Label>
+        <Input value={token} onChange={(e) => onToken(e.target.value)} type="password" />
+        <p className="text-xs text-text-muted">{t("hoardTokenHint")}</p>
+      </div>
+      {!token && <p className="text-sm text-text-muted">{t("needToken")}</p>}
+      {token && mods.length === 0 && <p className="text-sm text-text-muted">{t("noMods")}</p>}
+      <div className="space-y-2">
+        {mods.map((m) => (
+          <div
+            key={m.id}
+            className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3"
+          >
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">{m.title}</span>
+                <Badge variant="secondary">{m.status ?? "listed"}</Badge>
+              </div>
+              <div className="text-xs text-text-muted">{m.project_type}</div>
             </div>
-            <div className="text-xs text-text-muted">{m.project_type}</div>
+            <div className="flex gap-2">
+              <select
+                value={m.status ?? "listed"}
+                onChange={(e) =>
+                  setStatus(m.id, e.target.value as NonNullable<HoardProject["status"]>)
+                }
+                className="rounded-md border border-border bg-bg px-2 py-1 text-xs"
+              >
+                <option value="listed">listed</option>
+                <option value="under_review">under_review</option>
+                <option value="rejected">rejected</option>
+                <option value="archived">archived</option>
+              </select>
+              <Button variant="outline" onClick={() => del(m.id)}>
+                {t("delete")}
+              </Button>
+            </div>
           </div>
-          <div className="flex gap-2">
-            <select
-              value={m.status ?? "listed"}
-              onChange={(e) => setStatus(m.id, e.target.value)}
-              className="rounded-md border border-border bg-bg px-2 py-1 text-xs"
-            >
-              <option value="listed">listed</option>
-              <option value="under_review">under_review</option>
-              <option value="rejected">rejected</option>
-              <option value="archived">archived</option>
-            </select>
-            <Button variant="outline" onClick={() => del(m.id)}>
-              {t("delete")}
-            </Button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

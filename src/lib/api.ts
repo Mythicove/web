@@ -30,6 +30,16 @@ export interface SearchResult<T> {
   total_hits: number;
 }
 
+export class ApiError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const base = typeof window === "undefined" ? SERVER_API_URL : API_URL;
   const res = await fetch(`${base}${path}`, {
@@ -39,7 +49,7 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   });
-  if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`);
+  if (!res.ok) throw new ApiError(res.status, `API ${res.status}: ${await res.text()}`);
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
@@ -140,54 +150,55 @@ export const apiClient = {
   capeUrl: (name: string) => `${API_URL}/cape/${name}`,
   avatarUrl: (uuid: string) => `${API_URL}/avatars/${uuid}`,
 
-  // 管理后台
+  // 管理后台：token 由调用方显式传入（登录会话 accessToken 或手动管理令牌），
+  // 后端 AdminAuth 两者都接受。
   admin: {
-    listUsers: (q = "", offset = 0, limit = 20) =>
+    listUsers: (token: string, q = "", offset = 0, limit = 20) =>
       api<{ users: AdminUser[]; total: number }>(
         `/api/admin/users?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`,
-        { headers: authHeaders(localStorage.getItem("adminToken") ?? undefined) },
+        { headers: authHeaders(token) },
       ),
-    updateUser: (id: string, role: string, status: string) =>
+    updateUser: (token: string, id: string, role: string, status: string) =>
       api<void>(`/api/admin/users/${id}`, {
         method: "PATCH",
-        headers: authHeaders(localStorage.getItem("adminToken") ?? undefined),
+        headers: authHeaders(token),
         body: JSON.stringify({ role, status }),
       }),
-    loginMethods: () =>
+    loginMethods: (token: string) =>
       api<{ methods: LoginMethod[] }>("/api/admin/login-methods", {
-        headers: authHeaders(localStorage.getItem("adminToken") ?? undefined),
+        headers: authHeaders(token),
       }),
-    updateLoginMethods: (methods: LoginMethod[]) =>
+    updateLoginMethods: (token: string, methods: LoginMethod[]) =>
       api<void>("/api/admin/login-methods", {
         method: "PUT",
-        headers: authHeaders(localStorage.getItem("adminToken") ?? undefined),
+        headers: authHeaders(token),
         body: JSON.stringify({ methods }),
       }),
-    announcement: () =>
+    announcement: (token: string) =>
       api<Announcement>("/api/admin/announcement", {
-        headers: authHeaders(localStorage.getItem("adminToken") ?? undefined),
+        headers: authHeaders(token),
       }),
-    setAnnouncement: (a: Announcement) =>
+    setAnnouncement: (token: string, a: Announcement) =>
       api<void>("/api/admin/announcement", {
         method: "PUT",
-        headers: authHeaders(localStorage.getItem("adminToken") ?? undefined),
+        headers: authHeaders(token),
         body: JSON.stringify(a),
       }),
-    inviteCodes: (count: number) =>
+    inviteCodes: (token: string, count: number) =>
       api<{ codes: string[] }>("/api/admin/invite-codes", {
         method: "POST",
-        headers: authHeaders(localStorage.getItem("adminToken") ?? undefined),
+        headers: authHeaders(token),
         body: JSON.stringify({ count }),
       }),
-    deleteSkinLib: (id: string) =>
+    deleteSkinLib: (token: string, id: string) =>
       api<void>(`/api/admin/skinlib/${id}`, {
         method: "DELETE",
-        headers: authHeaders(localStorage.getItem("adminToken") ?? undefined),
+        headers: authHeaders(token),
       }),
-    deleteComment: (cid: string) =>
+    deleteComment: (token: string, cid: string) =>
       api<void>(`/api/admin/comments/${cid}`, {
         method: "DELETE",
-        headers: authHeaders(localStorage.getItem("adminToken") ?? undefined),
+        headers: authHeaders(token),
       }),
   },
 };
