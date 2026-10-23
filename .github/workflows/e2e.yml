@@ -43,6 +43,8 @@ jobs:
           cache-dependency-path: mirror/go.sum
       - name: build mirror
         working-directory: mirror
+        env:
+          GOPRIVATE: github.com/Mythicove/*
         run: go build -o /tmp/mirror-server ./cmd/server
       - name: start mirror
         run: |
