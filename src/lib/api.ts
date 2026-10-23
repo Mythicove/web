@@ -1,7 +1,30 @@
 // 单 API 域名：mirror 与 hoard 的路由不冲突，经同一反代按路径分流。
+// 类型来自 api/specs 生成的 schema（pnpm gen:api），不要手写重复定义。
+import type { components as mirror } from "@/lib/api-schema/mirror";
+import type { components as hoard } from "@/lib/api-schema/hoard";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 
 export const apiBase = API_URL;
+
+export type RegisterBody = mirror["schemas"]["RegisterRequest"];
+export type Player = mirror["schemas"]["Player"];
+export type AuthenticateResponse = mirror["schemas"]["AuthenticateResponse"];
+export type LoginMethod = mirror["schemas"]["LoginMethod"];
+export type Announcement = mirror["schemas"]["Announcement"];
+export type SkinLibItem = mirror["schemas"]["SkinLibItem"];
+export type AdminUser = mirror["schemas"]["AdminUser"];
+export type HoardProject = hoard["schemas"]["Project"];
+export type HoardVersion = hoard["schemas"]["Version"];
+export type HoardFile = hoard["schemas"]["File"];
+export type HoardSearchResponse = hoard["schemas"]["SearchResponse"];
+
+export interface SearchResult<T> {
+  hits: T[];
+  offset: number;
+  limit: number;
+  total_hits: number;
+}
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -16,108 +39,6 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T;
 }
 
-export interface RegisterBody {
-  email: string;
-  password: string;
-  nickname: string;
-  playerName: string;
-  captchaToken?: string;
-  inviteCode?: string;
-}
-
-export interface Player {
-  id: string;
-  name: string;
-}
-
-export interface AuthenticateResponse {
-  accessToken: string;
-  clientToken: string;
-  availableProfiles: Player[];
-  selectedProfile?: Player;
-}
-
-export interface LoginMethod {
-  id: string;
-  type: string;
-  label: string;
-  enabled: boolean;
-  order: number;
-}
-
-export interface Announcement {
-  title: string;
-  body: string;
-  enabled: boolean;
-}
-
-export interface SkinLibItem {
-  id: string;
-  owner_user_id: string;
-  player_name: string;
-  texture_key: string;
-  description: string;
-  model: string;
-  likes: number;
-}
-
-export interface AdminUser {
-  id: string;
-  email: string;
-  nickname: string;
-  role: string;
-  status: string;
-  verified: boolean;
-  created_at: string;
-  player_names: string[];
-}
-
-export interface HoardProject {
-  id: string;
-  slug: string;
-  title: string;
-  description: string;
-  body?: string;
-  project_type: string;
-  client_side?: string;
-  server_side?: string;
-  status?: string;
-  loaders?: string[];
-  game_versions?: string[];
-  categories?: string[];
-  downloads: number;
-  follows?: number;
-  published: string;
-}
-
-export interface HoardFile {
-  hashes: Record<string, string>;
-  url: string;
-  filename: string;
-  primary: boolean;
-  size: number;
-}
-
-export interface HoardVersion {
-  id: string;
-  project_id: string;
-  name: string;
-  version_number: string;
-  version_type: string;
-  changelog: string;
-  loaders?: string[];
-  game_versions?: string[];
-  date_published: string;
-  files: HoardFile[];
-}
-
-export interface SearchResult<T> {
-  hits: T[];
-  offset: number;
-  limit: number;
-  total_hits: number;
-}
-
 const authHeaders = (token?: string) =>
   token ? { Authorization: `Bearer ${token}` } : undefined;
 
@@ -126,6 +47,24 @@ export const apiClient = {
     api<{ id: string }>("/account/register", {
       method: "POST",
       body: JSON.stringify(body),
+    }),
+
+  verifyEmail: (token: string) =>
+    api<void>("/account/verify", {
+      method: "POST",
+      body: JSON.stringify({ token }),
+    }),
+
+  forgotPassword: (email: string) =>
+    api<void>("/account/forgot-password", {
+      method: "POST",
+      body: JSON.stringify({ email }),
+    }),
+
+  resetPassword: (token: string, password: string) =>
+    api<void>("/account/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token, password }),
     }),
 
   authenticate: (email: string, password: string) =>
@@ -177,7 +116,7 @@ export const apiClient = {
 
   skinUrl: (name: string) => `${API_URL}/skin/${name}`,
   capeUrl: (name: string) => `${API_URL}/cape/${name}`,
-  avatarUrl: (uuid: string) => `${API_URL}/avatar/${uuid}`,
+  avatarUrl: (uuid: string) => `${API_URL}/avatars/${uuid}`,
 
   // 管理后台
   admin: {
@@ -232,7 +171,7 @@ export const hoardClient = {
       `${API_URL}/api/mods?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`,
     );
     if (!res.ok) throw new Error(`API ${res.status}`);
-    return (await res.json()) as SearchResult<HoardProject>;
+    return (await res.json()) as HoardSearchResponse;
   },
 
   versions: async (projectId: string) => {
@@ -256,7 +195,7 @@ export const hoardClient = {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
       body: JSON.stringify({ status }),
     });
-    if (!res.ok) throw new Error(`API ${res.status}`);
+    if (!res.ok) throw new Error(`update ${res.status}`);
   },
 
   deleteMod: async (id: string, adminToken: string) => {
@@ -264,7 +203,7 @@ export const hoardClient = {
       method: "DELETE",
       headers: { Authorization: `Bearer ${adminToken}` },
     });
-    if (!res.ok) throw new Error(`API ${res.status}`);
+    if (!res.ok) throw new Error(`delete ${res.status}`);
   },
 
   downloadUrl: (id: string) => `${API_URL}/api/mods/${id}/download`,

@@ -1,4 +1,22 @@
 {
+  "account": {
+    "verifyTitle": "邮箱验证",
+    "verifying": "正在验证你的邮箱…",
+    "verifyOk": "邮箱已验证，现在可以登录了。",
+    "verifyFail": "验证失败——链接无效或已过期。",
+    "resetTitle": "重置密码",
+    "newPassword": "新密码",
+    "confirmPassword": "确认密码",
+    "passwordMismatch": "两次输入的密码不一致",
+    "resetOk": "密码已重置，现在可以登录了。",
+    "resetFail": "重置失败——链接无效或已过期。",
+    "forgot": "忘记密码？",
+    "forgotHint": "先在上方填写邮箱，再发送重置链接。",
+    "forgotSend": "发送重置链接",
+    "forgotSent": "如果该邮箱已注册，重置链接正在发送途中。",
+    "toLogin": "前往登录",
+    "backToLogin": "返回登录"
+  },
   "nav": {
     "features": "功能",
     "skins": "皮肤库",

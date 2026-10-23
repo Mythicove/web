@@ -1,4 +1,22 @@
 {
+  "account": {
+    "verifyTitle": "Email verification",
+    "verifying": "Verifying your email…",
+    "verifyOk": "Email verified. You can sign in now.",
+    "verifyFail": "Verification failed — the link is invalid or has expired.",
+    "resetTitle": "Reset password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm password",
+    "passwordMismatch": "Passwords do not match",
+    "resetOk": "Password reset. You can sign in now.",
+    "resetFail": "Reset failed — the link is invalid or has expired.",
+    "forgot": "Forgot password?",
+    "forgotHint": "Enter your email above, then send a reset link.",
+    "forgotSend": "Send reset link",
+    "forgotSent": "If that email is registered, a reset link is on its way.",
+    "toLogin": "Go to sign in",
+    "backToLogin": "Back to sign in"
+  },
   "nav": {
     "features": "Features",
     "skins": "Skins",

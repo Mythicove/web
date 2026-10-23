@@ -12,10 +12,13 @@ import { SiteHeader } from "@/components/site-header";
 
 export default function LoginPage() {
   const t = useTranslations("auth");
+  const ta = useTranslations("account");
   const { login, completeOAuthLogin, isAuthenticated } = useAuth();
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState<string | null>(null);
   const [methods, setMethods] = useState<LoginMethod[]>([]);
+  const [forgot, setForgot] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
   useEffect(() => {
     completeOAuthLogin();
@@ -29,6 +32,17 @@ export default function LoginPage() {
     setError(null);
     try {
       await login(form.email, form.password);
+    } catch (e) {
+      setError(String(e));
+    }
+  };
+
+  const submitForgot = async () => {
+    setError(null);
+    setForgotSent(false);
+    try {
+      await apiClient.forgotPassword(form.email);
+      setForgotSent(true);
     } catch (e) {
       setError(String(e));
     }
@@ -69,7 +83,30 @@ export default function LoginPage() {
                     value={form.password}
                     onChange={(e) => setForm({ ...form, password: e.target.value })}
                   />
+                  <button
+                    type="button"
+                    className="text-xs text-text-muted underline-offset-2 hover:underline"
+                    onClick={() => {
+                      setForgot(!forgot);
+                      setForgotSent(false);
+                      setError(null);
+                    }}
+                  >
+                    {ta("forgot")}
+                  </button>
                 </div>
+                {forgot && (
+                  <div className="space-y-2 rounded-md border border-border p-3">
+                    <p className="text-xs text-text-muted">{ta("forgotHint")}</p>
+                    {forgotSent ? (
+                      <p className="text-sm text-success">{ta("forgotSent")}</p>
+                    ) : (
+                      <Button variant="outline" className="w-full" onClick={submitForgot}>
+                        {ta("forgotSend")}
+                      </Button>
+                    )}
+                  </div>
+                )}
                 {error && <p className="text-sm text-danger">{error}</p>}
                 <Button className="w-full" onClick={submit}>
                   {t("submit")}
