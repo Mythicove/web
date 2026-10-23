@@ -2,6 +2,17 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与语义化版本。
 
+## [0.2.0] - 2026-10-23
+
+Phase 2（生产化与运维基线）。
+
+### 新增
+
+- **会话加固（破坏性）**：access token 移出 localStorage → httpOnly cookie（BFF：`/api/auth/login|logout|session` route handler 服务端经手 token；localStorage 仅存非敏感 meta；`AuthState` 不再含 `accessToken`，API 调用凭 `credentials` 携带 cookie）
+- 皮肤详情举报按钮（`POST /reports`）
+- 管理后台新页签：审计日志、举报（驳回/删除并结案）、皮肤审核（批准/下架/退回，配合 `MIRROR_SKIN_REVIEW`）
+- E2E 新增会话加固断言（localStorage 无 token、httpOnly cookie 对 JS 不可读）
+
 ## [0.1.0] - 2026-10-23
 
 首个可用版本：皮肤站前端完整闭环。
