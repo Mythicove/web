@@ -1,96 +1,140 @@
-/* stylelint-disable */
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 /* 静态 token：字体、圆角 */
 @theme {
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-space-grotesk), ui-sans-serif, system-ui, sans-serif;
+  --font-display:
+    var(--font-space-grotesk), var(--font-noto-sc), "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+  --font-sans:
+    var(--font-inter), var(--font-noto-sc), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+    ui-sans-serif, system-ui, sans-serif;
 }
 
 /* 运行时 token：语义色由 ThemeProvider 通过 CSS 变量注入 */
 @theme inline {
-  /* 自定义语义色 */
-  --color-primary: var(--primary);
-  --color-primary-hover: var(--primary-hover);
   --color-accent: var(--accent);
-  --color-highlight: var(--highlight);
-  --color-bg: var(--bg);
-  --color-surface: var(--surface);
-  --color-surface-raised: var(--surface-raised);
-  --color-border: var(--border);
-  --color-text: var(--text);
-  --color-text-muted: var(--text-muted);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-
-  /* shadcn/ui 语义色（映射到同一套运行时变量） */
+  --color-accent-foreground: var(--text);
   --color-background: var(--bg);
-  --color-foreground: var(--text);
+  --color-border: var(--border);
   --color-card: var(--surface);
   --color-card-foreground: var(--text);
-  --color-popover: var(--surface-raised);
-  --color-popover-foreground: var(--text);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--surface-raised);
-  --color-secondary-foreground: var(--text);
-  --color-muted: var(--surface);
-  --color-muted-foreground: var(--text-muted);
-  --color-accent-foreground: var(--text);
-  --color-destructive: var(--danger);
-  --color-input: var(--border);
-  --color-ring: var(--primary);
   --color-chart-1: var(--primary);
   --color-chart-2: var(--accent);
   --color-chart-3: var(--highlight);
   --color-chart-4: var(--success);
   --color-chart-5: var(--warning);
+  --color-destructive: var(--danger);
+  --color-foreground: var(--text);
+  --color-highlight: var(--highlight);
+  --color-input: var(--border);
+  --color-muted: var(--surface);
+  --color-muted-foreground: var(--text-muted);
+  --color-popover: var(--surface-raised);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-hover: var(--primary-hover);
+  --color-ring: var(--primary);
+  --color-secondary: var(--surface-raised);
+  --color-secondary-foreground: var(--text);
   --color-sidebar: var(--surface);
-  --color-sidebar-foreground: var(--text);
-  --color-sidebar-primary: var(--primary);
-  --color-sidebar-primary-foreground: var(--primary-foreground);
   --color-sidebar-accent: var(--surface-raised);
   --color-sidebar-accent-foreground: var(--text);
   --color-sidebar-border: var(--border);
+  --color-sidebar-foreground: var(--text);
+  --color-sidebar-primary: var(--primary);
+  --color-sidebar-primary-foreground: var(--primary-foreground);
   --color-sidebar-ring: var(--primary);
+  --color-success: var(--success);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-warning: var(--warning);
 
-  /* 圆角 */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
   --radius-2xl: 24px;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+  --radius-xl: 20px;
+
+  /* 层级阴影：低透明度深色，不用纯黑重影（设计文档 §3.8） */
+  --shadow-card: 0 1px 2px var(--shadow-tint);
+  --shadow-lift: 0 2px 6px var(--shadow-tint), 0 16px 40px var(--shadow-tint);
+  --shadow-pop: 0 4px 12px var(--shadow-tint-strong), 0 24px 64px var(--shadow-tint-strong);
 }
 
 /* 默认值（蓝紫·深色），会被 ThemeProvider 覆盖 */
+/* stylelint-disable color-no-hex -- 原语层是全仓唯一允许 hex 的位置：语义色与别名由此派生，运行时由主题覆盖 */
 :root {
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-foreground: #ffffff;
   --accent: #8b5cf6;
-  --highlight: #38bdf8;
   --bg: #0b1026;
+  --border: #2a3150;
+  --danger: #f43f5e;
+  --highlight: #38bdf8;
+  --primary: #4f46e5;
+  --primary-foreground: #fff;
+  --primary-hover: #4338ca;
+  --shadow-tint: #00000059;
+  --shadow-tint-strong: #00000073;
+  --success: #22c55e;
   --surface: #1a1f3a;
   --surface-raised: #232a4d;
-  --border: #2a3150;
   --text: #e6e9f5;
   --text-muted: #9aa0b8;
-  --success: #22c55e;
   --warning: #f59e0b;
-  --danger: #f43f5e;
+}
+/* stylelint-enable color-no-hex */
+
+/* shadcn/sonner 直接引用裸变量名（var(--popover) 等），在此建立别名层，随主题动态解析 */
+:root {
+  --background: var(--bg);
+  --card: var(--surface);
+  --card-foreground: var(--text);
+  --destructive: var(--danger);
+  --foreground: var(--text);
+  --input: var(--border);
+  --muted: var(--surface);
+  --muted-foreground: var(--text-muted);
+  --popover: var(--surface-raised);
+  --popover-foreground: var(--text);
+  --radius: var(--radius-md);
+  --ring: var(--primary);
+  --secondary: var(--surface-raised);
+  --secondary-foreground: var(--text);
 }
 
 @layer base {
   * {
     border-color: var(--border);
   }
+
   html {
-    font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-sans);
+    scrollbar-color: var(--surface-raised) var(--bg);
   }
+
   body {
     background: var(--bg);
     color: var(--text);
+  }
+
+  ::selection {
+    background: var(--primary);
+    color: var(--primary-foreground);
+  }
+}
+
+/* 动效只用于响应交互；尊重系统减弱动效偏好（设计文档 §3.9） */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    scroll-behavior: auto;
+    transition-duration: 0.01ms;
   }
 }
