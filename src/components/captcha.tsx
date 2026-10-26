@@ -1,0 +1,57 @@
+"use client";
+
+import { useEffect, useRef } from "react";
+
+interface CaptchaProps {
+  driver: string;
+  siteKey: string;
+  onToken: (token: string) => void;
+}
+
+interface CaptchaGlobals {
+  turnstile?: { render: (el: HTMLElement, opts: Record<string, unknown>) => void };
+  hCaptcha?: { render: (el: HTMLElement, opts: Record<string, unknown>) => void };
+  grecaptcha?: { render: (el: HTMLElement, opts: Record<string, unknown>) => void };
+}
+
+const SCRIPTS: Record<string, string> = {
+  turnstile: "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit",
+  hcaptcha: "https://js.hcaptcha.com/1/api.js?render=explicit",
+  recaptcha: "https://www.google.com/recaptcha/api.js?render=explicit",
+};
+
+// 验证码控件：按后端 requirements 下发的 driver 动态加载对应 SDK（turnstile/hcaptcha/recaptcha）。
+export function Captcha({ driver, siteKey, onToken }: CaptchaProps) {
+  const boxRef = useRef<HTMLDivElement>(null);
+  const tokenRef = useRef(onToken);
+
+  useEffect(() => {
+    tokenRef.current = onToken;
+  }, [onToken]);
+
+  useEffect(() => {
+    const src = SCRIPTS[driver];
+    if (!src || !siteKey || !boxRef.current) return;
+    const render = () => {
+      const win = window as unknown as CaptchaGlobals;
+      const el = boxRef.current;
+      if (!el) return;
+      const opts = { sitekey: siteKey, callback: (t: string) => tokenRef.current(t) };
+      if (driver === "turnstile") win.turnstile?.render(el, opts);
+      else if (driver === "hcaptcha") win.hCaptcha?.render(el, opts);
+      else if (driver === "recaptcha") win.grecaptcha?.render(el, opts);
+    };
+    if (document.querySelector(`script[src="${src}"]`)) {
+      render();
+      return;
+    }
+    const script = document.createElement("script");
+    script.src = src;
+    script.async = true;
+    script.onload = render;
+    document.head.appendChild(script);
+  }, [driver, siteKey]);
+
+  if (!driver || !siteKey) return null;
+  return <div ref={boxRef} className="min-h-16" />;
+}
