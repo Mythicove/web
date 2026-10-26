@@ -12,12 +12,12 @@ test("mods SSO + user upload loop", async ({ page }) => {
   const playerName = `Sso${rand.slice(-8).toUpperCase()}`;
 
   // 1. mirror 注册 + 邮箱验证
-  await page.goto("/en/register");
+  await page.goto("/register");
   await page.fill("#email", email);
   await page.fill("#password", password);
   await page.fill("#nickname", "SSO User");
   await page.fill("#playerName", playerName);
-  await page.getByRole("button", { name: "Submit" }).click();
+  await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText("Account created")).toBeVisible({ timeout: 15_000 });
 
   const api = await request.newContext();
@@ -34,25 +34,27 @@ test("mods SSO + user upload loop", async ({ page }) => {
   await page.goto(verifyUrl);
   await expect(page.getByText("Email verified")).toBeVisible({ timeout: 15_000 });
 
-  // 2. mods 页 → SSO 登录（mirror OIDC login + consent）
-  await page.goto("/en/mods");
-  await page.getByRole("button", { name: "Sign in to mod site" }).click();
-  await page.waitForURL(/\/oauth2\/login/, { timeout: 15_000 });
-  await page.fill('input[name="email"]', email);
-  await page.fill('input[name="password"]', password);
-  await page.getByRole("button", { name: "Continue" }).click();
-  await page.getByRole("button", { name: "Approve" }).click();
+  // 2. n 合一共享登录：站点登录后 mods 页静默同步 hoard 会话（first-party 免同意）
+  await page.goto("/login");
+  await page.fill("#email", email);
+  await page.fill("#password", password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.goto("/mods");
+  await page.waitForURL(/\/mods/, { timeout: 20_000 });
   // callback → hoard 会话 cookie → 302 API 根（单域生产即站点首页）
   await page.waitForURL(/localhost:8090|127\.0\.0\.1:8090/, { timeout: 15_000 });
 
   // 3. 回到 mods 页显示登录态
-  await page.goto("/en/mods");
+  await page.goto("/mods");
   await expect(page.getByText(/Signed in as/)).toBeVisible({ timeout: 15_000 });
 
   // 4. 上传向导：表单留空的字段由 jar 元数据自动填充
   await page.getByRole("button", { name: "Upload mod" }).click();
   await page.waitForURL(/\/mods\/upload/);
-  await page.locator("main input[type='text'], main input:not([type])").first().fill("E2E Test Mod");
+  await page
+    .locator("main input[type='text'], main input:not([type])")
+    .first()
+    .fill("E2E Test Mod");
   await page
     .locator('input[type="file"]')
     .setInputFiles(path.join(process.cwd(), "e2e", "fixtures", "test-mod.jar"));
@@ -69,7 +71,7 @@ test("mods SSO + user upload loop", async ({ page }) => {
   await expect(page.getByText("1.20.1").first()).toBeVisible();
 
   // 6. 团队与 PAT：建团队 + 建令牌（明文仅一次）
-  await page.goto("/en/mods/settings");
+  await page.goto("/mods/settings");
   await page.getByPlaceholder("Team name").fill(`team-${rand}`);
   await page.getByRole("button", { name: "Create team" }).click();
   await expect(page.getByText(`team-${rand}`).first()).toBeVisible({ timeout: 15_000 });

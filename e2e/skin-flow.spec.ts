@@ -12,12 +12,12 @@ test("skin station full loop", async ({ page }) => {
   const description = `e2e-desc-${rand}`;
 
   // 1. 注册
-  await page.goto("/en/register");
+  await page.goto("/register");
   await page.fill("#email", email);
   await page.fill("#password", password);
   await page.fill("#nickname", "E2E User");
   await page.fill("#playerName", playerName);
-  await page.getByRole("button", { name: "Submit" }).click();
+  await page.getByRole("button", { name: "Create account" }).click();
   await expect(page.getByText("Account created")).toBeVisible({ timeout: 15_000 });
 
   // 2. 从 mailpit 取验证邮件里的链接（轮询直到到达）
@@ -39,10 +39,10 @@ test("skin station full loop", async ({ page }) => {
   await expect(page.getByText("Email verified")).toBeVisible({ timeout: 15_000 });
 
   // 4. 登录
-  await page.goto("/en/login");
+  await page.goto("/login");
   await page.fill("#email", email);
   await page.fill("#password", password);
-  await page.getByRole("button", { name: "Submit" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByText("Signed in.")).toBeVisible({ timeout: 15_000 });
 
   // 4b. 会话加固：token 不落 localStorage；httpOnly cookie 对 JS 不可读
@@ -55,7 +55,7 @@ test("skin station full loop", async ({ page }) => {
   expect(visibleCookies).not.toContain("mythic_session");
 
   // 5. 上传皮肤
-  await page.goto("/en/profile");
+  await page.goto("/profile");
   await page
     .locator('input[type="file"]')
     .nth(0)
@@ -69,11 +69,8 @@ test("skin station full loop", async ({ page }) => {
   await expect(page.getByText("Published to the skin library.")).toBeVisible({ timeout: 15_000 });
 
   // 7. 皮肤库按描述搜索命中（SSR 渲染）
-  await page.goto(`/en/skins?q=${description}`);
-  const card = page
-    .locator("main a[href*='/skins/']")
-    .filter({ hasText: playerName })
-    .first();
+  await page.goto(`/skins?q=${description}`);
+  const card = page.locator("main a[href*='/skins/']").filter({ hasText: playerName }).first();
   await expect(card).toBeVisible({ timeout: 15_000 });
 
   // 8. 详情页：点赞 → 评论 → 应用
@@ -88,7 +85,7 @@ test("skin station full loop", async ({ page }) => {
   await expect(page.getByText("E2E User").first()).toBeVisible();
 
   await page.getByRole("button", { name: "Apply to my skin" }).click();
-  await expect(
-    page.getByRole("button", { name: `Applied to ${playerName}` }),
-  ).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByRole("button", { name: `Applied to ${playerName}` })).toBeVisible({
+    timeout: 15_000,
+  });
 });

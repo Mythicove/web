@@ -10,6 +10,8 @@ export default defineConfig({
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: process.env.E2E_BASE_URL ?? "http://localhost:3110",
+    // locale 前缀默认关闭（never），语言经 Accept-Language 决定；固定 en 保证断言稳定
+    locale: "en-US",
   },
   projects: [{ name: "chromium", use: { browserName: "chromium" } }],
 });
