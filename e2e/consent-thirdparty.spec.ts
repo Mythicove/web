@@ -40,8 +40,10 @@ test("third-party client requires frontend consent", async ({ page, request }) =
   await page.waitForURL(/\/$/);
 
   // 直接发起第三方授权：应落到前端同意页（而非直接发码）
+  // state 必须 >= 8 字符：fosite 对更短的 state 直接回 invalid_state（会重定向到 redirect_uri，
+  // 而 e2e 的 /cb 无人处理 → 404），表现为"同意页没出现"。
   await page.goto(
-    `${API}/oauth2/auth?client_id=consent-3p&redirect_uri=http%3A%2F%2Flocalhost%3A8090%2Fcb&response_type=code&scope=openid+profile+email&state=xyz&nonce=n1`,
+    `${API}/oauth2/auth?client_id=consent-3p&redirect_uri=http%3A%2F%2Flocalhost%3A8090%2Fcb&response_type=code&scope=openid+profile+email&state=e2e-state-1&nonce=e2e-nonce-1`,
   );
   await page.waitForURL(/\/oauth\/consent/);
   await expect(page.getByText("Consent Third Party")).toBeVisible();

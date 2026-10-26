@@ -42,8 +42,10 @@ test("mods SSO + user upload loop", async ({ page }) => {
   await page.getByRole("main").getByRole("button", { name: "Sign in" }).click();
   await page.goto("/mods");
   await page.waitForURL(/\/mods/, { timeout: 20_000 });
-  // callback → hoard 会话 cookie → 302 API 根（单域生产即站点首页）
-  await page.waitForURL(/localhost:8090|127\.0\.0\.1:8090/, { timeout: 15_000 });
+  // 静默 SSO 会瞬时经过 IdP（:8090）再回到 /mods。**不要断言中间态 URL**：
+  // 跳转链可能在断言注册前就跑完，浏览器已回到 :3110 → 必然超时。
+  // 这里直接等最终结果：hoard 会话建立后页面出现登录态。
+  await expect(page.getByText(/Signed in as/)).toBeVisible({ timeout: 20_000 });
 
   // 3. 回到 mods 页显示登录态
   await page.goto("/mods");
