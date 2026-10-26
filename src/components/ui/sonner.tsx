@@ -1,33 +1,29 @@
-"use client"
+"use client";
 
-import { type ToasterProps } from "sonner"
-import { Toaster as Sonner } from "sonner"
-import { CircleCheckIcon, InfoIcon, TriangleAlertIcon, OctagonXIcon, Loader2Icon } from "lucide-react"
-import { useTheme } from "@/lib/theme-provider"
+import { type ToasterProps } from "sonner";
+import { Toaster as Sonner } from "sonner";
+import {
+  CircleCheckIcon,
+  InfoIcon,
+  TriangleAlertIcon,
+  OctagonXIcon,
+  Loader2Icon,
+} from "lucide-react";
+import { useTheme } from "@/lib/theme-provider";
 
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { resolvedMode } = useTheme()
+  const { resolvedMode } = useTheme();
 
   return (
     <Sonner
       theme={resolvedMode === "dark" ? "dark" : "light"}
       className="toaster group"
       icons={{
-        success: (
-          <CircleCheckIcon className="size-4" />
-        ),
-        info: (
-          <InfoIcon className="size-4" />
-        ),
-        warning: (
-          <TriangleAlertIcon className="size-4" />
-        ),
-        error: (
-          <OctagonXIcon className="size-4" />
-        ),
-        loading: (
-          <Loader2Icon className="size-4 animate-spin" />
-        ),
+        success: <CircleCheckIcon className="size-4" />,
+        info: <InfoIcon className="size-4" />,
+        warning: <TriangleAlertIcon className="size-4" />,
+        error: <OctagonXIcon className="size-4" />,
+        loading: <Loader2Icon className="size-4 animate-spin" />,
       }}
       style={
         {
@@ -44,7 +40,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
       }}
       {...props}
     />
-  )
-}
+  );
+};
 
-export { Toaster }
+export { Toaster };
