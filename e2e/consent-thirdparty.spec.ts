@@ -35,7 +35,8 @@ test("third-party client requires frontend consent", async ({ page, request }) =
   await page.goto("/login");
   await page.fill("#email", email);
   await page.fill("#password", password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  // 限定 main：页头也有一个同名 "Sign in" 按钮（导航用），不限定会触发 strict mode 冲突
+  await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
   await page.waitForURL(/\/$/);
 
   // 直接发起第三方授权：应落到前端同意页（而非直接发码）

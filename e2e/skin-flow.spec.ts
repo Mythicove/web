@@ -42,7 +42,8 @@ test("skin station full loop", async ({ page }) => {
   await page.goto("/login");
   await page.fill("#email", email);
   await page.fill("#password", password);
-  await page.getByRole("button", { name: "Sign in", exact: true }).click();
+  // 限定 main：页头也有一个同名 "Sign in" 按钮（导航用），不限定会触发 strict mode 冲突
+  await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByText("Signed in.")).toBeVisible({ timeout: 15_000 });
 
   // 4b. 会话加固：token 不落 localStorage；httpOnly cookie 对 JS 不可读

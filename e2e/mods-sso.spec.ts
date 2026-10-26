@@ -38,7 +38,8 @@ test("mods SSO + user upload loop", async ({ page }) => {
   await page.goto("/login");
   await page.fill("#email", email);
   await page.fill("#password", password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  // 限定 main：页头也有一个同名 "Sign in" 按钮（导航用），不限定会触发 strict mode 冲突
+  await page.getByRole("main").getByRole("button", { name: "Sign in" }).click();
   await page.goto("/mods");
   await page.waitForURL(/\/mods/, { timeout: 20_000 });
   // callback → hoard 会话 cookie → 302 API 根（单域生产即站点首页）
