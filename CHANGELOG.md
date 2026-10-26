@@ -11,6 +11,7 @@
 ### 修复
 
 - CSP 放行 cap 验证码：`CAPTCHA_CAP_URL` 环境变量（部署时与 mirror `MIRROR_CAPTCHA_CAP_URL` 保持一致）加入 `connect-src`，并补 `'wasm-unsafe-eval'`、`worker-src 'self' blob:`、blob iframe——此前 cap 的 challenge/WASM/worker 全被自家 CSP 拦截
+- Dockerfile：`CAPTCHA_CAP_URL` 构建参数（CSP 为构建期烘焙，仅运行时 env 不生效）；deps/build 阶段设 `NODE_USE_ENV_PROXY=1`，使 corepack/pnpm/字体拉取遵循 `HTTP(S)_PROXY` 构建参数（受限网络下构建镜像必需）
 
 ## [0.3.0] - 2026-10-23
 

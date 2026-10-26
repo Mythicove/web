@@ -1,12 +1,15 @@
 # ---- deps ----
 FROM node:24-alpine AS deps
 WORKDIR /app
+# Node 24：让 fetch/corepack 遵循 HTTP(S)_PROXY 构建参数（受限网络下构建必需；无代理时为 no-op）
+ENV NODE_USE_ENV_PROXY=1
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable && pnpm install --frozen-lockfile
 
 # ---- build ----
 FROM node:24-alpine AS build
 WORKDIR /app
+ENV NODE_USE_ENV_PROXY=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN corepack enable
@@ -17,6 +20,9 @@ RUN corepack enable
   ENV NEXT_PUBLIC_LOCALE_PREFIX=$NEXT_PUBLIC_LOCALE_PREFIX
   ARG NEXT_PUBLIC_INDEXABLE=false
   ENV NEXT_PUBLIC_INDEXABLE=$NEXT_PUBLIC_INDEXABLE
+  # CSP 在构建期烘焙：cap 验证码实例地址（driver=cap 部署必填，与 mirror MIRROR_CAPTCHA_CAP_URL 一致）
+  ARG CAPTCHA_CAP_URL=
+  ENV CAPTCHA_CAP_URL=$CAPTCHA_CAP_URL
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
