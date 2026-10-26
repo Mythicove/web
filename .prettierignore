@@ -1,0 +1,6 @@
+src/lib/api-schema/
+pnpm-lock.yaml
+.next/
+playwright-report/
+test-results/
+tsconfig.tsbuildinfo
