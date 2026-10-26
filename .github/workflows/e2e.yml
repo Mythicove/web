@@ -121,9 +121,20 @@ jobs:
           NEXT_PUBLIC_API_URL: "http://localhost:8090"
       - name: start web
         run: |
-          API_URL_INTERNAL=http://localhost:8090 nohup pnpm exec next start -p 3110 > /tmp/web.log 2>&1 &
-          for i in $(seq 1 30); do curl -sf http://localhost:3110/en/login >/dev/null && echo "web up" && break || sleep 1; done
-          curl -sf http://localhost:3110/en/login >/dev/null || { echo "web failed to start"; cat /tmp/web.log; exit 1; }
+          # next.config.ts 是 output: standalone —— `next start` 会直接拒绝启动，
+          # 必须跑 standalone server，并手动补齐它不打包的静态资源（.next/static 与 public）。
+          cp -r .next/static .next/standalone/.next/static
+          cp -r public .next/standalone/public
+          # 探针必须带浏览器 UA：非索引部署默认 BLOCK_BOTS=true，curl/ 会被 403 拦掉。
+          # 这里刻意保留 BLOCK_BOTS 默认值，让 e2e 跑在真实配置下
+          # （Playwright 的 HeadlessChrome UA 不在黑名单里，测试本身不受影响）。
+          # 不要设 HOSTNAME：与探针/浏览器使用的主机名不一致时，next-intl 的内部 rewrite
+          # 会变成绝对 URL，Next 遂改为外部 308 → /login 自我重定向死循环。
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+          API_URL_INTERNAL=http://localhost:8090 PORT=3110 \
+            nohup node .next/standalone/server.js > /tmp/web.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf -A "$UA" http://localhost:3110/login >/dev/null && echo "web up" && break || sleep 1; done
+          curl -sf -A "$UA" http://localhost:3110/login >/dev/null || { echo "web failed to start"; cat /tmp/web.log; exit 1; }
       - name: install browsers
         run: pnpm exec playwright install --with-deps chromium
       - name: run e2e
