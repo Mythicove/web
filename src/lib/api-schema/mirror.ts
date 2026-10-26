@@ -1000,6 +1000,52 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/oauth-clients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 列出 OIDC 客户端
+         * @description 返回存储态客户端，含 `secret_hash`（sha256 hex，非明文）与 `first_party` 标记。
+         *     读取者即能创建/轮换客户端的管理员，故不构成额外提权；但客户端密钥应使用高熵随机值，
+         *     以免哈希被离线爆破。
+         */
+        get: operations["adminListOAuthClients"];
+        put?: never;
+        /**
+         * 新建或更新 OIDC 客户端（按 id upsert，整个对象覆盖）
+         * @description 按 `id` upsert：命中则**整条替换**，故更新时必须带上不想丢失的字段
+         *     （包括 `secret_hash`；省略即视为清空/转 public）。
+         *     `public: true` 时服务端强制清空 `secret_hash`。
+         *     `first_party: true` 的客户端授权时跳过前端同意页（用于同部署自有服务，如 Hoard）。
+         */
+        post: operations["adminSaveOAuthClient"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/oauth-clients/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 删除 OIDC 客户端 */
+        delete: operations["adminDeleteOAuthClient"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/batch-import": {
         parameters: {
             query?: never;
@@ -1111,6 +1157,18 @@ export interface components {
             minPasswordLength: number;
             /** @description 允许的邮箱域名；空数组表示不限制 */
             emailDomains: string[];
+        };
+        OAuthClient: {
+            id: string;
+            name: string;
+            /** @description 客户端密钥的 sha256 hex；public 客户端为空。服务端不存也不回传明文 */
+            secret_hash?: string;
+            redirect_uris: string[];
+            grant_types: string[];
+            scopes: string[];
+            public: boolean;
+            /** @description 同部署第一方服务（如 Hoard）；授权时免前端同意页 */
+            first_party?: boolean;
         };
         LoginMethod: {
             id: string;
@@ -2930,6 +2988,74 @@ export interface operations {
             400: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    adminListOAuthClients: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthClient"][];
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminSaveOAuthClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OAuthClient"];
+            };
+        };
+        responses: {
+            /** @description 已保存（回显存储态） */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OAuthClient"];
+                };
+            };
+            400: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+        };
+    };
+    adminDeleteOAuthClient: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["ID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Error"];
         };
     };
     adminBatchImport: {
