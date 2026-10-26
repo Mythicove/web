@@ -1,112 +1,54 @@
-"use client";
-
-import { useCallback, useEffect, useState } from "react";
-import { useParams } from "next/navigation";
-import Link from "next/link";
-import { useTranslations } from "next-intl";
-import { toast } from "sonner";
-import {
-  hoardClient,
-  ApiError,
-  type HoardDependency,
-  type HoardProject,
-  type HoardVersion,
-} from "@/lib/api";
-import { useHoardUser } from "@/lib/hoard-auth";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent } from "@/components/ui/card";
+import { notFound } from "next/navigation";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { DownloadIcon, FileTextIcon, Link2Icon } from "lucide-react";
+import { hoardClient, ApiError } from "@/lib/api";
 import { SiteHeader } from "@/components/site-header";
+import { Link } from "@/i18n/navigation";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/empty-state";
+import { Markdown } from "@/components/markdown";
+import { ModActions, ModMetaBadges } from "./actions";
 
-export default function ModDetailPage() {
-  const t = useTranslations("modDetail");
-  const params = useParams<{ id: string }>();
-  const id = params.id;
-  const { user, loaded } = useHoardUser();
+interface PageProps {
+  params: Promise<{ id: string; locale: string }>;
+}
 
-  const [project, setProject] = useState<HoardProject | null>(null);
-  const [versions, setVersions] = useState<HoardVersion[]>([]);
-  const [deps, setDeps] = useState<HoardDependency[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(() => {
-    hoardClient
-      .project(id)
-      .then(setProject)
-      .catch((e) => setError(String(e)));
-    hoardClient
-      .versions(id)
-      .then(setVersions)
-      .catch(() => {});
-    hoardClient
-      .dependencies(id)
-      .then(setDeps)
-      .catch(() => {});
-  }, [id]);
-
-  useEffect(load, [load]);
-
-  // 发版表单
-  const [vForm, setVForm] = useState({ version_number: "", name: "", version_type: "release", changelog: "" });
-  const [vFile, setVFile] = useState<File | null>(null);
-  const [publishing, setPublishing] = useState(false);
-
-  const publishVersion = async () => {
-    if (!vFile || !vForm.version_number) return;
-    setPublishing(true);
-    try {
-      await hoardClient.addVersion(
-        {
-          project_id: id,
-          name: vForm.name || vForm.version_number,
-          version_number: vForm.version_number,
-          version_type: vForm.version_type,
-          changelog: vForm.changelog,
-        },
-        vFile,
-      );
-      toast.success(t("versionPublished"));
-      setVForm({ version_number: "", name: "", version_type: "release", changelog: "" });
-      setVFile(null);
-      load();
-    } catch (e) {
-      toast.error(e instanceof ApiError && e.status === 403 ? t("notMember") : String(e));
-    } finally {
-      setPublishing(false);
-    }
-  };
-
-  const remove = async () => {
-    try {
-      await hoardClient.deleteProject(id);
-      toast.success(t("deleted"));
-      window.location.href = "/mods";
-    } catch (e) {
-      toast.error(String(e));
-    }
-  };
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen flex-col">
-        <SiteHeader />
-        <main className="flex-1">
-          <div className="mx-auto max-w-4xl px-6 py-12 text-sm text-danger">{error}</div>
-        </main>
-      </div>
-    );
+export async function generateMetadata({ params }: PageProps) {
+  const { id, locale } = await params;
+  setRequestLocale(locale);
+  try {
+    const project = await hoardClient.project(id);
+    return { title: project.title, description: project.description };
+  } catch {
+    const t = await getTranslations({ locale, namespace: "nav" });
+    return { title: t("mods") };
   }
-  if (!project) {
-    return (
-      <div className="flex min-h-screen flex-col">
-        <SiteHeader />
-        <main className="flex-1">
-          <div className="mx-auto max-w-4xl px-6 py-12 text-sm text-text-muted">{t("loading")}</div>
-        </main>
-      </div>
-    );
+}
+
+export default async function ModDetailPage({ params }: PageProps) {
+  const { id, locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations("modDetail");
+
+  let project;
+  try {
+    project = await hoardClient.project(id);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) notFound();
+    throw e;
+  }
+  let versions: Awaited<ReturnType<typeof hoardClient.versions>> = [];
+  try {
+    versions = await hoardClient.versions(id);
+  } catch {
+    versions = [];
+  }
+  let deps: Awaited<ReturnType<typeof hoardClient.dependencies>> = [];
+  try {
+    deps = await hoardClient.dependencies(id);
+  } catch {
+    deps = [];
   }
 
   return (
@@ -116,8 +58,12 @@ export default function ModDetailPage() {
         <div className="mx-auto max-w-4xl px-6 py-12">
           <div className="flex items-start gap-4">
             {project.icon_url && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={project.icon_url} alt="" className="h-16 w-16 rounded-lg" />
+              // eslint-disable-next-line @next/next/no-img-element -- 图标来自后端对象存储，尺寸不固定
+              <img
+                src={project.icon_url}
+                alt=""
+                className="border-border bg-surface size-16 shrink-0 rounded-xl border object-contain"
+              />
             )}
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
@@ -130,37 +76,35 @@ export default function ModDetailPage() {
                   </Badge>
                 ))}
               </div>
-              <p className="mt-1 text-sm text-text-muted">{project.description}</p>
-              <div className="mt-2 flex flex-wrap gap-1">
-                {(project.loaders ?? []).map((l) => (
-                  <Badge key={l} variant="outline">
-                    {l}
-                  </Badge>
-                ))}
-                {(project.game_versions ?? []).map((v) => (
-                  <Badge key={v} variant="outline">
-                    {v}
-                  </Badge>
-                ))}
-              </div>
+              <p className="text-text-muted mt-1 text-sm">{project.description}</p>
+              <ModMetaBadges
+                loaders={project.loaders ?? []}
+                gameVersions={project.game_versions ?? []}
+              />
             </div>
           </div>
 
           {project.body && (
-            <Card className="mt-6 bg-surface">
-              <CardContent className="whitespace-pre-wrap p-5 text-sm">{project.body}</CardContent>
+            <Card className="bg-surface shadow-card mt-6">
+              <CardContent className="flex gap-2 p-5">
+                <FileTextIcon className="text-text-muted mt-0.5 size-4 shrink-0" />
+                <Markdown className="min-w-0 flex-1">{project.body}</Markdown>
+              </CardContent>
             </Card>
           )}
 
           {deps.length > 0 && (
             <section className="mt-8">
-              <h2 className="font-display text-lg font-semibold">{t("dependencies")}</h2>
+              <h2 className="font-display flex items-center gap-2 text-lg font-semibold">
+                <Link2Icon className="text-text-muted size-4" />
+                {t("dependencies")}
+              </h2>
               <ul className="mt-3 space-y-1 text-sm">
                 {deps.map((d) => (
                   <li key={d.id} className="flex flex-wrap items-center gap-2">
                     <Badge variant="outline">{d.dependency_type}</Badge>
                     {d.project_id && (
-                      <Link className="text-highlight hover:underline" href={`/mods/${d.project_id}`}>
+                      <Link className="text-primary hover:underline" href={`/mods/${d.project_id}`}>
                         {d.project_id}
                       </Link>
                     )}
@@ -176,7 +120,7 @@ export default function ModDetailPage() {
             <h2 className="font-display text-lg font-semibold">{t("versionsTitle")}</h2>
             <div className="mt-3 space-y-3">
               {versions.map((v) => (
-                <Card key={v.id} className="bg-surface">
+                <Card key={v.id} className="bg-surface shadow-card">
                   <CardContent className="flex flex-wrap items-center justify-between gap-3 p-4">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2 text-sm">
@@ -188,81 +132,45 @@ export default function ModDetailPage() {
                           </Badge>
                         ))}
                       </div>
-                      {v.name && <p className="mt-0.5 text-xs text-text-muted">{v.name}</p>}
+                      {v.name && <p className="text-text-muted mt-0.5 text-xs">{v.name}</p>}
                       {v.changelog && (
-                        <p className="mt-1 line-clamp-2 whitespace-pre-wrap text-xs text-text-muted">
-                          {v.changelog}
-                        </p>
+                        // 原生 details 折叠：不截断内容（旧实现 max-h-16 会静默吃掉长日志），
+                        // 也无需客户端 JS。
+                        <details className="mt-1 text-xs">
+                          <summary className="text-primary cursor-pointer hover:underline">
+                            {t("changelog")}
+                          </summary>
+                          <Markdown className="text-text-muted mt-1">{v.changelog}</Markdown>
+                        </details>
                       )}
                     </div>
-                    <div className="flex gap-2 text-xs">
+                    <div className="flex flex-wrap gap-2 text-xs">
                       {(v.files ?? []).map((f, i) => (
                         <a
                           key={`${f.filename}-${i}`}
-                          className="text-highlight hover:underline"
+                          className="text-primary flex items-center gap-1 hover:underline"
                           href={f.url}
                         >
+                          <DownloadIcon className="size-3.5" />
                           {f.filename}
                         </a>
                       ))}
                       <a
-                        className="text-highlight hover:underline"
+                        className="text-primary flex items-center gap-1 hover:underline"
                         href={hoardClient.mrpackUrl(project.id, v.id)}
                       >
+                        <DownloadIcon className="size-3.5" />
                         .mrpack
                       </a>
                     </div>
                   </CardContent>
                 </Card>
               ))}
-              {versions.length === 0 && (
-                <p className="text-sm text-text-muted">{t("noVersions")}</p>
-              )}
+              {versions.length === 0 && <EmptyState icon={FileTextIcon} title={t("noVersions")} />}
             </div>
           </section>
 
-          {loaded && user && (
-            <section className="mt-8 rounded-lg border border-border bg-surface p-5">
-              <h2 className="font-display text-lg font-semibold">{t("publishVersion")}</h2>
-              <p className="mt-1 text-xs text-text-muted">{t("publishHint")}</p>
-              <div className="mt-4 grid max-w-xl gap-3 md:grid-cols-2">
-                <div className="grid gap-1.5">
-                  <Label>{t("versionNumber")}</Label>
-                  <Input
-                    value={vForm.version_number}
-                    onChange={(e) => setVForm({ ...vForm, version_number: e.target.value })}
-                    placeholder="1.1.0"
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label>{t("versionNameOpt")}</Label>
-                  <Input
-                    value={vForm.name}
-                    onChange={(e) => setVForm({ ...vForm, name: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-1.5 md:col-span-2">
-                  <Label>{t("changelogOpt")}</Label>
-                  <Input
-                    value={vForm.changelog}
-                    onChange={(e) => setVForm({ ...vForm, changelog: e.target.value })}
-                  />
-                </div>
-                <div className="grid gap-1.5 md:col-span-2">
-                  <Label>{t("file")}</Label>
-                  <Input type="file" onChange={(e) => setVFile(e.target.files?.[0] ?? null)} />
-                </div>
-              </div>
-              <Button className="mt-4" onClick={publishVersion} disabled={publishing}>
-                {t("publish")}
-              </Button>
-              {user.role === "admin" && (
-                <Button className="mt-4 ml-3" variant="destructive" onClick={remove}>
-                  {t("deleteProject")}
-                </Button>
-              )}
-            </section>
-          )}
+          <ModActions projectId={id} />
         </div>
       </main>
     </div>
