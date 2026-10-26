@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { ShieldCheckIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { useHoardUser } from "@/lib/hoard-auth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -27,6 +28,7 @@ const readSession = (key: string) =>
 export function AdminPageClient() {
   const t = useTranslations("admin");
   const { isAuthenticated } = useAuth();
+  const { user: hoardUser } = useHoardUser();
   const [manualToken, setManualToken] = useState(() => readSession(MIRROR_TOKEN_KEY));
   const [hoardToken, setHoardToken] = useState(() => readSession(HOARD_TOKEN_KEY));
 
@@ -42,6 +44,11 @@ export function AdminPageClient() {
   // Mirror 管理面板凭据：null=无凭据（提示输入 token）；""=用 httpOnly 会话 cookie
   // （后端校验 role=admin）；非空=手贴 token 救援通道。空串是合法凭据，故不能用真值判断。
   const mirrorToken: string | null = isAuthenticated ? "" : manualToken.trim() || null;
+
+  // Hoard 是独立的 SSO 会话（role 由 HOARD_ADMIN_SUBJECTS 映射），故单独判定；
+  // 凭据语义与 mirror 一致，登录态管理员不再需要手贴 HOARD_ADMIN_TOKEN。
+  const hoardSessionAdmin = hoardUser?.role === "admin";
+  const hoardCreds: string | null = hoardSessionAdmin ? "" : hoardToken.trim() || null;
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -92,7 +99,7 @@ export function AdminPageClient() {
               <InvitesPanel token={mirrorToken} />
             </TabsContent>
             <TabsContent value="mods">
-              <ModsPanel token={hoardToken} onToken={saveHoard} />
+              <ModsPanel token={hoardCreds} onToken={saveHoard} sessionAdmin={hoardSessionAdmin} />
             </TabsContent>
             <TabsContent value="reports">
               <ReportsPanel token={mirrorToken} />

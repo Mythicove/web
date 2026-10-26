@@ -336,7 +336,8 @@
     "colStatus": "Status",
     "unverified": "unverified",
     "hoardToken": "Hoard admin token",
-    "hoardTokenHint": "Mod review uses HOARD_ADMIN_TOKEN (Hoard has no user system yet).",
+    "hoardTokenHint": "Only needed if you are not signed in to Hoard as an admin (HOARD_ADMIN_TOKEN rescue channel).",
+    "hoardUseSession": "Using your signed-in Hoard admin session.",
     "noMods": "No mods yet.",
     "tab": {
       "users": "Users",

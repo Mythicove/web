@@ -21,14 +21,23 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { PageSkeleton } from "@/components/skeleton";
 
-export function ModsPanel({ token, onToken }: { token: string; onToken: (v: string) => void }) {
+export function ModsPanel({
+  token,
+  onToken,
+  sessionAdmin = false,
+}: {
+  token: string | null;
+  onToken: (v: string) => void;
+  // hoard 侧已有登录态且 role=admin：用会话 cookie 即可，不必手贴令牌
+  sessionAdmin?: boolean;
+}) {
   const t = useTranslations("admin");
   const errText = useErrorText();
   const [mods, setMods] = useState<HoardProject[] | null>(null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   const load = useCallback(() => {
-    if (!token) return;
+    if (token === null) return;
     hoardClient
       .search("", 0, 100)
       .then((r) => setMods(r.hits))
@@ -43,6 +52,7 @@ export function ModsPanel({ token, onToken }: { token: string; onToken: (v: stri
   }, [load]);
 
   const setStatus = async (id: string, status: NonNullable<HoardProject["status"]>) => {
+    if (token === null) return;
     try {
       await hoardClient.setStatus(id, status, token);
       setMods((prev) => prev?.map((m) => (m.id === id ? { ...m, status } : m)) ?? null);
@@ -54,7 +64,7 @@ export function ModsPanel({ token, onToken }: { token: string; onToken: (v: stri
   };
 
   const del = async () => {
-    if (!pendingDelete) return;
+    if (!pendingDelete || token === null) return;
     try {
       await hoardClient.deleteMod(pendingDelete, token);
       setMods((prev) => prev?.filter((m) => m.id !== pendingDelete) ?? null);
@@ -66,20 +76,24 @@ export function ModsPanel({ token, onToken }: { token: string; onToken: (v: stri
 
   return (
     <div className="space-y-4">
-      <div className="flex max-w-xs flex-col gap-1.5">
-        <Label htmlFor="hoard-token">{t("hoardToken")}</Label>
-        <Input
-          id="hoard-token"
-          value={token}
-          onChange={(e) => onToken(e.target.value)}
-          type="password"
-          autoComplete="off"
-        />
-        <p className="text-text-muted text-xs">{t("hoardTokenHint")}</p>
-      </div>
-      {!token && <p className="text-text-muted text-sm">{t("needToken")}</p>}
-      {token && mods === null && <PageSkeleton />}
-      {token && mods !== null && mods.length === 0 && (
+      {sessionAdmin ? (
+        <p className="text-success text-sm">{t("hoardUseSession")}</p>
+      ) : (
+        <div className="flex max-w-xs flex-col gap-1.5">
+          <Label htmlFor="hoard-token">{t("hoardToken")}</Label>
+          <Input
+            id="hoard-token"
+            value={token ?? ""}
+            onChange={(e) => onToken(e.target.value)}
+            type="password"
+            autoComplete="off"
+          />
+          <p className="text-text-muted text-xs">{t("hoardTokenHint")}</p>
+        </div>
+      )}
+      {token === null && <p className="text-text-muted text-sm">{t("needToken")}</p>}
+      {token !== null && mods === null && <PageSkeleton />}
+      {token !== null && mods !== null && mods.length === 0 && (
         <EmptyState icon={PackageIcon} title={t("noMods")} />
       )}
       <div className="space-y-2">

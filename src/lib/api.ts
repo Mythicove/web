@@ -474,17 +474,19 @@ export const hoardClient = {
 
   deleteProject: (id: string) => request<void>(`/v2/project/${id}`, { method: "DELETE" }),
 
+  // 管理端点：adminToken 传空串则凭 hoard 会话 cookie（后端认 role=admin），
+  // 非空则用静态管理令牌（bootstrap/救援通道）。
   setStatus: (id: string, status: string, adminToken: string) =>
     request<void>(`/api/mods/${id}/status`, {
       method: "PATCH",
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: authHeaders(adminToken),
       body: JSON.stringify({ status }),
     }),
 
   deleteMod: (id: string, adminToken: string) =>
     request<void>(`/api/mods/${id}`, {
       method: "DELETE",
-      headers: { Authorization: `Bearer ${adminToken}` },
+      headers: authHeaders(adminToken),
     }),
 
   mrpackUrl: (id: string, vid: string) => `${API_URL}/v2/project/${id}/version/${vid}/mrpack`,

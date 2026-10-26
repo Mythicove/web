@@ -336,7 +336,8 @@
     "colStatus": "状态",
     "unverified": "未验证",
     "hoardToken": "Hoard 管理令牌",
-    "hoardTokenHint": "模组审核使用 HOARD_ADMIN_TOKEN（Hoard 暂无用户体系）。",
+    "hoardTokenHint": "仅在未以 Hoard 管理员身份登录时才需要（HOARD_ADMIN_TOKEN 救援通道）。",
+    "hoardUseSession": "正在使用你已登录的 Hoard 管理员会话。",
     "noMods": "暂无模组。",
     "tab": {
       "users": "用户",
