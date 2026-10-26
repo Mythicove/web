@@ -1,5 +1,7 @@
 "use client";
 
+// 类型导入：引入 cap-widget 的全局声明（window.CAP_CUSTOM_WASM_URL 等）
+import type {} from "cap-widget";
 import { useEffect, useRef } from "react";
 
 interface CaptchaProps {
@@ -47,7 +49,25 @@ export function Captcha({ driver, siteKey, capUrl, onToken }: CaptchaProps) {
       box.appendChild(widget);
     };
     // 副作用导入：注册 <cap-widget> 自定义元素；按需分块，其余 driver 不加载
-    import("cap-widget").then(mount, () => undefined);
+    import("cap-widget").then(
+      async () => {
+        // widget 默认从 jsdelivr 拉取 WASM（部分地区不可达）。实例开了 asset server
+        // （ENABLE_ASSETS_SERVER=true）时改用自托管副本；探测失败保持默认，无回归。
+        const base = capUrl.replace(/\/+$/, "");
+        try {
+          const wasm = await fetch(`${base}/assets/cap_wasm_bg.wasm`, { method: "HEAD" });
+          if (wasm.ok) {
+            window.CAP_CUSTOM_WASM_URL = `${base}/assets/cap_wasm_bg.wasm`;
+            const hashwx = await fetch(`${base}/assets/hashwx.wasm`, { method: "HEAD" });
+            if (hashwx.ok) window.CAP_CUSTOM_HASHWX_URL = `${base}/assets/hashwx.wasm`;
+          }
+        } catch {
+          // 探测失败（无 asset server / CORS / 离线）：沿用 widget 默认 CDN
+        }
+        mount();
+      },
+      () => undefined,
+    );
     return () => {
       disposed = true;
     };
