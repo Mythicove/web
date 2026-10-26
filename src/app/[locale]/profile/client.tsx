@@ -1,12 +1,21 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
-import { InfoIcon, Link2Icon, Loader2Icon, UploadIcon, UserPlusIcon } from "lucide-react";
+import {
+  InfoIcon,
+  Link2Icon,
+  Loader2Icon,
+  PencilIcon,
+  Trash2Icon,
+  UploadIcon,
+  UserPlusIcon,
+} from "lucide-react";
 import { apiClient, type Player, type UploadProgress } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useErrorText } from "@/lib/errors";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -22,6 +31,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SkinPreview } from "@/components/skin-preview";
 import { FileField } from "@/components/file-field";
 import { PlayerAvatar } from "@/components/player-avatar";
+import { ConfirmDialog } from "@/components/confirm-dialog";
 
 const MAX_SKIN_BYTES = 2 * 1024 * 1024;
 
@@ -67,28 +77,87 @@ function ProfileInner() {
   const [capeProgress, setCapeProgress] = useState<UploadProgress | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [newPlayer, setNewPlayer] = useState("");
+  // 玩家管理（改名/删除/设为当前）独立的忙碌态，避免与上传/发布的 busy 联合体互相干扰
+  const [playerBusy, setPlayerBusy] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
+  const reloadPlayers = useCallback(() => {
     apiClient
       .listPlayers()
       .then(setPlayers)
       .catch(() => setPlayers([]));
-  }, [isAuthenticated]);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    reloadPlayers();
+  }, [isAuthenticated, reloadPlayers]);
 
   const addPlayer = async () => {
     if (busy || !newPlayer.trim()) return;
     setBusy("publish");
     setError(null);
     try {
-      const p = await apiClient.addPlayer(newPlayer.trim());
-      setPlayers((prev) => [...prev, p]);
+      await apiClient.addPlayer(newPlayer.trim());
       setNewPlayer("");
       setStatus(t("playerAdded"));
+      reloadPlayers();
     } catch (e) {
       setError(errText(e));
     } finally {
       setBusy("");
+    }
+  };
+
+  // 改名会更换 uuid 并使该玩家的游戏会话失效，故确认后才提交
+  const renamePlayer = async (oldName: string) => {
+    const next = renameValue.trim();
+    if (!next || next === oldName || playerBusy) return;
+    setPlayerBusy(`rename-${oldName}`);
+    setError(null);
+    try {
+      await apiClient.renamePlayer(oldName, next);
+      setRenaming(null);
+      setRenameValue("");
+      setStatus(t("playerRenamed"));
+      reloadPlayers();
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setPlayerBusy(null);
+    }
+  };
+
+  const deletePlayer = async (name: string) => {
+    if (playerBusy) return;
+    setPlayerBusy(`delete-${name}`);
+    setError(null);
+    try {
+      await apiClient.deletePlayer(name);
+      setStatus(t("playerDeleted"));
+      reloadPlayers();
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setPlayerBusy(null);
+      setPendingDelete(null);
+    }
+  };
+
+  const activatePlayer = async (name: string) => {
+    if (playerBusy) return;
+    setPlayerBusy(`activate-${name}`);
+    setError(null);
+    try {
+      await apiClient.activatePlayer(name);
+      setStatus(t("playerActivated"));
+      reloadPlayers();
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setPlayerBusy(null);
     }
   };
 
@@ -296,18 +365,101 @@ function ProfileInner() {
             <CardContent className="space-y-3">
               {players.map((p, i) => {
                 const label = p.name ?? p.id ?? String(i);
+                const isRenaming = renaming === label;
                 return (
-                  <div key={p.id ?? i} className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-2 text-sm">
-                      <PlayerAvatar name={label} size={28} />
-                      {label}
-                    </span>
-                    {p.id === auth?.playerId && (
-                      <span className="text-text-muted text-xs">{t("currentPlayer")}</span>
+                  <div
+                    key={p.id ?? i}
+                    className="flex flex-wrap items-center justify-between gap-2"
+                  >
+                    {isRenaming ? (
+                      <span className="flex items-center gap-2">
+                        <Input
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          maxLength={16}
+                          aria-label={t("renamePlayer")}
+                          className="h-8 w-40"
+                        />
+                        <Button
+                          size="sm"
+                          disabled={playerBusy !== null || !renameValue.trim()}
+                          onClick={() => void renamePlayer(label)}
+                        >
+                          {playerBusy === `rename-${label}` && (
+                            <Loader2Icon className="animate-spin" />
+                          )}
+                          {t("saveRename")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setRenaming(null);
+                            setRenameValue("");
+                          }}
+                        >
+                          {t("cancelRename")}
+                        </Button>
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2 text-sm">
+                        <PlayerAvatar name={label} size={28} />
+                        {label}
+                        {p.active && <Badge variant="secondary">{t("currentPlayer")}</Badge>}
+                      </span>
+                    )}
+                    {!isRenaming && (
+                      <span className="flex items-center gap-1.5">
+                        {!p.active && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={playerBusy !== null}
+                            onClick={() => void activatePlayer(label)}
+                          >
+                            {t("setActive")}
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={playerBusy !== null}
+                          onClick={() => {
+                            setRenaming(label);
+                            setRenameValue(label);
+                          }}
+                        >
+                          <PencilIcon />
+                          {t("renamePlayer")}
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          // 后端拒绝删除唯一玩家（409）；这里同时禁用按钮，避免必然失败的操作
+                          disabled={playerBusy !== null || players.length <= 1}
+                          onClick={() => setPendingDelete(label)}
+                        >
+                          <Trash2Icon />
+                          {t("deletePlayer")}
+                        </Button>
+                      </span>
                     )}
                   </div>
                 );
               })}
+              <ConfirmDialog
+                open={pendingDelete !== null}
+                onOpenChange={(open) => {
+                  if (!open) setPendingDelete(null);
+                }}
+                title={t("deletePlayerTitle")}
+                description={t("deletePlayerHint", { name: pendingDelete ?? "" })}
+                confirmLabel={t("deletePlayer")}
+                busy={playerBusy !== null}
+                onConfirm={() => {
+                  if (pendingDelete) void deletePlayer(pendingDelete);
+                }}
+              />
               {isAuthenticated && players.length === 0 && (
                 <p className="text-text-muted text-sm">{t("noPlayers")}</p>
               )}

@@ -448,6 +448,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/account/players/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 删除玩家（连同其会话与服务器绑定）
+         * @description 账号至少保留一个玩家，删除唯一玩家返回 409。
+         */
+        delete: operations["deletePlayer"];
+        options?: never;
+        head?: never;
+        /**
+         * 玩家改名
+         * @description 离线 UUID 由名字派生，改名会同时更换 uuid，并使该玩家的游戏会话与服务器绑定失效
+         *     （启动器需重新登录）。已绑定微软正版的玩家（名字来自 Mojang）返回 409。
+         */
+        patch: operations["renamePlayer"];
+        trace?: never;
+    };
+    "/account/players/{name}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 设为当前玩家（建会话时优先使用） */
+        post: operations["activatePlayer"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/oauth/{provider}/auth": {
         parameters: {
             query?: never;
@@ -1091,6 +1133,8 @@ export interface components {
             name?: string;
             legacy?: boolean;
             demo?: boolean;
+            /** @description 是否为账号当前选用的玩家（建会话时优先使用） */
+            active?: boolean;
         };
         AuthenticateResponse: {
             accessToken: string;
@@ -1155,6 +1199,8 @@ export interface components {
     };
     parameters: {
         ID: string;
+        /** @description 玩家名（当前账号名下） */
+        PlayerName: string;
     };
     requestBodies: never;
     headers: never;
@@ -1874,6 +1920,103 @@ export interface operations {
             };
             401: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    deletePlayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 玩家名（当前账号名下） */
+                name: components["parameters"]["PlayerName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已删除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            /** @description 不能删除账号下唯一的玩家 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    renamePlayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 玩家名（当前账号名下） */
+                name: components["parameters"]["PlayerName"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description 新名字 */
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 已改名 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Player"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            /** @description 新名字已被占用，或该玩家已绑定正版 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    activatePlayer: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 玩家名（当前账号名下） */
+                name: components["parameters"]["PlayerName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已设为当前玩家 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     oauthAuth: {

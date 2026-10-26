@@ -148,6 +148,19 @@ export const apiClient = {
   addPlayer: (name: string) =>
     request<Player>("/account/players", { method: "POST", body: JSON.stringify({ name }) }),
 
+  // 改名会换 uuid 并使该玩家的游戏会话失效（后端语义，见 spec renamePlayer）
+  renamePlayer: (oldName: string, name: string) =>
+    request<Player>(`/account/players/${encodeURIComponent(oldName)}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    }),
+
+  deletePlayer: (name: string) =>
+    request<void>(`/account/players/${encodeURIComponent(name)}`, { method: "DELETE" }),
+
+  activatePlayer: (name: string) =>
+    request<void>(`/account/players/${encodeURIComponent(name)}/activate`, { method: "POST" }),
+
   avatarByNameUrl: (name: string, size = 64) =>
     `${API_URL}/avatars/by-name/${encodeURIComponent(name)}?size=${size}`,
 
