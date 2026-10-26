@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { SearchIcon } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -33,9 +34,11 @@ export function SkinFilters({ q, sort }: { q: string; sort: string }) {
           value={value}
           onChange={(e) => setValue(e.target.value)}
           placeholder={t("searchPlaceholder")}
+          aria-label={t("search")}
           className="max-w-sm"
         />
         <Button type="submit" variant="outline">
+          <SearchIcon />
           {t("search")}
         </Button>
       </form>

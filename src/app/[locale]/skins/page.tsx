@@ -1,10 +1,15 @@
-import { getTranslations } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { HeartIcon, ImagesIcon, SearchIcon } from "lucide-react";
 import { apiClient } from "@/lib/api";
 import { SiteHeader } from "@/components/site-header";
 import { Link } from "@/i18n/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/empty-state";
+import { Pagination } from "@/components/pagination";
+import { SkinThumb } from "@/components/skin-thumb";
+import { PlayerAvatar } from "@/components/player-avatar";
 import { SkinFilters } from "./filters";
 
 const LIMIT = 12;
@@ -13,7 +18,20 @@ interface PageProps {
   searchParams: Promise<{ q?: string; sort?: string; page?: string }>;
 }
 
-export default async function SkinsPage({ searchParams }: PageProps) {
+export async function generateMetadata({ params }: { params: Promise<{ locale: string }> }) {
+  const { locale } = await params;
+  setRequestLocale(locale);
+  const t = await getTranslations({ locale, namespace: "nav" });
+  return { title: t("skins") };
+}
+
+interface Params {
+  params: Promise<{ locale: string }>;
+}
+
+export default async function SkinsPage({ searchParams, params }: PageProps & Params) {
+  const { locale } = await params;
+  setRequestLocale(locale);
   const sp = await searchParams;
   const t = await getTranslations("skins");
   const sort = sp.sort === "likes" ? "likes" : "newest";
@@ -49,30 +67,46 @@ export default async function SkinsPage({ searchParams }: PageProps) {
           <SkinFilters q={q ?? ""} sort={sort} />
 
           {data.items.length === 0 && (
-            <p className="mt-6 text-sm text-text-muted">{t("empty")}</p>
+            <EmptyState
+              className="mt-8"
+              icon={ImagesIcon}
+              title={q ? t("noResults", { q }) : t("empty")}
+              action={
+                q ? (
+                  <Button render={<Link href="/skins" />} variant="outline" className="mt-1">
+                    <SearchIcon />
+                    {t("search")}
+                  </Button>
+                ) : undefined
+              }
+            />
           )}
 
           {data.items.length > 0 && (
             <>
               <div className="mt-6 grid gap-6 md:grid-cols-3">
                 {data.items.map((item) => (
-                  <Link key={item.id} href={`/skins/${item.id}`} className="block">
-                    <Card className="bg-surface transition hover:bg-surface-raised">
+                  <Link key={item.id} href={`/skins/${item.id}`} className="group block">
+                    <Card className="bg-surface group-hover:shadow-lift transition-all group-hover:-translate-y-0.5">
                       <CardContent className="p-5">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                        <SkinThumb
                           src={apiClient.skinTextureUrl(item.texture_key)}
                           alt={item.player_name}
-                          className="h-40 w-full rounded-md object-contain bg-bg"
                         />
-                        <div className="mt-4 flex items-center justify-between">
-                          <span className="font-display font-medium">{item.player_name}</span>
+                        <div className="mt-4 flex items-center justify-between gap-2">
+                          <span className="flex min-w-0 items-center gap-2">
+                            <PlayerAvatar name={item.player_name} size={26} />
+                            <span className="font-display truncate font-medium">
+                              {item.player_name}
+                            </span>
+                          </span>
                           <Badge variant="secondary">{item.model}</Badge>
                         </div>
-                        <p className="mt-2 line-clamp-2 text-sm text-text-muted">
+                        <p className="text-text-muted mt-2 line-clamp-2 text-sm">
                           {item.description || t("noDesc")}
                         </p>
-                        <div className="mt-3 text-xs text-text-muted">
+                        <div className="text-text-muted mt-3 flex items-center gap-1.5 text-xs">
+                          <HeartIcon className="size-3.5" />
                           {t("likes", { count: item.likes })}
                         </div>
                       </CardContent>
@@ -81,22 +115,16 @@ export default async function SkinsPage({ searchParams }: PageProps) {
                 ))}
               </div>
 
-              <div className="mt-8 flex items-center justify-between">
-                <span className="text-sm text-text-muted">
+              <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
+                <span className="text-text-muted text-sm">
                   {t("pageInfo", { page, total: totalPages })}
                 </span>
-                <div className="flex gap-2">
-                  {page > 1 && (
-                    <Link href={pageHref({ page: page - 1 })}>
-                      <Button variant="outline">{t("prev")}</Button>
-                    </Link>
-                  )}
-                  {page < totalPages && (
-                    <Link href={pageHref({ page: page + 1 })}>
-                      <Button variant="outline">{t("next")}</Button>
-                    </Link>
-                  )}
-                </div>
+                <Pagination
+                  page={page}
+                  totalPages={totalPages}
+                  href={(p) => pageHref({ page: p })}
+                  labels={{ prev: t("prev"), next: t("next"), aria: t("title") }}
+                />
               </div>
             </>
           )}
