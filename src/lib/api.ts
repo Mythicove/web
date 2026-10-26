@@ -161,6 +161,10 @@ export const apiClient = {
   activatePlayer: (name: string) =>
     request<void>(`/account/players/${encodeURIComponent(name)}/activate`, { method: "POST" }),
 
+  // 解除微软正版绑定（幂等）；解绑后该玩家可本地改名
+  unbindPremium: (name: string) =>
+    request<void>(`/account/players/${encodeURIComponent(name)}/premium`, { method: "DELETE" }),
+
   avatarByNameUrl: (name: string, size = 64) =>
     `${API_URL}/avatars/by-name/${encodeURIComponent(name)}?size=${size}`,
 

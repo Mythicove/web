@@ -9,6 +9,7 @@ import {
   Loader2Icon,
   PencilIcon,
   Trash2Icon,
+  UnlinkIcon,
   UploadIcon,
   UserPlusIcon,
 } from "lucide-react";
@@ -153,6 +154,21 @@ function ProfileInner() {
     try {
       await apiClient.activatePlayer(name);
       setStatus(t("playerActivated"));
+      reloadPlayers();
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setPlayerBusy(null);
+    }
+  };
+
+  const unbindPremium = async (name: string) => {
+    if (!name || playerBusy) return;
+    setPlayerBusy(`unbind-${name}`);
+    setError(null);
+    try {
+      await apiClient.unbindPremium(name);
+      setStatus(t("premiumUnbound"));
       reloadPlayers();
     } catch (e) {
       setError(errText(e));
@@ -406,6 +422,7 @@ function ProfileInner() {
                         <PlayerAvatar name={label} size={28} />
                         {label}
                         {p.active && <Badge variant="secondary">{t("currentPlayer")}</Badge>}
+                        {p.premium && <Badge variant="outline">{t("premiumBadge")}</Badge>}
                       </span>
                     )}
                     {!isRenaming && (
@@ -423,7 +440,9 @@ function ProfileInner() {
                         <Button
                           size="sm"
                           variant="outline"
-                          disabled={playerBusy !== null}
+                          // 已绑定正版的玩家名字来自 Mojang，后端拒绝改名（409）；这里直接禁用并提示
+                          disabled={playerBusy !== null || p.premium === true}
+                          title={p.premium ? t("renamePremiumBlocked") : undefined}
                           onClick={() => {
                             setRenaming(label);
                             setRenameValue(label);
@@ -507,6 +526,33 @@ function ProfileInner() {
                 <Link2Icon />
                 {t("bindMicrosoft")}
               </Button>
+              {players.some((p) => p.premium) && (
+                <div className="border-border space-y-2 border-t pt-3">
+                  <p className="text-text-muted text-xs">{t("premiumBoundHint")}</p>
+                  {players
+                    .filter((p) => p.premium)
+                    .map((p) => (
+                      <div key={p.id} className="flex items-center justify-between gap-2 text-sm">
+                        <span className="flex items-center gap-2">
+                          <PlayerAvatar name={p.name ?? ""} size={24} />
+                          {p.name}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={playerBusy !== null}
+                          onClick={() => void unbindPremium(p.name ?? "")}
+                        >
+                          {playerBusy === `unbind-${p.name}` && (
+                            <Loader2Icon className="animate-spin" />
+                          )}
+                          <UnlinkIcon />
+                          {t("unbind")}
+                        </Button>
+                      </div>
+                    ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

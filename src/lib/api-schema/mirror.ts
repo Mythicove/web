@@ -490,6 +490,27 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/account/players/{name}/premium": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 解除微软正版绑定
+         * @description 清空该玩家的 premium_uuid，回到离线身份：此后可以本地改名，贴图不再回退 Mojang。
+         *     幂等——未绑定时同样返回 204。
+         */
+        delete: operations["unbindPremium"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/oauth/{provider}/auth": {
         parameters: {
             query?: never;
@@ -1135,6 +1156,8 @@ export interface components {
             demo?: boolean;
             /** @description 是否为账号当前选用的玩家（建会话时优先使用） */
             active?: boolean;
+            /** @description 是否已绑定微软正版（绑定后不可本地改名） */
+            premium?: boolean;
         };
         AuthenticateResponse: {
             accessToken: string;
@@ -2009,6 +2032,29 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description 已设为当前玩家 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    unbindPremium: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 玩家名（当前账号名下） */
+                name: components["parameters"]["PlayerName"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已解绑（或本就未绑定） */
             204: {
                 headers: {
                     [name: string]: unknown;
