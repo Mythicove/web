@@ -141,6 +141,7 @@ export function RegisterPageClient() {
                   <Captcha
                     driver={req.captcha}
                     siteKey={req.captchaSiteKey}
+                    capUrl={req.captchaCapUrl}
                     onToken={setCaptchaToken}
                   />
                 )}

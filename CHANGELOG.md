@@ -2,6 +2,12 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与语义化版本。
 
+## [Unreleased]
+
+### 新增
+
+- 注册页验证码支持 [Cap](https://github.com/tiagozip/cap)（自托管 PoW 验证码）：driver=cap 时经 npm 包 `cap-widget` 渲染 `<cap-widget>`（不依赖 jsdelivr CDN），实例地址来自 `/api/register-requirements` 新增的 `captchaCapUrl`
+
 ## [0.3.0] - 2026-10-23
 
 Phase 3（Hoard 用户体系前端）。

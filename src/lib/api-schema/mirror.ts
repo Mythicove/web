@@ -1102,9 +1102,11 @@ export interface components {
         RegisterRequirements: {
             registrationDisabled: boolean;
             inviteOnly: boolean;
-            /** @description turnstile | recaptcha | hcaptcha | 空串（不启用） */
+            /** @description turnstile | recaptcha | hcaptcha | cap | 空串（不启用） */
             captcha: string;
             captchaSiteKey: string;
+            /** @description cap driver 的 Standalone 实例公网地址（前端加载控件用）；其余 driver 为空串 */
+            captchaCapUrl: string;
             /** @description 密码最小长度（与后端 account.MinPasswordLength 同源） */
             minPasswordLength: number;
             /** @description 允许的邮箱域名；空数组表示不限制 */
