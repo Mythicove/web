@@ -8,6 +8,10 @@
 
 - 注册页验证码支持 [Cap](https://github.com/tiagozip/cap)（自托管 PoW 验证码）：driver=cap 时经 npm 包 `cap-widget` 渲染 `<cap-widget>`（控件 JS 不依赖 jsdelivr CDN），实例地址来自 `/api/register-requirements` 新增的 `captchaCapUrl`；widget 所需 WASM 默认仍走 jsdelivr，实例开启 `ENABLE_ASSETS_SERVER=true` 时自动探测并改用自托管副本（jsdelivr 不可达地区的部署建议开启）
 
+### 修复
+
+- CSP 放行 cap 验证码：`CAPTCHA_CAP_URL` 环境变量（部署时与 mirror `MIRROR_CAPTCHA_CAP_URL` 保持一致）加入 `connect-src`，并补 `'wasm-unsafe-eval'`、`worker-src 'self' blob:`、blob iframe——此前 cap 的 challenge/WASM/worker 全被自家 CSP 拦截
+
 ## [0.3.0] - 2026-10-23
 
 Phase 3（Hoard 用户体系前端）。
