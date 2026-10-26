@@ -79,15 +79,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     save(meta);
   }, []);
 
+  // 第三方登录回跳：mirror 把一次性换取码放在 ?oauth_code=（不再是 #accessToken=）。
+  // 先把码从地址栏抹掉再兑换，避免它留在浏览历史里被重放。
   const completeOAuthLogin = useCallback(async () => {
-    const hash = window.location.hash;
-    const match = /accessToken=([^&]+)/.exec(hash);
-    if (!match) return;
-    window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    const res = await fetch("/api/auth/session", {
+    const url = new URL(window.location.href);
+    const code = url.searchParams.get("oauth_code");
+    const failed = url.searchParams.get("oauth") === "error";
+    if (!code && !failed) return;
+    url.searchParams.delete("oauth_code");
+    url.searchParams.delete("oauth");
+    const qs = url.searchParams.toString();
+    window.history.replaceState(null, "", url.pathname + (qs ? `?${qs}` : "") + url.hash);
+    if (!code) return;
+    const res = await fetch("/api/auth/oauth-code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accessToken: match[1] }),
+      body: JSON.stringify({ code }),
     });
     if (!res.ok) return;
     const meta = (await res.json()) as AuthState;
