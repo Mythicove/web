@@ -535,10 +535,37 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** OAuth 回调（state 为 URL 时 302 回跳并在 hash 携带 accessToken） */
+        /**
+         * OAuth 回调（state 为 URL 时 302 回跳，query 携带一次性 oauth_code）
+         * @description 回跳不再在 URL fragment 里携带会话令牌（令牌会留在浏览历史且落地页脚本可读）。
+         *     改为发放一次性、短时效（60s、单次消费）的 `oauth_code`，由 web 的服务端路由
+         *     调 `POST /account/exchange-code` 兑换会话并直接落 httpOnly cookie。
+         *     失败时回跳带 `?oauth=error`。
+         */
         get: operations["oauthCallback"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/exchange-code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 用一次性换取码兑换会话
+         * @description 调用方是 web 的服务端路由（BFF），不是浏览器。换取码单次消费，重放返回 401。
+         *     返回的 accessToken 由调用方写入 httpOnly cookie，不回浏览器 URL。
+         */
+        post: operations["exchangeOAuthCode"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2114,12 +2141,53 @@ export interface operations {
                     };
                 };
             };
-            /** @description 回跳前端 */
+            /** @description 回跳前端（`?oauth_code=<一次性码>`，失败时 `?oauth=error`） */
             302: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    exchangeOAuthCode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 兑换成功 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        accessToken: string;
+                        /** @description 当前玩家名（无玩家时省略） */
+                        playerName?: string;
+                        playerId?: string;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            /** @description 换取码无效、已过期或已被消费 */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
             };
         };
     };
