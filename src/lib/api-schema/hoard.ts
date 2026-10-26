@@ -206,6 +206,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/mods/facets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 可选过滤维度（loaders/game_versions/categories） */
+        get: operations["modFacets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/mods": {
         parameters: {
             query?: never;
@@ -547,6 +564,11 @@ export interface components {
             dependency_type: "required" | "optional" | "incompatible" | "embedded";
             /** @description embedded 依赖的展示文件名 */
             file_name?: string;
+        };
+        FacetOptions: {
+            loaders: string[];
+            game_versions: string[];
+            categories: string[];
         };
         SearchResponse: {
             hits: components["schemas"]["Project"][];
@@ -1075,6 +1097,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["SearchResponse"];
+                };
+            };
+        };
+    };
+    modFacets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FacetOptions"];
                 };
             };
         };

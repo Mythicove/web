@@ -243,6 +243,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/avatars/by-name/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 按玩家名出 2D 头像（列表/评论等仅有名字的场景） */
+        get: operations["getAvatarByName"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/renders/head/{uuid}": {
         parameters: {
             query?: never;
@@ -420,7 +437,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** 当前账号名下玩家列表 */
+        get: operations["listPlayers"];
         put?: never;
         /** 为当前账号添加玩家名 */
         post: operations["addPlayer"];
@@ -612,6 +630,23 @@ export interface paths {
         put?: never;
         /** 评论皮肤 */
         post: operations["commentSkin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/register-requirements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 注册前置要求（邀请码/验证码开关），前端据此渲染控件 */
+        get: operations["registerRequirements"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -973,6 +1008,17 @@ export interface components {
             verified: boolean;
             created_at: string;
             player_names: string[];
+        };
+        RegisterRequirements: {
+            registrationDisabled: boolean;
+            inviteOnly: boolean;
+            /** @description turnstile | recaptcha | hcaptcha | 空串（不启用） */
+            captcha: string;
+            captchaSiteKey: string;
+            /** @description 密码最小长度（与后端 account.MinPasswordLength 同源） */
+            minPasswordLength: number;
+            /** @description 允许的邮箱域名；空数组表示不限制 */
+            emailDomains: string[];
         };
         LoginMethod: {
             id: string;
@@ -1519,6 +1565,31 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    getAvatarByName: {
+        parameters: {
+            query?: {
+                size?: number;
+            };
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 头像 PNG */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
     getHeadRender: {
         parameters: {
             query?: never;
@@ -1754,6 +1825,27 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["Error"];
+        };
+    };
+    listPlayers: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Player"][];
+                };
+            };
+            401: components["responses"]["Error"];
         };
     };
     addPlayer: {
@@ -2100,6 +2192,26 @@ export interface operations {
             401: components["responses"]["Error"];
         };
     };
+    registerRequirements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegisterRequirements"];
+                };
+            };
+        };
+    };
     getLoginMethods: {
         parameters: {
             query?: never;
@@ -2369,6 +2481,8 @@ export interface operations {
     adminListAudit: {
         parameters: {
             query?: {
+                /** @description 按 action/actor/target 模糊过滤 */
+                q?: string;
                 offset?: number;
                 limit?: number;
             };

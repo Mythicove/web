@@ -1,7 +1,10 @@
 // 单 API 域名：mirror 与 hoard 的路由不冲突，经同一反代按路径分流。
 // 类型来自 api/specs 生成的 schema（pnpm gen:api），不要手写重复定义。
+import { ApiError } from "@/lib/errors";
 import type { components as mirror } from "@/lib/api-schema/mirror";
 import type { components as hoard } from "@/lib/api-schema/hoard";
+
+export { ApiError };
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
 // SSR/RSC 服务端取数走内部地址（容器内 localhost 不是 API），未配置时退回公共地址。
@@ -10,6 +13,7 @@ const SERVER_API_URL = process.env.API_URL_INTERNAL ?? API_URL;
 export const apiBase = API_URL;
 
 export type RegisterBody = mirror["schemas"]["RegisterRequest"];
+export type RegisterRequirements = mirror["schemas"]["RegisterRequirements"];
 export type Player = mirror["schemas"]["Player"];
 export type AuthenticateResponse = mirror["schemas"]["AuthenticateResponse"];
 export type LoginMethod = mirror["schemas"]["LoginMethod"];
@@ -29,64 +33,138 @@ export type HoardUserTeam = hoard["schemas"]["UserTeam"];
 export type HoardTeamMember = hoard["schemas"]["TeamMember"];
 export type HoardPAT = hoard["schemas"]["PAT"];
 export type HoardDependency = hoard["schemas"]["Dependency"];
+export type HoardFacetOptions = hoard["schemas"]["FacetOptions"];
 
-export interface SearchResult<T> {
-  hits: T[];
-  offset: number;
-  limit: number;
-  total_hits: number;
+export interface UploadProgress {
+  loaded: number;
+  total: number;
 }
 
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    message: string,
-  ) {
-    super(message);
-    this.name = "ApiError";
-  }
-}
-
-async function api<T>(path: string, init?: RequestInit): Promise<T> {
+// request 是全站唯一的 fetch 收口：凭据、no-store、错误归一化都在这一处。
+// 会话凭 httpOnly cookie（mythic_session / hoard_session）携带；开发跨端口为 same-site，生产同源。
+async function request<T>(
+  path: string,
+  init?: RequestInit,
+  // 公开端点不带凭据：开发期跨端口下后端可能回退 ACAO:*，带凭据会被浏览器拒绝；
+  // 会话端点保持 include。生产同源两者等价。
+  credentials: RequestCredentials = "include",
+): Promise<T> {
   const base = typeof window === "undefined" ? SERVER_API_URL : API_URL;
-  const res = await fetch(`${base}${path}`, {
-    ...init,
-    // 会话凭 httpOnly cookie（mythic_session）携带；开发跨端口为 same-site，生产同源。
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
-  });
-  if (!res.ok) throw new ApiError(res.status, `API ${res.status}: ${await res.text()}`);
+  const isForm = init?.body instanceof FormData;
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, {
+      cache: "no-store",
+      ...init,
+      credentials,
+      headers: isForm
+        ? init?.headers
+        : {
+            "Content-Type": "application/json",
+            ...(init?.headers ?? {}),
+          },
+    });
+  } catch {
+    throw new ApiError(0, `network: ${path}`, "network");
+  }
+  if (!res.ok) {
+    const text = await res.text();
+    let detail = text;
+    try {
+      const parsed = JSON.parse(text) as { error?: string; message?: string };
+      detail = parsed.error ?? parsed.message ?? text;
+    } catch {
+      // 非 JSON body（网关/反代错误页）保留截断原文，仅供日志
+    }
+    throw new ApiError(res.status, `${res.status} ${detail.slice(0, 200)}`);
+  }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
 }
 
-const authHeaders = (token?: string) =>
-  token ? { Authorization: `Bearer ${token}` } : undefined;
+// upload 走 XHR：fetch 无法上报上传进度，而 mod jar 可达数百 MB。
+function upload<T>(
+  path: string,
+  body: XMLHttpRequestBodyInit,
+  opts: { headers?: Record<string, string>; onProgress?: (p: UploadProgress) => void } = {},
+): Promise<T> {
+  const base = typeof window === "undefined" ? SERVER_API_URL : API_URL;
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", `${base}${path}`);
+    xhr.withCredentials = true;
+    for (const [k, v] of Object.entries(opts.headers ?? {})) xhr.setRequestHeader(k, v);
+    if (opts.onProgress) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable) opts.onProgress?.({ loaded: e.loaded, total: e.total });
+      };
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) {
+        if (xhr.status === 204 || !xhr.responseText) return resolve(undefined as T);
+        try {
+          return resolve(JSON.parse(xhr.responseText) as T);
+        } catch {
+          return resolve(undefined as T);
+        }
+      }
+      reject(new ApiError(xhr.status, `${xhr.status} ${xhr.responseText.slice(0, 200)}`));
+    };
+    xhr.onerror = () => reject(new ApiError(0, `network: ${path}`, "network"));
+    xhr.send(body);
+  });
+}
+
+const authHeaders = (token?: string) => (token ? { Authorization: `Bearer ${token}` } : undefined);
+
+// asSkinLibPage 是 /skinlib 的形状收口：契约（OpenAPI + 生成类型）规定分页对象；
+// 旧版实例返回裸数组时归一化兼容（滚动升级窗口），并告警契约漂移；
+// 其余不可识别形状抛 contract 错误，避免渲染期 TypeError。
+function asSkinLibPage(data: unknown, offset: number, limit: number): SkinLibPage {
+  if (Array.isArray(data)) {
+    console.warn("[api] /skinlib 返回旧版数组形状，已归一化；请升级 mirror 实例");
+    return { items: data as SkinLibItem[], total: data.length, offset, limit };
+  }
+  if (data && typeof data === "object" && Array.isArray((data as SkinLibPage).items)) {
+    return data as SkinLibPage;
+  }
+  throw new ApiError(502, "contract: /skinlib shape", "contract");
+}
 
 export const apiClient = {
   register: (body: RegisterBody) =>
-    api<{ id: string }>("/account/register", {
+    request<{ id: string }>("/account/register", {
       method: "POST",
       body: JSON.stringify(body),
     }),
 
+  registerRequirements: () =>
+    request<RegisterRequirements>("/api/register-requirements", undefined, "same-origin"),
+
+  listPlayers: () => request<Player[]>("/account/players"),
+
+  addPlayer: (name: string) =>
+    request<Player>("/account/players", { method: "POST", body: JSON.stringify({ name }) }),
+
+  avatarByNameUrl: (name: string, size = 64) =>
+    `${API_URL}/avatars/by-name/${encodeURIComponent(name)}?size=${size}`,
+
+  mojangBindUrl: () => `${API_URL}/mojang/oauth/auth`,
+
   verifyEmail: (token: string) =>
-    api<void>("/account/verify", {
+    request<void>("/account/verify", {
       method: "POST",
       body: JSON.stringify({ token }),
     }),
 
   forgotPassword: (email: string) =>
-    api<void>("/account/forgot-password", {
+    request<void>("/account/forgot-password", {
       method: "POST",
       body: JSON.stringify({ email }),
     }),
 
   resetPassword: (token: string, password: string) =>
-    api<void>("/account/reset-password", {
+    request<void>("/account/reset-password", {
       method: "POST",
       body: JSON.stringify({ token, password }),
     }),
@@ -94,152 +172,172 @@ export const apiClient = {
   oauthUrl: (provider: string, redirectUrl: string) =>
     `${API_URL}/oauth/${provider}/auth?state=${encodeURIComponent(redirectUrl)}`,
 
+  // ---- OIDC（Mirror 为 IdP）：登录/同意 UI 在前端，后端只给 JSON + 重定向凭证 ----
+  // challenge 即流程凭证，故这些调用无需携带凭据（开发跨端口亦不被 CORS 凭据规则拦截）。
+  oauthLoginAccept: (challenge: string, email: string, password: string) =>
+    request<{ redirectTo: string }>(
+      "/oauth2/login/accept",
+      { method: "POST", body: JSON.stringify({ challenge, email, password }) },
+      "same-origin",
+    ),
+
+  oauthConsentInfo: (challenge: string) =>
+    request<{ client_id: string; client_name: string; scopes: string[] }>(
+      `/oauth2/consent?challenge=${encodeURIComponent(challenge)}`,
+      undefined,
+      "same-origin",
+    ),
+
+  oauthConsentAccept: (challenge: string) =>
+    request<{ redirectTo: string }>(
+      "/oauth2/consent/accept",
+      { method: "POST", body: JSON.stringify({ challenge }) },
+      "same-origin",
+    ),
+
+  oauthConsentReject: (challenge: string) =>
+    request<{ redirectTo: string }>(
+      "/oauth2/consent/reject",
+      { method: "POST", body: JSON.stringify({ challenge }) },
+      "same-origin",
+    ),
+
   listLoginMethods: () =>
-    api<{ methods: LoginMethod[] }>("/api/login-methods"),
+    request<{ methods: LoginMethod[] }>("/api/login-methods", undefined, "same-origin"),
 
-  announcement: () => api<Announcement>("/api/announcement"),
+  announcement: () => request<Announcement>("/api/announcement", undefined, "same-origin"),
 
-  listSkinLib: (opts: { q?: string; sort?: "newest" | "likes"; offset?: number; limit?: number } = {}) => {
+  listSkinLib: async (
+    opts: {
+      q?: string;
+      sort?: "newest" | "likes";
+      offset?: number;
+      limit?: number;
+    } = {},
+  ) => {
     const p = new URLSearchParams();
     if (opts.q) p.set("q", opts.q);
     if (opts.sort) p.set("sort", opts.sort);
     p.set("offset", String(opts.offset ?? 0));
     p.set("limit", String(opts.limit ?? 20));
-    return api<SkinLibPage>(`/skinlib?${p.toString()}`);
+    const data = await request<unknown>(`/skinlib?${p.toString()}`, undefined, "same-origin");
+    return asSkinLibPage(data, opts.offset ?? 0, opts.limit ?? 20);
   },
 
-  getSkinLib: (id: string) => api<SkinLibItem>(`/skinlib/${id}`),
+  getSkinLib: (id: string) => request<SkinLibItem>(`/skinlib/${id}`, undefined, "same-origin"),
 
   publishSkin: (playerName: string, description: string) =>
-    api<SkinLibItem>("/skinlib", {
+    request<SkinLibItem>("/skinlib", {
       method: "POST",
       body: JSON.stringify({ playerName, description }),
     }),
 
-  listComments: (id: string) => api<SkinComment[]>(`/skinlib/${id}/comments`),
+  listComments: (id: string) =>
+    request<SkinComment[]>(`/skinlib/${id}/comments`, undefined, "same-origin"),
 
   applySkin: (id: string, playerName: string) =>
-    api<void>(`/skinlib/${id}/apply`, {
+    request<void>(`/skinlib/${id}/apply`, {
       method: "POST",
       body: JSON.stringify({ playerName }),
     }),
 
   report: (targetType: "skin" | "comment", targetID: string, reason: string) =>
-    api<void>("/reports", {
+    request<void>("/reports", {
       method: "POST",
       body: JSON.stringify({ targetType, targetID, reason }),
     }),
 
   skinTextureUrl: (key: string) => `${API_URL}/textures/${key}`,
 
-  likeSkin: (id: string) =>
-    api<void>(`/skinlib/${id}/like`, { method: "POST" }),
+  likeSkin: (id: string) => request<void>(`/skinlib/${id}/like`, { method: "POST" }),
 
   commentSkin: (id: string, content: string) =>
-    api<void>(`/skinlib/${id}/comment`, {
+    request<void>(`/skinlib/${id}/comment`, {
       method: "POST",
       body: JSON.stringify({ content }),
     }),
 
-  uploadSkin: async (name: string, model: string, file: File) => {
-    const res = await fetch(`${API_URL}/skin/${name}?model=${model}`, {
-      method: "POST",
-      credentials: "include",
-      body: await file.arrayBuffer(),
-    });
-    if (!res.ok) throw new Error(`upload ${res.status}`);
-  },
+  uploadSkin: (name: string, model: string, file: File, onProgress?: (p: UploadProgress) => void) =>
+    upload<void>(`/skin/${name}?model=${model}`, file, { onProgress }),
 
-  uploadCape: async (name: string, file: File) => {
-    const res = await fetch(`${API_URL}/cape/${name}`, {
-      method: "POST",
-      credentials: "include",
-      body: await file.arrayBuffer(),
-    });
-    if (!res.ok) throw new Error(`upload ${res.status}`);
-  },
+  uploadCape: (name: string, file: File, onProgress?: (p: UploadProgress) => void) =>
+    upload<void>(`/cape/${name}`, file, { onProgress }),
 
   skinUrl: (name: string) => `${API_URL}/skin/${name}`,
-  capeUrl: (name: string) => `${API_URL}/cape/${name}`,
-  avatarUrl: (uuid: string) => `${API_URL}/avatars/${uuid}`,
 
   // 管理后台：token 传手动管理令牌；传空字符串则凭 httpOnly 会话 cookie
   // （管理员用户登录态），后端 AdminAuth 两者都接受。
   admin: {
     listUsers: (token: string, q = "", offset = 0, limit = 20) =>
-      api<{ users: AdminUser[]; total: number }>(
+      request<{ users: AdminUser[]; total: number }>(
         `/api/admin/users?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`,
         { headers: authHeaders(token) },
       ),
     updateUser: (token: string, id: string, role: string, status: string) =>
-      api<void>(`/api/admin/users/${id}`, {
+      request<void>(`/api/admin/users/${id}`, {
         method: "PATCH",
         headers: authHeaders(token),
         body: JSON.stringify({ role, status }),
       }),
     loginMethods: (token: string) =>
-      api<{ methods: LoginMethod[] }>("/api/admin/login-methods", {
+      request<{ methods: LoginMethod[] }>("/api/admin/login-methods", {
         headers: authHeaders(token),
       }),
     updateLoginMethods: (token: string, methods: LoginMethod[]) =>
-      api<void>("/api/admin/login-methods", {
+      request<void>("/api/admin/login-methods", {
         method: "PUT",
         headers: authHeaders(token),
         body: JSON.stringify({ methods }),
       }),
     announcement: (token: string) =>
-      api<Announcement>("/api/admin/announcement", {
+      request<Announcement>("/api/admin/announcement", {
         headers: authHeaders(token),
       }),
     setAnnouncement: (token: string, a: Announcement) =>
-      api<void>("/api/admin/announcement", {
+      request<void>("/api/admin/announcement", {
         method: "PUT",
         headers: authHeaders(token),
         body: JSON.stringify(a),
       }),
     inviteCodes: (token: string, count: number) =>
-      api<{ codes: string[] }>("/api/admin/invite-codes", {
+      request<{ codes: string[] }>("/api/admin/invite-codes", {
         method: "POST",
         headers: authHeaders(token),
         body: JSON.stringify({ count }),
       }),
     deleteSkinLib: (token: string, id: string) =>
-      api<void>(`/api/admin/skinlib/${id}`, {
+      request<void>(`/api/admin/skinlib/${id}`, {
         method: "DELETE",
         headers: authHeaders(token),
       }),
     deleteComment: (token: string, cid: string) =>
-      api<void>(`/api/admin/comments/${cid}`, {
+      request<void>(`/api/admin/comments/${cid}`, {
         method: "DELETE",
         headers: authHeaders(token),
       }),
-    audit: (token: string, offset = 0, limit = 50) =>
-      api<{ entries: AuditEntry[]; total: number }>(
-        `/api/admin/audit?offset=${offset}&limit=${limit}`,
+    audit: (token: string, q = "", offset = 0, limit = 50) =>
+      request<{ entries: AuditEntry[]; total: number }>(
+        `/api/admin/audit?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`,
         { headers: authHeaders(token) },
       ),
     reports: (token: string, status = "", offset = 0, limit = 50) =>
-      api<{ reports: Report[]; total: number }>(
+      request<{ reports: Report[]; total: number }>(
         `/api/admin/reports?status=${encodeURIComponent(status)}&offset=${offset}&limit=${limit}`,
         { headers: authHeaders(token) },
       ),
     resolveReport: (token: string, id: string, status: "dismissed" | "acted") =>
-      api<void>(`/api/admin/reports/${id}/resolve`, {
+      request<void>(`/api/admin/reports/${id}/resolve`, {
         method: "POST",
         headers: authHeaders(token),
         body: JSON.stringify({ status }),
       }),
     skins: (token: string, status = "", offset = 0, limit = 50) =>
-      api<{ items: SkinLibItem[]; total: number }>(
+      request<{ items: SkinLibItem[]; total: number }>(
         `/api/admin/skins?status=${encodeURIComponent(status)}&offset=${offset}&limit=${limit}`,
         { headers: authHeaders(token) },
       ),
-    setSkinStatus: (
-      token: string,
-      id: string,
-      status: "listed" | "unlisted" | "under_review",
-    ) =>
-      api<void>(`/api/admin/skins/${id}/status`, {
+    setSkinStatus: (token: string, id: string, status: "listed" | "unlisted" | "under_review") =>
+      request<void>(`/api/admin/skins/${id}/status`, {
         method: "POST",
         headers: authHeaders(token),
         body: JSON.stringify({ status }),
@@ -247,122 +345,111 @@ export const apiClient = {
   },
 };
 
-// hoardApi 是 hoard 端点的 fetch 包装：SSO 会话凭 httpOnly cookie（credentials）携带。
-async function hoardApi<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, { credentials: "include", ...init });
-  if (!res.ok) throw new ApiError(res.status, `API ${res.status}: ${await res.text()}`);
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
-}
-
+// hoardClient 是 hoard 端点的收口：SSO 会话凭 httpOnly cookie（credentials）携带。
 export const hoardClient = {
-  search: async (q = "", offset = 0, limit = 20) => {
-    const res = await fetch(
-      `${API_URL}/api/mods?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}`,
-    );
-    if (!res.ok) throw new Error(`API ${res.status}`);
-    return (await res.json()) as HoardSearchResponse;
-  },
+  search: (q = "", offset = 0, limit = 20, facets?: string) =>
+    request<HoardSearchResponse>(
+      `/api/mods?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${
+        facets ? `&facets=${encodeURIComponent(facets)}` : ""
+      }`,
+      undefined,
+      "same-origin",
+    ),
 
-  versions: async (projectId: string) => {
-    const res = await fetch(`${API_URL}/v2/project/${projectId}/version`);
-    if (!res.ok) throw new Error(`API ${res.status}`);
-    return (await res.json()) as HoardVersion[];
-  },
+  facets: () => request<HoardFacetOptions>("/api/mods/facets", undefined, "same-origin"),
 
-  project: (id: string) => hoardApi<HoardProject>(`/v2/project/${id}`),
+  versions: (projectId: string) =>
+    request<HoardVersion[]>(`/v2/project/${projectId}/version`, undefined, "same-origin"),
 
-  dependencies: (id: string) => hoardApi<HoardDependency[]>(`/v2/project/${id}/dependencies`),
+  project: (id: string) => request<HoardProject>(`/v2/project/${id}`, undefined, "same-origin"),
 
-  iconUrl: (id: string) => `${API_URL}/api/mods/${id}/icon`,
+  dependencies: (id: string) =>
+    request<HoardDependency[]>(`/v2/project/${id}/dependencies`, undefined, "same-origin"),
 
   // ---- SSO 会话（httpOnly cookie，credentials 携带）----
-  loginUrl: () => `${API_URL}/auth/oidc/login`,
+  // next 为登录完成后的站内回跳绝对地址（静默 SSO 回到发起页）；
+  // hoard 侧以 CORS 白名单校验 origin，防开放重定向。
+  loginUrl: (path?: string) =>
+    `${API_URL}/auth/oidc/login${
+      path
+        ? `?next=${encodeURIComponent((typeof window === "undefined" ? "" : window.location.origin) + path)}`
+        : ""
+    }`,
 
-  me: () => hoardApi<HoardUser>("/auth/me"),
+  me: () => request<HoardUser>("/auth/me"),
 
   logoutHoard: async () => {
     await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
   },
 
   // ---- 团队 ----
-  myTeams: () => hoardApi<HoardUserTeam[]>("/api/user/teams"),
+  myTeams: () => request<HoardUserTeam[]>("/api/user/teams"),
 
   createTeam: (name: string) =>
-    hoardApi<{ id: string }>("/api/team", {
+    request<{ id: string }>("/api/team", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name }),
     }),
 
-  teamMembers: (id: string) => hoardApi<HoardTeamMember[]>(`/api/team/${id}/members`),
+  teamMembers: (id: string) => request<HoardTeamMember[]>(`/api/team/${id}/members`),
 
   addTeamMember: (id: string, sub: string, role: string) =>
-    hoardApi<void>(`/api/team/${id}/members`, {
+    request<void>(`/api/team/${id}/members`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ sub, role }),
     }),
 
   removeTeamMember: (id: string, sub: string) =>
-    hoardApi<void>(`/api/team/${id}/members/${sub}`, { method: "DELETE" }),
+    request<void>(`/api/team/${id}/members/${sub}`, { method: "DELETE" }),
 
   // ---- PAT ----
-  listPATs: () => hoardApi<HoardPAT[]>("/api/user/pats"),
+  listPATs: () => request<HoardPAT[]>("/api/user/pats"),
 
   createPAT: (name: string, scopes: string[], expiresInDays: number) =>
-    hoardApi<{ id: string; token: string }>("/api/user/pats", {
+    request<{ id: string; token: string }>("/api/user/pats", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name, scopes, expires_in_days: expiresInDays }),
     }),
 
-  deletePAT: (id: string) => hoardApi<void>(`/api/user/pats/${id}`, { method: "DELETE" }),
+  deletePAT: (id: string) => request<void>(`/api/user/pats/${id}`, { method: "DELETE" }),
 
   // ---- 用户级上传（Modrinth 形 multipart）----
-  createProject: async (data: Record<string, unknown>, file: File) => {
+  createProject: (
+    data: Record<string, unknown>,
+    file: File,
+    onProgress?: (p: UploadProgress) => void,
+  ) => {
     const form = new FormData();
     form.set("data", JSON.stringify(data));
     form.set("file", file);
-    return hoardApi<HoardProject>("/v2/project", { method: "POST", body: form });
+    return upload<HoardProject>("/v2/project", form, { onProgress });
   },
 
-  addVersion: async (data: Record<string, unknown>, file: File) => {
+  addVersion: (
+    data: Record<string, unknown>,
+    file: File,
+    onProgress?: (p: UploadProgress) => void,
+  ) => {
     const form = new FormData();
     form.set("data", JSON.stringify(data));
     form.set("file", file);
-    return hoardApi<HoardVersion>("/v2/version", { method: "POST", body: form });
+    return upload<HoardVersion>("/v2/version", form, { onProgress });
   },
 
-  deleteProject: (id: string) => hoardApi<void>(`/v2/project/${id}`, { method: "DELETE" }),
+  deleteProject: (id: string) => request<void>(`/v2/project/${id}`, { method: "DELETE" }),
 
-  uploadMod: async (form: FormData, adminToken?: string) => {
-    const res = await fetch(`${API_URL}/api/mods`, {
-      method: "POST",
-      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : undefined,
-      body: form,
-    });
-    if (!res.ok) throw new Error(`upload ${res.status}`);
-  },
-
-  setStatus: async (id: string, status: string, adminToken: string) => {
-    const res = await fetch(`${API_URL}/api/mods/${id}/status`, {
+  setStatus: (id: string, status: string, adminToken: string) =>
+    request<void>(`/api/mods/${id}/status`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${adminToken}` },
+      headers: { Authorization: `Bearer ${adminToken}` },
       body: JSON.stringify({ status }),
-    });
-    if (!res.ok) throw new Error(`update ${res.status}`);
-  },
+    }),
 
-  deleteMod: async (id: string, adminToken: string) => {
-    const res = await fetch(`${API_URL}/api/mods/${id}`, {
+  deleteMod: (id: string, adminToken: string) =>
+    request<void>(`/api/mods/${id}`, {
       method: "DELETE",
       headers: { Authorization: `Bearer ${adminToken}` },
-    });
-    if (!res.ok) throw new Error(`delete ${res.status}`);
-  },
+    }),
 
-  downloadUrl: (id: string) => `${API_URL}/api/mods/${id}/download`,
-  mrpackUrl: (id: string, vid: string) =>
-    `${API_URL}/v2/project/${id}/version/${vid}/mrpack`,
+  mrpackUrl: (id: string, vid: string) => `${API_URL}/v2/project/${id}/version/${vid}/mrpack`,
 };
