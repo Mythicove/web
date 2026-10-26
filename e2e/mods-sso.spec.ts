@@ -83,6 +83,8 @@ test("mods SSO + user upload loop", async ({ page }) => {
   const patSection = page.locator("section").filter({ hasText: "Personal access tokens" });
   await patSection.locator("input").first().fill("ci-token");
   await page.getByRole("button", { name: "Create token" }).click();
-  await expect(page.getByText(/mhp_/)).toBeVisible({ timeout: 15_000 });
+  // 明文令牌只出现一次；限定在 PAT 区并用 first()：getByText 会同时命中承载该文本的
+  // 祖先容器，不限定会触发 strict mode violation。
+  await expect(patSection.getByText(/mhp_/).first()).toBeVisible({ timeout: 15_000 });
   await expect(page.getByText("ci-token").first()).toBeVisible();
 });
