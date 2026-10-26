@@ -80,6 +80,7 @@ jobs:
           MIRROR_WEB_URL=http://localhost:3110 \
           MIRROR_BASE_URL=http://localhost:8090 \
           MIRROR_ADMIN_TOKEN=e2e-admin \
+          MIRROR_CORS_ORIGINS=http://localhost:3110 \
           nohup /tmp/mirror-server > /tmp/mirror.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:18080/healthz >/dev/null && echo "mirror up" && break || sleep 1; done
           curl -sf http://localhost:18080/healthz >/dev/null || { echo "mirror failed to start"; cat /tmp/mirror.log; exit 1; }
@@ -88,18 +89,19 @@ jobs:
           SECRET_HASH=$(printf 'hoard-e2e-secret' | sha256sum | cut -d' ' -f1)
           curl -sf -X POST http://localhost:18080/api/admin/oauth-clients \
             -H 'Authorization: Bearer e2e-admin' -H 'Content-Type: application/json' \
-            -d "{\"id\":\"hoard-e2e\",\"name\":\"Hoard E2E\",\"secret_hash\":\"$SECRET_HASH\",\"redirect_uris\":[\"http://localhost:8090/auth/oidc/callback\"],\"grant_types\":[\"authorization_code\",\"refresh_token\"],\"scopes\":[\"openid\",\"profile\",\"email\"],\"public\":false}"
+            -d "{\"id\":\"hoard-e2e\",\"name\":\"Hoard E2E\",\"secret_hash\":\"$SECRET_HASH\",\"redirect_uris\":[\"http://localhost:8090/auth/oidc/callback\"],\"grant_types\":[\"authorization_code\",\"refresh_token\"],\"scopes\":[\"openid\",\"profile\",\"email\"],\"public\":false,\"first_party\":true}"
       - name: start hoard
         run: |
           HOARD_LISTEN_ADDR=:18081 \
           HOARD_BASE_URL=http://localhost:8090 \
-          HOARD_DATABASE_URL='postgres://mirror:mirror@localhost:5432/hoard_e2e?sslmode=disable' \
+          HOARD_DATABASE_URL='postgres://mirror:mirror@localhost:5432/hoard_e2e?sslmode=disable&options=-csearch_path%3Dhoard' \
           HOARD_DATA_DIR=/tmp/hoard-files \
           HOARD_ADMIN_TOKEN=e2e-hoard-admin \
           HOARD_OIDC_ISSUER=http://localhost:8090 \
           HOARD_OIDC_CLIENT_ID=hoard-e2e \
           HOARD_OIDC_CLIENT_SECRET=hoard-e2e-secret \
           HOARD_OIDC_REDIRECT_URL=http://localhost:8090/auth/oidc/callback \
+          HOARD_OIDC_INTERNAL_BASE_URL=http://localhost:18080 \
           HOARD_CORS_ORIGINS=http://localhost:3110 \
           nohup /tmp/hoard-server > /tmp/hoard.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:18081/healthz >/dev/null && echo "hoard up" && break || sleep 1; done
@@ -109,7 +111,7 @@ jobs:
           version: 10.28.2
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: "24"
           cache: pnpm
       - name: install
         run: pnpm install --frozen-lockfile
