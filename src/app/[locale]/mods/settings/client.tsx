@@ -4,14 +4,23 @@ import { useCallback, useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import {
+  InboxIcon,
   KeyRoundIcon,
   Loader2Icon,
   PlusIcon,
   Trash2Icon,
   UserMinusIcon,
+  UserPlusIcon,
   UsersIcon,
 } from "lucide-react";
-import { hoardClient, type HoardPAT, type HoardTeamMember, type HoardUserTeam } from "@/lib/api";
+import {
+  hoardClient,
+  type HoardPAT,
+  type HoardTeamInvite,
+  type HoardTeamMember,
+  type HoardUserInvite,
+  type HoardUserTeam,
+} from "@/lib/api";
 import { useHoardUser } from "@/lib/hoard-auth";
 import { useErrorText } from "@/lib/errors";
 import { Badge } from "@/components/ui/badge";
@@ -40,6 +49,8 @@ export function ModSettingsPageClient() {
 
   const [teams, setTeams] = useState<HoardUserTeam[]>([]);
   const [members, setMembers] = useState<Record<string, HoardTeamMember[]>>({});
+  const [invites, setInvites] = useState<Record<string, HoardTeamInvite[]>>({});
+  const [myInvites, setMyInvites] = useState<HoardUserInvite[]>([]);
   const [teamName, setTeamName] = useState("");
   const [addSub, setAddSub] = useState<Record<string, string>>({});
   const [pats, setPats] = useState<HoardPAT[]>([]);
@@ -63,18 +74,32 @@ export function ModSettingsPageClient() {
       .then(setPats)
       .catch((e) => toast.error(errText(e)));
   }, [errText]);
+  const loadMyInvites = useCallback(() => {
+    hoardClient
+      .myInvites()
+      .then(setMyInvites)
+      .catch((e) => toast.error(errText(e)));
+  }, [errText]);
 
   useEffect(() => {
     if (user) {
       loadTeams();
       loadPats();
+      loadMyInvites();
     }
-  }, [user, loadTeams, loadPats]);
+  }, [user, loadTeams, loadPats, loadMyInvites]);
 
   const loadMembers = (teamId: string) => {
     hoardClient
       .teamMembers(teamId)
       .then((m) => setMembers((prev) => ({ ...prev, [teamId]: m })))
+      .catch((e) => toast.error(errText(e)));
+  };
+
+  const loadInvites = (teamId: string) => {
+    hoardClient
+      .teamInvites(teamId)
+      .then((list) => setInvites((prev) => ({ ...prev, [teamId]: list })))
       .catch((e) => toast.error(errText(e)));
   };
 
@@ -93,15 +118,50 @@ export function ModSettingsPageClient() {
     }
   };
 
-  const addMember = async (teamId: string) => {
+  // 加入团队需被邀请人同意：这里只发出邀请，不直接写成员。
+  const inviteMember = async (teamId: string) => {
     const sub = (addSub[teamId] ?? "").trim();
     if (!sub || busy) return;
     setBusy(`add-${teamId}`);
     try {
-      await hoardClient.addTeamMember(teamId, sub, "member");
+      await hoardClient.inviteMember(teamId, sub, "member");
       setAddSub({ ...addSub, [teamId]: "" });
-      toast.success(t("memberAdded"));
-      loadMembers(teamId);
+      toast.success(t("memberInvited"));
+      loadInvites(teamId);
+    } catch (e) {
+      toast.error(errText(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const revokeInvite = async (teamId: string, sub: string) => {
+    if (busy) return;
+    setBusy(`revoke-invite-${sub}`);
+    try {
+      await hoardClient.revokeInvite(teamId, sub);
+      toast.success(t("inviteRevoked"));
+      loadInvites(teamId);
+    } catch (e) {
+      toast.error(errText(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const answerInvite = async (teamId: string, accept: boolean) => {
+    if (busy) return;
+    setBusy(accept ? `accept-${teamId}` : `reject-${teamId}`);
+    try {
+      if (accept) {
+        await hoardClient.acceptInvite(teamId);
+        toast.success(t("inviteAccepted"));
+        loadTeams();
+      } else {
+        await hoardClient.rejectInvite(teamId);
+        toast.success(t("inviteRejected"));
+      }
+      loadMyInvites();
     } catch (e) {
       toast.error(errText(e));
     } finally {
@@ -201,7 +261,10 @@ export function ModSettingsPageClient() {
                         <button
                           type="button"
                           className="text-primary mt-2 text-xs hover:underline"
-                          onClick={() => loadMembers(team.team_id)}
+                          onClick={() => {
+                            loadMembers(team.team_id);
+                            if (team.role === "owner") loadInvites(team.team_id);
+                          }}
                         >
                           {t("viewMembers")}
                         </button>
@@ -241,13 +304,44 @@ export function ModSettingsPageClient() {
                                 <Button
                                   size="sm"
                                   disabled={busy !== null}
-                                  onClick={() => void addMember(team.team_id)}
+                                  onClick={() => void inviteMember(team.team_id)}
                                 >
-                                  {busy === `add-${team.team_id}` && (
+                                  {busy === `add-${team.team_id}` ? (
                                     <Loader2Icon className="animate-spin" />
+                                  ) : (
+                                    <UserPlusIcon />
                                   )}
-                                  {t("addMember")}
+                                  {t("inviteMember")}
                                 </Button>
+                              </div>
+                            )}
+                            {team.role === "owner" && (invites[team.team_id] ?? []).length > 0 && (
+                              <div className="border-border mt-3 border-t pt-3">
+                                <p className="text-text-muted text-xs">{t("pendingInvites")}</p>
+                                <div className="mt-1 space-y-1">
+                                  {(invites[team.team_id] ?? []).map((inv) => (
+                                    <div
+                                      key={inv.user_sub}
+                                      className="flex items-center justify-between text-sm"
+                                    >
+                                      <span>
+                                        {inv.username || inv.user_sub}{" "}
+                                        <Badge variant="outline">{inv.role}</Badge>
+                                      </span>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        disabled={busy !== null}
+                                        onClick={() =>
+                                          void revokeInvite(team.team_id, inv.user_sub)
+                                        }
+                                      >
+                                        <Trash2Icon />
+                                        {t("revokeInvite")}
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
                             )}
                           </div>
@@ -258,6 +352,48 @@ export function ModSettingsPageClient() {
                   {teams.length === 0 && <EmptyState icon={UsersIcon} title={t("noTeams")} />}
                 </div>
               </section>
+
+              {myInvites.length > 0 && (
+                <section className="mt-10">
+                  <h2 className="font-display flex items-center gap-2 text-lg font-semibold">
+                    <InboxIcon className="text-text-muted size-4" />
+                    {t("myInvites")}
+                  </h2>
+                  <p className="text-text-muted mt-1 text-xs">{t("myInvitesHint")}</p>
+                  <div className="mt-3 space-y-2">
+                    {myInvites.map((inv) => (
+                      <div
+                        key={inv.team_id}
+                        className="border-border bg-surface flex flex-wrap items-center justify-between gap-2 rounded-lg border px-4 py-2 text-sm"
+                      >
+                        <span>
+                          {inv.team_name || inv.team_id} <Badge variant="outline">{inv.role}</Badge>
+                        </span>
+                        <span className="flex gap-2">
+                          <Button
+                            size="sm"
+                            disabled={busy !== null}
+                            onClick={() => void answerInvite(inv.team_id, true)}
+                          >
+                            {busy === `accept-${inv.team_id}` && (
+                              <Loader2Icon className="animate-spin" />
+                            )}
+                            {t("accept")}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={busy !== null}
+                            onClick={() => void answerInvite(inv.team_id, false)}
+                          >
+                            {t("reject")}
+                          </Button>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
 
               <section className="mt-10">
                 <h2 className="font-display flex items-center gap-2 text-lg font-semibold">

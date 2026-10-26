@@ -34,6 +34,8 @@ export type HoardTeamMember = hoard["schemas"]["TeamMember"];
 export type HoardPAT = hoard["schemas"]["PAT"];
 export type HoardDependency = hoard["schemas"]["Dependency"];
 export type HoardFacetOptions = hoard["schemas"]["FacetOptions"];
+export type HoardTeamInvite = hoard["schemas"]["TeamInvite"];
+export type HoardUserInvite = hoard["schemas"]["UserInvite"];
 
 export interface UploadProgress {
   loaded: number;
@@ -393,14 +395,31 @@ export const hoardClient = {
 
   teamMembers: (id: string) => request<HoardTeamMember[]>(`/api/team/${id}/members`),
 
-  addTeamMember: (id: string, sub: string, role: string) =>
-    request<void>(`/api/team/${id}/members`, {
+  // 变更已有成员角色 / 移交所有权走 POST /api/team/{id}/members（见 spec addTeamMember）；
+  // 暂无 UI，故不在此保留无调用者的包装函数。
+
+  removeTeamMember: (id: string, sub: string) =>
+    request<void>(`/api/team/${id}/members/${sub}`, { method: "DELETE" }),
+
+  // ---- 团队邀请（加入需被邀请人同意）----
+  teamInvites: (id: string) => request<HoardTeamInvite[]>(`/api/team/${id}/invites`),
+
+  inviteMember: (id: string, sub: string, role: "owner" | "member" = "member") =>
+    request<void>(`/api/team/${id}/invites`, {
       method: "POST",
       body: JSON.stringify({ sub, role }),
     }),
 
-  removeTeamMember: (id: string, sub: string) =>
-    request<void>(`/api/team/${id}/members/${sub}`, { method: "DELETE" }),
+  revokeInvite: (id: string, sub: string) =>
+    request<void>(`/api/team/${id}/invites/${encodeURIComponent(sub)}`, { method: "DELETE" }),
+
+  myInvites: () => request<HoardUserInvite[]>("/api/user/invites"),
+
+  acceptInvite: (teamId: string) =>
+    request<void>(`/api/user/invites/${teamId}/accept`, { method: "POST" }),
+
+  rejectInvite: (teamId: string) =>
+    request<void>(`/api/user/invites/${teamId}`, { method: "DELETE" }),
 
   // ---- PAT ----
   listPATs: () => request<HoardPAT[]>("/api/user/pats"),

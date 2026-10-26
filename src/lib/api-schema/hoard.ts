@@ -129,7 +129,11 @@ export interface paths {
         /** 团队成员列表（公开） */
         get: operations["listTeamMembers"];
         put?: never;
-        /** 添加/变更成员（owner 或站点 admin） */
+        /**
+         * 变更已有成员角色 / 移交所有权（owner 或站点 admin）
+         * @description 新增成员不走此端点——加入团队需被邀请人同意，请用 `POST /api/team/{id}/invites`。
+         *     对非成员调用返回 409。把唯一 owner 降级同样返回 409（须先移交所有权）。
+         */
         post: operations["addTeamMember"];
         delete?: never;
         options?: never;
@@ -149,6 +153,95 @@ export interface paths {
         post?: never;
         /** 移除成员（owner/admin）或自己退出 */
         delete: operations["removeTeamMember"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/team/{id}/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 团队的待处理邀请（owner 或站点 admin） */
+        get: operations["listTeamInvites"];
+        put?: never;
+        /**
+         * 邀请用户加入团队（owner 或站点 admin）
+         * @description 写入一条待处理邀请；被邀请人接受后才成为成员。重复邀请覆盖角色。
+         */
+        post: operations["inviteTeamMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/team/{id}/invites/{sub}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 撤回待处理邀请（owner 或站点 admin） */
+        delete: operations["revokeTeamInvite"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/user/invites": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 我收到的待处理团队邀请 */
+        get: operations["listMyTeamInvites"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/user/invites/{teamId}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 接受邀请（成为成员，邀请随即消费） */
+        post: operations["acceptTeamInvite"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/user/invites/{teamId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** 拒绝邀请 */
+        delete: operations["rejectTeamInvite"];
         options?: never;
         head?: never;
         patch?: never;
@@ -539,6 +632,26 @@ export interface components {
             role: "owner" | "member";
             created_at: string;
         };
+        /** @description 管理者视角的待处理邀请 */
+        TeamInvite: {
+            team_id: string;
+            user_sub: string;
+            username: string;
+            /** @enum {string} */
+            role: "owner" | "member";
+            /** @description 邀请人 sub；以静态管理令牌操作时为空串 */
+            invited_by: string;
+            created_at: string;
+        };
+        /** @description 被邀请人视角的待处理邀请 */
+        UserInvite: {
+            team_id: string;
+            team_name: string;
+            /** @enum {string} */
+            role: "owner" | "member";
+            invited_by: string;
+            created_at: string;
+        };
         UserTeam: {
             team_id: string;
             name: string;
@@ -900,7 +1013,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description 已添加 */
+            /** @description 角色已变更 */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -916,6 +1029,13 @@ export interface operations {
             };
             /** @description 团队或用户不存在 */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 目标不是成员（应改用邀请），或会把团队变成无 owner */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -951,6 +1071,199 @@ export interface operations {
                 content?: never;
             };
             /** @description 不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listTeamInvites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 团队 id */
+                id: components["parameters"]["TeamID"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TeamInvite"][];
+                };
+            };
+            /** @description 非 owner/admin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    inviteTeamMember: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 团队 id */
+                id: components["parameters"]["TeamID"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    sub: string;
+                    /**
+                     * @default member
+                     * @enum {string}
+                     */
+                    role?: "owner" | "member";
+                };
+            };
+        };
+        responses: {
+            /** @description 邀请已发出 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 非 owner/admin */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 团队或用户不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 目标已是成员 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    revokeTeamInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 团队 id */
+                id: components["parameters"]["TeamID"];
+                sub: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已撤回 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无权 */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 邀请不存在 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listMyTeamInvites: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UserInvite"][];
+                };
+            };
+        };
+    };
+    acceptTeamInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已接受 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无此待处理邀请 */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rejectTeamInvite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                teamId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已拒绝 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description 无此待处理邀请 */
             404: {
                 headers: {
                     [name: string]: unknown;
