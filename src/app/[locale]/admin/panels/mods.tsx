@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
-import { PackageIcon, Trash2Icon } from "lucide-react";
+import { PackageIcon, SearchIcon, Trash2Icon } from "lucide-react";
 import { hoardClient, type HoardProject } from "@/lib/api";
 import { useErrorText } from "@/lib/errors";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +20,9 @@ import {
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { EmptyState } from "@/components/empty-state";
 import { PageSkeleton } from "@/components/skeleton";
+import { AdminPager } from "./pager";
+
+const LIMIT = 20;
 
 export function ModsPanel({
   token,
@@ -34,18 +37,25 @@ export function ModsPanel({
   const t = useTranslations("admin");
   const errText = useErrorText();
   const [mods, setMods] = useState<HoardProject[] | null>(null);
+  const [total, setTotal] = useState(0);
+  const [q, setQ] = useState("");
+  const [query, setQuery] = useState("");
+  const [page, setPage] = useState(1);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (token === null) return;
     hoardClient
-      .search("", 0, 100)
-      .then((r) => setMods(r.hits))
+      .search(query, (page - 1) * LIMIT, LIMIT)
+      .then((r) => {
+        setMods(r.hits);
+        setTotal(Number(r.total_hits ?? 0));
+      })
       .catch((e) => {
         toast.error(errText(e));
         setMods([]);
       });
-  }, [token, errText]);
+  }, [token, query, page, errText]);
 
   useEffect(() => {
     load();
@@ -74,6 +84,12 @@ export function ModsPanel({
     }
   };
 
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    setPage(1);
+    setQuery(q.trim());
+  };
+
   return (
     <div className="space-y-4">
       {sessionAdmin ? (
@@ -90,6 +106,20 @@ export function ModsPanel({
           />
           <p className="text-text-muted text-xs">{t("hoardTokenHint")}</p>
         </div>
+      )}
+      {token !== null && (
+        <form onSubmit={submit} className="flex max-w-md gap-2">
+          <Input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={t("modSearchPlaceholder")}
+            aria-label={t("modSearchPlaceholder")}
+          />
+          <Button type="submit" variant="outline">
+            <SearchIcon />
+            {t("search")}
+          </Button>
+        </form>
       )}
       {token === null && <p className="text-text-muted text-sm">{t("needToken")}</p>}
       {token !== null && mods === null && <PageSkeleton />}
@@ -139,6 +169,12 @@ export function ModsPanel({
         }}
         title={t("delete")}
         onConfirm={() => void del()}
+      />
+      <AdminPager
+        page={page}
+        pages={Math.max(1, Math.ceil(total / LIMIT))}
+        onPage={setPage}
+        label={t("pageLabel")}
       />
     </div>
   );

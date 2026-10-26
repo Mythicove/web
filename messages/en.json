@@ -370,6 +370,7 @@
     "methodsEmpty": "No login methods",
     "search": "Search",
     "userSearchPlaceholder": "Search by email or nickname…",
+    "modSearchPlaceholder": "Search by title or summary…",
     "auditSearchPlaceholder": "Filter by action / actor / target…",
     "pageLabel": "Page",
     "colReporter": "Reporter",
