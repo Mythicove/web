@@ -31,6 +31,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { SiteHeader } from "@/components/site-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { EmptyState } from "@/components/empty-state";
 import { Skeleton } from "@/components/skeleton";
 
@@ -40,6 +47,13 @@ const PAT_SCOPES = ["UPLOAD"];
 interface PendingRemove {
   teamId: string;
   sub: string;
+}
+
+interface PendingRole {
+  teamId: string;
+  sub: string;
+  name: string;
+  role: "owner" | "member";
 }
 
 export function ModSettingsPageClient() {
@@ -60,6 +74,7 @@ export function ModSettingsPageClient() {
   const [newToken, setNewToken] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [pendingRemove, setPendingRemove] = useState<PendingRemove | null>(null);
+  const [pendingRole, setPendingRole] = useState<PendingRole | null>(null);
   const [pendingRevoke, setPendingRevoke] = useState<string | null>(null);
 
   const loadTeams = useCallback(() => {
@@ -182,6 +197,25 @@ export function ModSettingsPageClient() {
     }
   };
 
+  // 角色变更 = 移交所有权（升为 owner）或降级。后端会拒绝"降级唯一 owner"（409），
+  // 该错误经 toast 呈现，故这里不需要预判团队里还剩几个 owner。
+  const changeRole = async () => {
+    if (!pendingRole) return;
+    const { teamId, sub, role } = pendingRole;
+    setBusy("change-role");
+    try {
+      await hoardClient.setTeamMemberRole(teamId, sub, role);
+      toast.success(t("roleChanged"));
+      setPendingRole(null);
+      loadMembers(teamId);
+      loadTeams();
+    } catch (e) {
+      toast.error(errText(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const createPat = async () => {
     if (!patForm.name.trim() || busy || patScopes.length === 0) return;
     setBusy("pat");
@@ -271,10 +305,39 @@ export function ModSettingsPageClient() {
                         {members[team.team_id] && (
                           <div className="border-border mt-3 space-y-1 border-t pt-3 text-sm">
                             {members[team.team_id].map((m) => (
-                              <div key={m.user_sub} className="flex items-center justify-between">
-                                <span>
-                                  {m.username || m.user_sub}{" "}
-                                  <Badge variant="secondary">{m.role}</Badge>
+                              <div
+                                key={m.user_sub}
+                                className="flex items-center justify-between gap-2"
+                              >
+                                <span className="flex items-center gap-2">
+                                  {m.username || m.user_sub}
+                                  {team.role === "owner" && m.user_sub !== user?.sub ? (
+                                    // owner 可改他人角色（含移交所有权）；改自己会失去管理权，故不提供
+                                    <Select
+                                      value={m.role}
+                                      disabled={busy !== null}
+                                      onValueChange={(v) =>
+                                        setPendingRole({
+                                          teamId: team.team_id,
+                                          sub: m.user_sub,
+                                          name: m.username || m.user_sub,
+                                          role: v === "owner" ? "owner" : "member",
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger className="h-7 w-28 text-xs">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="owner">{t("roleOwner")}</SelectItem>
+                                        <SelectItem value="member">{t("roleMember")}</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <Badge variant="secondary">
+                                      {m.role === "owner" ? t("roleOwner") : t("roleMember")}
+                                    </Badge>
+                                  )}
                                 </span>
                                 {m.user_sub !== user?.sub && team.role === "owner" && (
                                   <Button
@@ -499,6 +562,24 @@ export function ModSettingsPageClient() {
         title={t("remove")}
         busy={busy === "remove-member"}
         onConfirm={() => void removeMember()}
+      />
+      <ConfirmDialog
+        open={pendingRole !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingRole(null);
+        }}
+        title={t("roleChangeTitle")}
+        description={
+          pendingRole
+            ? pendingRole.role === "owner"
+              ? t("roleTransferHint", { name: pendingRole.name })
+              : t("roleDemoteHint", { name: pendingRole.name })
+            : undefined
+        }
+        confirmLabel={pendingRole?.role === "owner" ? t("roleOwner") : t("roleMember")}
+        destructive={pendingRole?.role === "member"}
+        busy={busy === "change-role"}
+        onConfirm={() => void changeRole()}
       />
       <ConfirmDialog
         open={pendingRevoke !== null}

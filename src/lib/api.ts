@@ -430,6 +430,14 @@ export const hoardClient = {
   revokeInvite: (id: string, sub: string) =>
     request<void>(`/api/team/${id}/invites/${encodeURIComponent(sub)}`, { method: "DELETE" }),
 
+  // 变更已有成员角色 / 移交所有权（新增成员请用 inviteMember；后端对非成员返回 409，
+  // 对"降级唯一 owner"也返回 409）
+  setTeamMemberRole: (id: string, sub: string, role: "owner" | "member") =>
+    request<void>(`/api/team/${id}/members`, {
+      method: "POST",
+      body: JSON.stringify({ sub, role }),
+    }),
+
   myInvites: () => request<HoardUserInvite[]>("/api/user/invites"),
 
   acceptInvite: (teamId: string) =>
