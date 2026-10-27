@@ -355,7 +355,8 @@
       "audit": "Audit log",
       "reports": "Reports",
       "moderation": "Skin moderation",
-      "brand": "Brand"
+      "brand": "Brand",
+      "site": "Site"
     },
     "colTime": "Time",
     "colActor": "Actor",
@@ -376,6 +377,12 @@
     "brandReset": "Reset to default",
     "brandCurrent": "Current: custom",
     "brandDefault": "Current: default",
+    "siteName": "Site name",
+    "siteDesc": "Site description",
+    "siteCopyright": "Copyright",
+    "siteIcp": "ICP license",
+    "siteCustomCss": "Custom CSS",
+    "siteCustomJs": "Custom JS",
     "inviteCount": "Count",
     "generate": "Generate",
     "generated": "Invite codes generated",

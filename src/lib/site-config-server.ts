@@ -1,6 +1,11 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { normalizeSiteConfig, type SiteBrand, type SiteConfig } from "./site-config-types";
+import {
+  normalizeSiteConfig,
+  type SiteBrand,
+  type SiteConfig,
+  type SiteRuntime,
+} from "./site-config-types";
 
 let cached: SiteConfig | null = null;
 
@@ -31,6 +36,36 @@ export async function readBrand(): Promise<SiteBrand> {
     if (c.light) brand.light = `${publicBase}/api/brand/logo/light?v=${v}`;
     if (c.dark) brand.dark = `${publicBase}/api/brand/logo/dark?v=${v}`;
     return brand;
+  } catch {
+    return {};
+  }
+}
+
+// 服务端读取站点身份/自定义资产（mirror 存储、管理后台维护），ISR 缓存 60s。
+// 文本为空串视为未设置；custom css/js 以同源文件 URL 下发（兼容 CSP script-src/style-src 'self'）。
+export async function readSite(): Promise<SiteRuntime> {
+  const internal =
+    process.env.API_URL_INTERNAL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  const publicBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  try {
+    const res = await fetch(`${internal}/api/site`, { next: { revalidate: 60 } });
+    if (!res.ok) return {};
+    const c = (await res.json()) as {
+      name?: string;
+      description?: string;
+      copyright?: string;
+      icp?: string;
+      customCss?: boolean;
+      customJs?: boolean;
+    };
+    const site: SiteRuntime = {};
+    if (c.name) site.name = c.name;
+    if (c.description) site.description = c.description;
+    if (c.copyright) site.copyright = c.copyright;
+    if (c.icp) site.icp = c.icp;
+    if (c.customCss) site.customCssUrl = `${publicBase}/site/custom.css`;
+    if (c.customJs) site.customJsUrl = `${publicBase}/site/custom.js`;
+    return site;
   } catch {
     return {};
   }

@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { ThemeInitScript } from "@/lib/theme-init";
 import { AuthProvider } from "@/lib/auth";
 import { SiteConfigProvider } from "@/lib/site-config";
-import { readSiteConfig, readBrand } from "@/lib/site-config-server";
+import { readSiteConfig, readBrand, readSite } from "@/lib/site-config-server";
 import { Toaster } from "@/components/ui/sonner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import "../globals.css";
@@ -34,10 +34,14 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "meta" });
+  const site = await readSite();
   return {
     metadataBase: new URL(process.env.NEXT_PUBLIC_WEB_URL ?? "http://localhost:3000"),
-    title: { default: t("default"), template: t("template") },
-    description: t("description"),
+    title: {
+      default: site.name || t("default"),
+      template: site.name ? `%s | ${site.name}` : t("template"),
+    },
+    description: site.description || t("description"),
     // 小群体自用部署默认拒绝索引；SEO 部署设 NEXT_PUBLIC_INDEXABLE=true
     ...(INDEXABLE
       ? {}
@@ -76,6 +80,7 @@ export default async function LocaleLayout({
   const siteConfig = await readSiteConfig();
   // 品牌图标（管理后台上传）随 SiteConfig 一并下发：Logo 首帧 HTML 即拿到正确 src，不闪。
   const brand = await readBrand();
+  const site = await readSite();
 
   return (
     // ThemeInitScript 会在水合前改写 <html> 的内联 style（FOUC 防护），
@@ -87,14 +92,23 @@ export default async function LocaleLayout({
     >
       <head>
         <ThemeInitScript config={siteConfig} />
+        {/* 自定义 CSS/JS 为同源文件（mirror /site/custom.*），script-src/style-src 'self' 下可用 */}
+        {site.customCssUrl && <link rel="stylesheet" href={site.customCssUrl} />}
+        {site.customJsUrl && <script src={site.customJsUrl} defer />}
       </head>
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider>
-          <SiteConfigProvider config={{ ...siteConfig, brand }}>
+          <SiteConfigProvider config={{ ...siteConfig, brand, site }}>
             <ThemeProvider>
               <AuthProvider>
                 <AnnouncementBanner />
                 {children}
+                {(site.copyright || site.icp) && (
+                  <footer className="text-text-muted flex flex-wrap items-center justify-center gap-x-3 gap-y-1 px-6 py-4 text-xs">
+                    {site.copyright && <span>{site.copyright}</span>}
+                    {site.icp && <span>{site.icp}</span>}
+                  </footer>
+                )}
                 <Toaster position="bottom-right" />
               </AuthProvider>
             </ThemeProvider>

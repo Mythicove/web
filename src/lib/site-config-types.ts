@@ -11,10 +11,22 @@ export interface SiteBrand {
   dark?: string;
 }
 
+// 站点身份与自定义前端资产（运行时由管理后台维护、mirror 存储）。
+// 文本缺省时前端回落 i18n 默认；customCss/Js 为同源文件绝对 URL（未设置则无）。
+export interface SiteRuntime {
+  name?: string;
+  description?: string;
+  copyright?: string;
+  icp?: string;
+  customCssUrl?: string;
+  customJsUrl?: string;
+}
+
 export interface SiteConfig {
   modules: string[];
   theme: SiteThemeConfig;
   brand?: SiteBrand;
+  site?: SiteRuntime;
 }
 
 export const DEFAULT_MODULES = ["skin", "mods"];
