@@ -383,7 +383,7 @@
       "moderation": "Skin moderation",
       "brand": "Brand",
       "site": "Site",
-      "authPolicy": "Auth policy"
+      "registration": "Registration"
     },
     "colTime": "Time",
     "colActor": "Actor",
@@ -410,10 +410,10 @@
     "siteIcp": "ICP license",
     "siteCustomCss": "Custom CSS",
     "siteCustomJs": "Custom JS",
-    "policyRequireBinding": "Accounts without a third-party (GitHub/Microsoft) binding cannot game-login or SSO",
-    "policyMaxPlayers": "Max players per account",
-    "policyMaxPlayersInvalid": "Max players must be an integer ≥ 1",
-    "policyPasswordOnly": "{n} legacy password-only accounts remain: they can still log in after master-password login is disabled (grace period) until this reaches zero",
+    "regDisable": "Disable registration",
+    "regInviteOnly": "Invite-code registration only",
+    "regDomains": "Email domain whitelist (one per line/comma; empty = no restriction)",
+    "regCaptchaScopes": "Captcha protection scopes",
     "inviteCount": "Count",
     "generate": "Generate",
     "generated": "Invite codes generated",

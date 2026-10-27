@@ -23,12 +23,10 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Added (earlier rounds, still unreleased)
 
-<<<<<<< HEAD
-
 - CAPTCHA scopes (`captchaScopes`): the login page renders the CAPTCHA widget and submits its token when the scope includes `login`; the register page widget renders only when the scope includes `register` (matching backend enforcement). BFF `/api/auth/login` now calls the new mirror endpoint `POST /account/login` and passes through backend localized error copy (CAPTCHA failure 400 distinguishable from bad credentials 403)
 - Admin console adds a "Brand" panel: upload/reset custom light & dark logos (mirror storage). Logos are injected server-side by the layout via SiteConfig.brand so the first HTML frame already carries the correct src, keeping flicker-free dark/light CSS switching; falls back to built-in `/brand/*.png` when not customized
 - Admin console adds a "Site" panel: site name/description/copyright/filing and custom CSS/JS (mirror storage). The layout overrides metadata with site name/description, the footer renders copyright/filing, and the head injects custom CSS/JS as same-origin `<link>/<script>` (CSP-compatible); all ISR-cached for 60s
-- Admin console adds an "Auth policy" panel: enforce-third-party-binding toggle + max players per account (mirror `auth_policy` settings), plus the legacy password-only account grace counter; the master-password login switch stays on the "Login methods" page (single entry point)
+- Admin console adds a "Registration" panel: disable-registration / invite-only / email-domain whitelist / captcha scopes, now the single source of truth (mirror settings KV); the legacy env vars are seeded once at upgrade via configseed and ignored afterwards
 - Register page CAPTCHA supports [Cap](https://github.com/tiagozip/cap) (self-hosted PoW CAPTCHA): with driver=cap the widget renders via the npm package `cap-widget` as `<cap-widget>` (widget JS does not depend on the jsdelivr CDN); the instance URL comes from the new `captchaCapUrl` in `/api/register-requirements`; the widget's WASM still defaults to jsdelivr, and when the instance enables `ENABLE_ASSETS_SERVER=true` it is auto-detected and switched to the self-hosted copy (recommended for deployments where jsdelivr is unreachable)
 
 ### Fixed

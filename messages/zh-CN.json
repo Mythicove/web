@@ -383,7 +383,7 @@
       "moderation": "皮肤审核",
       "brand": "品牌",
       "site": "站点",
-      "authPolicy": "认证策略"
+      "registration": "注册与验证"
     },
     "colTime": "时间",
     "colActor": "操作者",
@@ -410,10 +410,10 @@
     "siteIcp": "备案",
     "siteCustomCss": "自定义 CSS",
     "siteCustomJs": "自定义 JS",
-    "policyRequireBinding": "未绑定第三方（GitHub/Microsoft）的账号禁止游戏登录与 SSO",
-    "policyMaxPlayers": "单账号玩家数上限",
-    "policyMaxPlayersInvalid": "玩家数上限须为 ≥1 的整数",
-    "policyPasswordOnly": "仍有 {n} 个历史纯密码账号：关闭主密码登录后它们仍可登录（宽限），归零即自然失效",
+    "regDisable": "关闭注册",
+    "regInviteOnly": "仅邀请码注册",
+    "regDomains": "邮箱域名白名单（每行/逗号一个；留空=不限）",
+    "regCaptchaScopes": "验证码保护范围",
     "inviteCount": "数量",
     "generate": "生成",
     "generated": "邀请码已生成",
