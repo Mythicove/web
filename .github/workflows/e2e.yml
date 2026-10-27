@@ -106,6 +106,46 @@ jobs:
           nohup /tmp/hoard-server > /tmp/hoard.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:18081/healthz >/dev/null && echo "hoard up" && break || sleep 1; done
           curl -sf http://localhost:18081/healthz >/dev/null || { echo "hoard failed to start"; cat /tmp/hoard.log; exit 1; }
+      - name: start fake cap siteverify
+        run: |
+          # 假的 Cap Standalone siteverify（只认 JSON 体 + 约定 secret/token），
+          # 让 captcha.spec.ts 能在 CI 里验证"验证码被真正强制校验"
+          nohup node e2e/fixtures/fake-cap-siteverify.mjs > /tmp/fake-cap.log 2>&1 &
+          for i in $(seq 1 20); do curl -s -o /dev/null -X POST http://localhost:18099/ && echo "fake cap up" && break || sleep 1; done
+          curl -s -o /dev/null -X POST http://localhost:18099/ || { echo "fake cap failed to start"; cat /tmp/fake-cap.log; exit 1; }
+      - name: start mirror (captcha enabled)
+        run: |
+          MIRROR_LISTEN_ADDR=:18082 \
+          MIRROR_KEY_PATH=/tmp/mirror-cap-key.pem \
+          MIRROR_TEXTURES_DIR=/tmp/mirror-cap-tex \
+          MIRROR_MAIL_DRIVER=smtp \
+          MIRROR_SMTP_ADDR=localhost:1025 \
+          MIRROR_SMTP_FROM=mirror@e2e.local \
+          MIRROR_WEB_URL=http://localhost:3110 \
+          MIRROR_BASE_URL=http://localhost:18082 \
+          MIRROR_CAPTCHA_DRIVER=cap \
+          MIRROR_CAPTCHA_SITE_KEY=e2e-cap-site-key \
+          MIRROR_CAPTCHA_SECRET=e2e-cap-secret \
+          MIRROR_CAPTCHA_CAP_URL=http://localhost:18099 \
+          nohup /tmp/mirror-server > /tmp/mirror-cap.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:18082/healthz >/dev/null && echo "mirror(cap) up" && break || sleep 1; done
+          curl -sf http://localhost:18082/healthz >/dev/null || { echo "mirror(cap) failed to start"; cat /tmp/mirror-cap.log; exit 1; }
+      - name: start mirror (captcha misconfigured)
+        run: |
+          # 故意缺 SECRET 与 CAP_URL：验证码实例建不起来，注册必须 503 而不是静默放行
+          MIRROR_LISTEN_ADDR=:18083 \
+          MIRROR_KEY_PATH=/tmp/mirror-broken-key.pem \
+          MIRROR_TEXTURES_DIR=/tmp/mirror-broken-tex \
+          MIRROR_MAIL_DRIVER=smtp \
+          MIRROR_SMTP_ADDR=localhost:1025 \
+          MIRROR_SMTP_FROM=mirror@e2e.local \
+          MIRROR_WEB_URL=http://localhost:3110 \
+          MIRROR_BASE_URL=http://localhost:18083 \
+          MIRROR_CAPTCHA_DRIVER=cap \
+          MIRROR_CAPTCHA_SITE_KEY=e2e-cap-site-key \
+          nohup /tmp/mirror-server > /tmp/mirror-broken.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://localhost:18083/healthz >/dev/null && echo "mirror(broken captcha) up" && break || sleep 1; done
+          curl -sf http://localhost:18083/healthz >/dev/null || { echo "mirror(broken) failed to start"; cat /tmp/mirror-broken.log; exit 1; }
       - uses: pnpm/action-setup@v4
         with:
           version: 10.28.2
@@ -142,7 +182,7 @@ jobs:
       - name: upload logs on failure
         if: failure()
         run: |
-          cp /tmp/mirror.log /tmp/hoard.log /tmp/web.log test-results/ 2>/dev/null || true
+          cp /tmp/mirror.log /tmp/hoard.log /tmp/web.log /tmp/fake-cap.log /tmp/mirror-cap.log /tmp/mirror-broken.log test-results/ 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
