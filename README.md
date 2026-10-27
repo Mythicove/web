@@ -60,10 +60,12 @@ pnpm typecheck && pnpm lint && pnpm stylelint && pnpm build
 
 Implemented: landing, signup, login (OAuth buttons and forgot password), email verification and password reset landing pages, skin library list and detail (RSC SSR, search, sort, pagination, likes, comment read and write, apply, report), skin and cape uploads (profile page, local preview and upload progress), 3D preview (skinview3d, responsive and reduced motion), mods list and detail (RSC SSR) with upload wizard and team and PAT management, multi-theme and multi-locale (including the CJK font strategy), admin console (session login and rescue token: users, login methods, announcements, invite codes, mod review, reports, skin review, audit), Playwright E2E in CI.
 
-Known gaps (see docs/plans/status.md and FRONTEND-REMEDIATION.md at the workspace root): no component unit tests or visual regression; profile, auth and admin are client islands (intentional); the compass launcher is still a prototype.
+Known gaps (see the [status page](https://docs.gov.skin/plans/status/) and FRONTEND-REMEDIATION.md at the workspace root): no component unit tests or visual regression; profile, auth and admin are client islands (intentional); the compass launcher is still a prototype.
 
 ## License
 
-[Elastic License 2.0 (ELv2)](./LICENSE)
+[Elastic License 2.0 (ELv2)](./LICENSE) — source-available, not OSI open source. The licensing philosophy and intended-use FAQ live on the docs site: [English](https://docs.gov.skin/en/community/licensing/) · [中文](https://docs.gov.skin/community/licensing/).
+
+Self-hosting, modifying and redistributing are all free, including for a monetized community: selling skins, capes or ranks, or taking donations on top of the software, is fine. ELv2 only restricts offering this software itself to third parties as a hosted/managed service, circumventing license keys, and removing notices.
 
 The repository was released under AGPL-3.0 (v0.1.0 to v0.3.0) and moved to ELv2 on 2026-10-26. See [LICENSE.history](./LICENSE.history) for the history and what it means.
