@@ -2,14 +2,14 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-/* 静态 token：字体、圆角 */
+/* 静态 token：字体、圆角。CJK 用系统字体栈（PingFang/雅黑/Noto），不挂网络字体 */
 @theme {
   --font-display:
-    var(--font-space-grotesk), var(--font-noto-sc), "PingFang SC", "Hiragino Sans GB",
-    "Microsoft YaHei", ui-sans-serif, system-ui, sans-serif;
+    var(--font-space-grotesk), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-sans-serif,
+    system-ui, sans-serif;
   --font-sans:
-    var(--font-inter), var(--font-noto-sc), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-    ui-sans-serif, system-ui, sans-serif;
+    var(--font-inter), "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", ui-sans-serif,
+    system-ui, sans-serif;
 }
 
 /* 运行时 token：语义色由 ThemeProvider 通过 CSS 变量注入 */

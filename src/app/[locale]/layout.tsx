@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Noto_Sans_SC, Space_Grotesk } from "next/font/google";
+import localFont from "next/font/local";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -13,14 +13,17 @@ import { Toaster } from "@/components/ui/sonner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import "../globals.css";
 
-const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
+// 字体自托管（next/font/local + fontsource 可变字体），构建期零外网依赖：
+// 大陆构建环境 fonts.googleapis.com 不可达，next/font/google 会直接失败。
+// CJK 不走网络字体：globals.css 的字体栈已含 PingFang/雅黑/Noto 系统回退。
+const inter = localFont({
+  src: "../../../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2",
+  variable: "--font-inter",
 });
-// 默认 locale 为 zh-CN：拉丁字体不含 CJK 字形，必须显式挂中文字体，
-// 否则中文全部回落系统字体、font-display 对中文完全无效。
-const notoSansSC = Noto_Sans_SC({ variable: "--font-noto-sc" });
+const spaceGrotesk = localFont({
+  src: "../../../node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-wght-normal.woff2",
+  variable: "--font-space-grotesk",
+});
 
 // locale 维度预渲染；数据页自身仍按请求动态取数
 export function generateStaticParams() {
@@ -88,7 +91,7 @@ export default async function LocaleLayout({
     <html
       lang={locale}
       suppressHydrationWarning
-      className={`${inter.variable} ${spaceGrotesk.variable} ${notoSansSC.variable} h-full antialiased`}
+      className={`${inter.variable} ${spaceGrotesk.variable} h-full antialiased`}
     >
       <head>
         <ThemeInitScript config={siteConfig} />
