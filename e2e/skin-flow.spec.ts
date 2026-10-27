@@ -44,7 +44,8 @@ test("skin station full loop", async ({ page }) => {
   await page.fill("#password", password);
   // 限定 main：页头也有一个同名 "Sign in" 按钮（导航用），不限定会触发 strict mode 冲突
   await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
-  await expect(page.getByText("Signed in.")).toBeVisible({ timeout: 15_000 });
+  // 等登录真正落地（跳回首页）："Signed in." 只是跳转前的一帧，断言它会与导航赛跑
+  await page.waitForURL(/\/$/, { timeout: 15_000 });
 
   // 4b. 会话加固：token 不落 localStorage；httpOnly cookie 对 JS 不可读
   //（后续上传/发布步骤凭 cookie 认证成功，即证明 cookie 随请求携带）
