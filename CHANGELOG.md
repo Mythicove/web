@@ -31,7 +31,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Fixed
 
-- CSP allows the Cap CAPTCHA: `CAPTCHA_CAP_URL` env var (keep identical to mirror's `MIRROR_CAPTCHA_CAP_URL` at deploy time) added to `connect-src`, plus `'wasm-unsafe-eval'`, `worker-src 'self' blob:`, blob iframes — previously Cap's challenge/WASM/worker were all blocked by our own CSP
+- CSP allows the Cap CAPTCHA: `CAPTCHA_CAP_URL` env var (keep identical to mirror's `MIRROR_CAPTCHA_CAP_URL` at deploy time) added to `connect-src`, plus `'wasm-unsafe-eval'`, `worker-src 'self' blob:` and blob iframes. Before this fix, Cap's challenge, WASM and worker were all blocked by the site's own CSP
 - Cap's instrumentation probe needs `'unsafe-eval'`: the probe runs `new Function`/`eval` inside a sandboxed srcdoc iframe (the iframe inherits the page CSP and cannot be exempted separately); without it the probe always timed out and **real humans could not pass verification either**; now appended only in deployments that configure `CAPTCHA_CAP_URL` (production default still excludes it). `frame-src` gains `'self'` to allow srcdoc iframes
 - Dockerfile: `CAPTCHA_CAP_URL` build arg (CSP is baked at build time; runtime-only env has no effect); deps/build stages set `NODE_USE_ENV_PROXY=1` so corepack/pnpm/font fetches honor the `HTTP(S)_PROXY` build args (required for image builds behind restricted networks)
 
