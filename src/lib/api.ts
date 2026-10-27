@@ -26,6 +26,7 @@ export type BrandConfig = mirror["schemas"]["BrandConfig"];
 export type SitePublic = mirror["schemas"]["SitePublic"];
 export type SiteAdmin = mirror["schemas"]["SiteAdmin"];
 export type RegistrationPolicy = mirror["schemas"]["RegistrationPolicy"];
+export type OAuthClient = mirror["schemas"]["OAuthClient"];
 export type SkinLibItem = mirror["schemas"]["SkinLibItem"];
 export type SkinLibPage = mirror["schemas"]["SkinLibPage"];
 export type SkinComment = mirror["schemas"]["SkinComment"];
@@ -387,6 +388,19 @@ export const apiClient = {
         method: "PUT",
         headers: authHeaders(token),
         body: JSON.stringify(p),
+      }),
+    oauthClients: (token: string) =>
+      request<OAuthClient[]>("/api/admin/oauth-clients", { headers: authHeaders(token) }),
+    saveOAuthClient: (token: string, c: OAuthClient) =>
+      request<OAuthClient>("/api/admin/oauth-clients", {
+        method: "POST",
+        headers: authHeaders(token),
+        body: JSON.stringify(c),
+      }),
+    deleteOAuthClient: (token: string, id: string) =>
+      request<void>(`/api/admin/oauth-clients/${id}`, {
+        method: "DELETE",
+        headers: authHeaders(token),
       }),
     inviteCodes: (token: string, count: number) =>
       request<{ codes: string[] }>("/api/admin/invite-codes", {

@@ -20,6 +20,7 @@ import { AuditPanel } from "./panels/audit";
 import { BrandPanel } from "./panels/brand";
 import { SitePanel } from "./panels/site";
 import { RegistrationPanel } from "./panels/registration";
+import { OAuthClientsPanel } from "./panels/oauth-clients";
 
 const MIRROR_TOKEN_KEY = "mythicove:admin-token";
 const HOARD_TOKEN_KEY = "mythicove:hoard-admin-token";
@@ -91,6 +92,7 @@ export function AdminPageClient() {
               <TabsTrigger value="brand">{t("tab.brand")}</TabsTrigger>
               <TabsTrigger value="site">{t("tab.site")}</TabsTrigger>
               <TabsTrigger value="registration">{t("tab.registration")}</TabsTrigger>
+              <TabsTrigger value="oauthClients">{t("tab.oauthClients")}</TabsTrigger>
             </TabsList>
             <TabsContent value="users">
               <UsersPanel token={mirrorToken} />
@@ -124,6 +126,9 @@ export function AdminPageClient() {
             </TabsContent>
             <TabsContent value="registration">
               <RegistrationPanel token={mirrorToken} />
+            </TabsContent>
+            <TabsContent value="oauthClients">
+              <OAuthClientsPanel token={mirrorToken} />
             </TabsContent>
           </Tabs>
         </div>
