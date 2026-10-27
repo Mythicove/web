@@ -108,7 +108,7 @@
     "featPremiumBody": "Bind a Microsoft account to keep your real UUID, with skins falling back to Mojang.",
     "featModsTitle": "Mods & modpacks",
     "featModsBody": "Modrinth-compatible uploads, versions and dependency distribution, with one-click .mrpack export.",
-    "footer": "Open-source skin & mod infrastructure"
+    "footer": "Source-available skin & mod infrastructure"
   },
   "theme": {
     "mode": "Mode",

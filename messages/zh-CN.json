@@ -108,7 +108,7 @@
     "featPremiumBody": "绑定 Microsoft 账号保留真实 UUID，皮肤走 Mojang 兜底。",
     "featModsTitle": "模组与整合包",
     "featModsBody": "Modrinth 兼容的上传、版本与依赖分发，.mrpack 一键导出。",
-    "footer": "开源的皮肤与模组基础设施"
+    "footer": "源码可得的皮肤与模组基础设施"
   },
   "theme": {
     "mode": "模式",
