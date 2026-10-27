@@ -379,6 +379,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/account/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * web 登录（login scope 启用时强制验证码）
+         * @description 供 web BFF（`/api/auth/login` 路由处理器）调用，不是浏览器直接端点。
+         *     与 Yggdrasil 的 /authserver/authenticate 的区别：`MIRROR_CAPTCHA_SCOPES` 含 login 时
+         *     强制校验 captchaToken；启动器等协议客户端请继续走 /authserver/authenticate（永不强制验证码）。
+         *     与 /authserver/authenticate 共用按 IP 的 "auth" 限流桶。
+         */
+        post: operations["accountLogin"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/account/verify": {
         parameters: {
             query?: never;
@@ -1076,6 +1099,13 @@ export interface components {
             captchaToken?: string;
             inviteCode?: string;
         };
+        LoginRequest: {
+            /** Format: email */
+            email: string;
+            password: string;
+            /** @description login scope 启用时必填；其余场景忽略 */
+            captchaToken?: string;
+        };
         SkinLibItem: {
             id: string;
             owner_user_id: string;
@@ -1153,6 +1183,8 @@ export interface components {
             captchaSiteKey: string;
             /** @description cap driver 的 Standalone 实例公网地址（前端加载控件用）；其余 driver 为空串 */
             captchaCapUrl: string;
+            /** @description 验证码保护范围（register | login）；前端据此决定注册/登录页是否渲染控件。验证码未生效时为空数组 */
+            captchaScopes: string[];
             /** @description 密码最小长度（与后端 account.MinPasswordLength 同源） */
             minPasswordLength: number;
             /** @description 允许的邮箱域名；空数组表示不限制 */
@@ -1906,6 +1938,33 @@ export interface operations {
             400: components["responses"]["Error"];
             403: components["responses"]["Error"];
             409: components["responses"]["Error"];
+        };
+    };
+    accountLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginRequest"];
+            };
+        };
+        responses: {
+            /** @description OK（形状同 /authserver/authenticate） */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthenticateResponse"];
+                };
+            };
+            400: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            503: components["responses"]["Error"];
         };
     };
     verifyEmail: {

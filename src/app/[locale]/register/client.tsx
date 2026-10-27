@@ -137,7 +137,7 @@ export function RegisterPageClient() {
                     />
                   </div>
                 )}
-                {req?.captcha && req.captchaSiteKey && (
+                {req?.captcha && req.captchaSiteKey && req.captchaScopes.includes("register") && (
                   <Captcha
                     driver={req.captcha}
                     siteKey={req.captchaSiteKey}

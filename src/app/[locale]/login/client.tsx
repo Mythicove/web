@@ -4,14 +4,15 @@ import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Loader2Icon } from "lucide-react";
-import { apiClient, type LoginMethod } from "@/lib/api";
+import { apiClient, type LoginMethod, type RegisterRequirements } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
-import { useErrorText } from "@/lib/errors";
+import { ApiError, useErrorText } from "@/lib/errors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SiteHeader } from "@/components/site-header";
+import { Captcha } from "@/components/captcha";
 import { Link, useRouter } from "@/i18n/navigation";
 
 function LoginInner() {
@@ -25,6 +26,8 @@ function LoginInner() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [methods, setMethods] = useState<LoginMethod[]>([]);
+  const [req, setReq] = useState<RegisterRequirements | null>(null);
+  const [captchaToken, setCaptchaToken] = useState("");
   const [forgot, setForgot] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
   const [forgotBusy, setForgotBusy] = useState(false);
@@ -35,7 +38,15 @@ function LoginInner() {
       .listLoginMethods()
       .then((r) => setMethods(r.methods.filter((m) => m.enabled)))
       .catch(() => setMethods([]));
+    apiClient
+      .registerRequirements()
+      .then(setReq)
+      .catch(() => setReq(null));
   }, [completeOAuthLogin]);
+
+  // login scope 启用且验证码实际生效时才渲染控件（与后端强制点一致）
+  const loginCaptcha =
+    !!req?.captcha && !!req.captchaSiteKey && req.captchaScopes.includes("login");
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -43,12 +54,13 @@ function LoginInner() {
     setBusy(true);
     setError(null);
     try {
-      await login(form.email, form.password);
+      await login(form.email, form.password, captchaToken || undefined);
       // next 仅接受站内相对路径，防开放重定向
       const next = params.get("next");
       router.push(next && next.startsWith("/") && !next.startsWith("//") ? next : "/");
     } catch (err) {
-      setError(errText(err));
+      // 后端本地化文案优先（如验证码失败），否则按状态码回退通用文案
+      setError(err instanceof ApiError && err.message ? err.message : errText(err));
     } finally {
       setBusy(false);
     }
@@ -144,6 +156,14 @@ function LoginInner() {
                       </Button>
                     )}
                   </div>
+                )}
+                {loginCaptcha && req && (
+                  <Captcha
+                    driver={req.captcha}
+                    siteKey={req.captchaSiteKey}
+                    capUrl={req.captchaCapUrl}
+                    onToken={setCaptchaToken}
+                  />
                 )}
                 {error && (
                   <p role="alert" className="text-danger text-sm">
