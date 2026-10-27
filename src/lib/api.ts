@@ -23,6 +23,8 @@ export type AuthPolicy = mirror["schemas"]["AuthPolicy"];
 export type AuthPolicyView = mirror["schemas"]["AuthPolicyView"];
 export type Announcement = mirror["schemas"]["Announcement"];
 export type BrandConfig = mirror["schemas"]["BrandConfig"];
+export type SitePublic = mirror["schemas"]["SitePublic"];
+export type SiteAdmin = mirror["schemas"]["SiteAdmin"];
 export type SkinLibItem = mirror["schemas"]["SkinLibItem"];
 export type SkinLibPage = mirror["schemas"]["SkinLibPage"];
 export type SkinComment = mirror["schemas"]["SkinComment"];
@@ -369,6 +371,13 @@ export const apiClient = {
       request<void>(`/api/admin/brand/logo/${variant}`, {
         method: "DELETE",
         headers: authHeaders(token),
+      }),
+    site: (token: string) => request<SiteAdmin>("/api/admin/site", { headers: authHeaders(token) }),
+    setSite: (token: string, v: SiteAdmin) =>
+      request<void>("/api/admin/site", {
+        method: "PUT",
+        headers: authHeaders(token),
+        body: JSON.stringify(v),
       }),
     inviteCodes: (token: string, count: number) =>
       request<{ codes: string[] }>("/api/admin/invite-codes", {

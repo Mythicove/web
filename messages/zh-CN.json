@@ -381,7 +381,8 @@
       "audit": "审计日志",
       "reports": "举报",
       "moderation": "皮肤审核",
-      "brand": "品牌"
+      "brand": "品牌",
+      "site": "站点"
     },
     "colTime": "时间",
     "colActor": "操作者",
@@ -402,6 +403,12 @@
     "brandReset": "恢复默认",
     "brandCurrent": "当前：自定义",
     "brandDefault": "当前：默认",
+    "siteName": "站点名称",
+    "siteDesc": "站点描述",
+    "siteCopyright": "版权",
+    "siteIcp": "备案",
+    "siteCustomCss": "自定义 CSS",
+    "siteCustomJs": "自定义 JS",
     "inviteCount": "数量",
     "generate": "生成",
     "generated": "邀请码已生成",

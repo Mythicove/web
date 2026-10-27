@@ -903,6 +903,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/site": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 站点身份文本 + 自定义资产是否存在（前端据此挂 link/script 与渲染备案/版权） */
+        get: operations["getSite"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/custom.css": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自定义 CSS（同源文件下发以兼容 CSP；未设置 404） */
+        get: operations["getSiteCustomCSS"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/site/custom.js": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自定义 JS（同源文件下发以兼容 CSP；未设置 404） */
+        get: operations["getSiteCustomJS"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -1037,6 +1088,24 @@ export interface paths {
         post?: never;
         /** 移除自定义品牌图标（回落内置默认图） */
         delete: operations["adminDeleteBrandLogo"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/site": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 站点信息与自定义资产（管理视图） */
+        get: operations["adminGetSite"];
+        /** 设置站点信息与自定义 CSS/JS */
+        put: operations["adminSetSite"];
+        post?: never;
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1441,6 +1510,29 @@ export interface components {
             dark: boolean;
             /** @description 变更版本号，前端用作缓存击穿查询串 */
             version: number;
+        };
+        SiteInfo: {
+            name: string;
+            description: string;
+            copyright: string;
+            /** @description 备案展示文本（中国部署） */
+            icp: string;
+        };
+        SiteAssets: {
+            customCss: string;
+            customJs: string;
+        };
+        SitePublic: {
+            name: string;
+            description: string;
+            copyright: string;
+            icp: string;
+            customCss: boolean;
+            customJs: boolean;
+        };
+        SiteAdmin: {
+            info: components["schemas"]["SiteInfo"];
+            assets: components["schemas"]["SiteAssets"];
         };
         Meta: {
             meta?: {
@@ -2992,6 +3084,68 @@ export interface operations {
             404: components["responses"]["Error"];
         };
     };
+    getSite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SitePublic"];
+                };
+            };
+        };
+    };
+    getSiteCustomCSS: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSS 文本 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/css": string;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    getSiteCustomJS: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description JS 文本 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/javascript": string;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
     adminListUsers: {
         parameters: {
             query?: {
@@ -3254,6 +3408,51 @@ export interface operations {
                 };
                 content?: never;
             };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminGetSite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SiteAdmin"];
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminSetSite: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SiteAdmin"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
             403: components["responses"]["Error"];
         };
     };
