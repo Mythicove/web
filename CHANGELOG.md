@@ -6,6 +6,7 @@
 
 ### 新增
 
+- 验证码保护范围（`captchaScopes`）：登录页在 scope 含 `login` 时渲染验证码控件并随登录提交 token；注册页控件改为仅当 scope 含 `register` 时渲染（与后端强制点一致）。BFF `/api/auth/login` 改调 mirror 新端点 `POST /account/login` 并透传后端本地化错误文案（验证码失败 400 与凭据错误 403 可区分展示）
 - 注册页验证码支持 [Cap](https://github.com/tiagozip/cap)（自托管 PoW 验证码）：driver=cap 时经 npm 包 `cap-widget` 渲染 `<cap-widget>`（控件 JS 不依赖 jsdelivr CDN），实例地址来自 `/api/register-requirements` 新增的 `captchaCapUrl`；widget 所需 WASM 默认仍走 jsdelivr，实例开启 `ENABLE_ASSETS_SERVER=true` 时自动探测并改用自托管副本（jsdelivr 不可达地区的部署建议开启）
 
 ### 修复

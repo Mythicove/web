@@ -8,6 +8,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
+import { ApiError } from "@/lib/errors";
 
 const META_KEY = "mythicove-auth";
 const AUTH_STORE_EVENT = "mythicove-auth-store";
@@ -23,7 +24,7 @@ export interface AuthState {
 interface AuthContextValue {
   auth: AuthState | null;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, captchaToken?: string) => Promise<void>;
   completeOAuthLogin: () => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -68,13 +69,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
   const auth = useMemo(() => parse(raw), [raw]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string, captchaToken?: string) => {
     const res = await fetch("/api/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, captchaToken }),
     });
-    if (!res.ok) throw new Error(`login failed: ${res.status}`);
+    if (!res.ok) {
+      // BFF 透传 mirror 的本地化错误文案（如"验证码校验失败"）；调用方可直接展示 message
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      throw new ApiError(res.status, body?.error ?? "");
+    }
     const meta = (await res.json()) as AuthState;
     save(meta);
   }, []);
