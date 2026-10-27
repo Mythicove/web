@@ -18,6 +18,7 @@ export type Player = mirror["schemas"]["Player"];
 export type AuthenticateResponse = mirror["schemas"]["AuthenticateResponse"];
 export type LoginMethod = mirror["schemas"]["LoginMethod"];
 export type Announcement = mirror["schemas"]["Announcement"];
+export type BrandConfig = mirror["schemas"]["BrandConfig"];
 export type SkinLibItem = mirror["schemas"]["SkinLibItem"];
 export type SkinLibPage = mirror["schemas"]["SkinLibPage"];
 export type SkinComment = mirror["schemas"]["SkinComment"];
@@ -317,6 +318,20 @@ export const apiClient = {
         method: "PUT",
         headers: authHeaders(token),
         body: JSON.stringify(a),
+      }),
+    brand: (token: string) =>
+      request<BrandConfig>("/api/admin/brand", { headers: authHeaders(token) }),
+    // 品牌图标上传为原始 PNG 字节（非 JSON）：request 的 header 展开允许覆盖 Content-Type。
+    setBrandLogo: (token: string, variant: "light" | "dark", png: Blob) =>
+      request<void>(`/api/admin/brand/logo/${variant}`, {
+        method: "PUT",
+        headers: { ...authHeaders(token), "Content-Type": "image/png" },
+        body: png,
+      }),
+    deleteBrandLogo: (token: string, variant: "light" | "dark") =>
+      request<void>(`/api/admin/brand/logo/${variant}`, {
+        method: "DELETE",
+        headers: authHeaders(token),
       }),
     inviteCodes: (token: string, count: number) =>
       request<{ codes: string[] }>("/api/admin/invite-codes", {

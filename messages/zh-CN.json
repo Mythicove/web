@@ -354,7 +354,8 @@
       "mods": "模组审核",
       "audit": "审计日志",
       "reports": "举报",
-      "moderation": "皮肤审核"
+      "moderation": "皮肤审核",
+      "brand": "品牌"
     },
     "colTime": "时间",
     "colActor": "操作者",
@@ -368,6 +369,13 @@
     "annBody": "正文",
     "save": "保存",
     "saved": "已保存",
+    "brandHint": "上传自定义明暗图标（PNG，≤1MiB）。留空则使用内置默认图标；改动约 1 分钟内全站生效。",
+    "brandLight": "浅色图标",
+    "brandDark": "深色图标",
+    "brandUpload": "上传",
+    "brandReset": "恢复默认",
+    "brandCurrent": "当前：自定义",
+    "brandDefault": "当前：默认",
     "inviteCount": "数量",
     "generate": "生成",
     "generated": "邀请码已生成",

@@ -800,6 +800,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/brand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 品牌图标配置（哪些变体被自定义 + 缓存版本号） */
+        get: operations["getBrand"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/brand/logo/{variant}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 自定义品牌图标字节（未自定义时 404，前端回落内置默认图） */
+        get: operations["getBrandLogo"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/users": {
         parameters: {
             query?: never;
@@ -865,6 +899,41 @@ export interface paths {
         put: operations["adminSetAnnouncement"];
         post?: never;
         delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/brand": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 品牌图标配置（管理视图） */
+        get: operations["adminGetBrand"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/brand/logo/{variant}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** 上传自定义品牌图标（请求体为原始 PNG 字节，≤1MiB） */
+        put: operations["adminSetBrandLogo"];
+        post?: never;
+        /** 移除自定义品牌图标（回落内置默认图） */
+        delete: operations["adminDeleteBrandLogo"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1214,6 +1283,14 @@ export interface components {
             title: string;
             body: string;
             enabled: boolean;
+        };
+        BrandConfig: {
+            /** @description 浅色图标是否被自定义 */
+            light: boolean;
+            /** @description 深色图标是否被自定义 */
+            dark: boolean;
+            /** @description 变更版本号，前端用作缓存击穿查询串 */
+            version: number;
         };
         Meta: {
             meta?: {
@@ -2630,6 +2707,49 @@ export interface operations {
             };
         };
     };
+    getBrand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandConfig"];
+                };
+            };
+        };
+    };
+    getBrandLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variant: "light" | "dark";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PNG 字节 */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
     adminListUsers: {
         parameters: {
             query?: {
@@ -2771,6 +2891,74 @@ export interface operations {
                 "application/json": components["schemas"]["Announcement"];
             };
         };
+        responses: {
+            /** @description OK */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminGetBrand: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BrandConfig"];
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminSetBrandLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variant: "light" | "dark";
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "image/png": string;
+            };
+        };
+        responses: {
+            /** @description OK */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+        };
+    };
+    adminDeleteBrandLogo: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variant: "light" | "dark";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
         responses: {
             /** @description OK */
             204: {

@@ -4,9 +4,17 @@ export interface SiteThemeConfig {
   selectable: string[];
 }
 
+// 品牌图标（运行时由管理后台上传、mirror 存储）；缺省回落 web 内置 /brand/*.png。
+// 值为浏览器可达的绝对 URL（服务端按 NEXT_PUBLIC_API_URL 拼好）。
+export interface SiteBrand {
+  light?: string;
+  dark?: string;
+}
+
 export interface SiteConfig {
   modules: string[];
   theme: SiteThemeConfig;
+  brand?: SiteBrand;
 }
 
 export const DEFAULT_MODULES = ["skin", "mods"];

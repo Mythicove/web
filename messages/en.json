@@ -354,7 +354,8 @@
       "mods": "Mod review",
       "audit": "Audit log",
       "reports": "Reports",
-      "moderation": "Skin moderation"
+      "moderation": "Skin moderation",
+      "brand": "Brand"
     },
     "colTime": "Time",
     "colActor": "Actor",
@@ -368,6 +369,13 @@
     "annBody": "Body",
     "save": "Save",
     "saved": "Saved",
+    "brandHint": "Upload custom light/dark logos (PNG, ≤1MiB). Leave unset to use the built-in defaults; changes propagate site-wide within ~1 minute.",
+    "brandLight": "Light logo",
+    "brandDark": "Dark logo",
+    "brandUpload": "Upload",
+    "brandReset": "Reset to default",
+    "brandCurrent": "Current: custom",
+    "brandDefault": "Current: default",
     "inviteCount": "Count",
     "generate": "Generate",
     "generated": "Invite codes generated",

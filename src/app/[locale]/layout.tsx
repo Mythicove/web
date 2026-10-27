@@ -8,7 +8,7 @@ import { ThemeProvider } from "@/lib/theme-provider";
 import { ThemeInitScript } from "@/lib/theme-init";
 import { AuthProvider } from "@/lib/auth";
 import { SiteConfigProvider } from "@/lib/site-config";
-import { readSiteConfig } from "@/lib/site-config-server";
+import { readSiteConfig, readBrand } from "@/lib/site-config-server";
 import { Toaster } from "@/components/ui/sonner";
 import { AnnouncementBanner } from "@/components/announcement-banner";
 import "../globals.css";
@@ -74,6 +74,8 @@ export default async function LocaleLayout({
   // 显式声明本次渲染的 locale 后壳页可预渲染。
   setRequestLocale(locale);
   const siteConfig = await readSiteConfig();
+  // 品牌图标（管理后台上传）随 SiteConfig 一并下发：Logo 首帧 HTML 即拿到正确 src，不闪。
+  const brand = await readBrand();
 
   return (
     // ThemeInitScript 会在水合前改写 <html> 的内联 style（FOUC 防护），
@@ -88,7 +90,7 @@ export default async function LocaleLayout({
       </head>
       <body className="flex min-h-full flex-col">
         <NextIntlClientProvider>
-          <SiteConfigProvider config={siteConfig}>
+          <SiteConfigProvider config={{ ...siteConfig, brand }}>
             <ThemeProvider>
               <AuthProvider>
                 <AnnouncementBanner />

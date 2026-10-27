@@ -17,6 +17,7 @@ import { ModsPanel } from "./panels/mods";
 import { ReportsPanel } from "./panels/reports";
 import { ModerationPanel } from "./panels/moderation";
 import { AuditPanel } from "./panels/audit";
+import { BrandPanel } from "./panels/brand";
 
 const MIRROR_TOKEN_KEY = "mythicove:admin-token";
 const HOARD_TOKEN_KEY = "mythicove:hoard-admin-token";
@@ -85,6 +86,7 @@ export function AdminPageClient() {
               <TabsTrigger value="reports">{t("tab.reports")}</TabsTrigger>
               <TabsTrigger value="moderation">{t("tab.moderation")}</TabsTrigger>
               <TabsTrigger value="audit">{t("tab.audit")}</TabsTrigger>
+              <TabsTrigger value="brand">{t("tab.brand")}</TabsTrigger>
             </TabsList>
             <TabsContent value="users">
               <UsersPanel token={mirrorToken} />
@@ -109,6 +111,9 @@ export function AdminPageClient() {
             </TabsContent>
             <TabsContent value="audit">
               <AuditPanel token={mirrorToken} />
+            </TabsContent>
+            <TabsContent value="brand">
+              <BrandPanel token={mirrorToken} />
             </TabsContent>
           </Tabs>
         </div>
