@@ -1,22 +1,30 @@
-"use client";
-
-import { useTheme } from "@/lib/theme-provider";
 import { cn } from "@/lib/utils";
 
-// 品牌标识使用仓库内真实 logo（docs/src/assets/logo-{light,dark}.png，
-// 同步至 public/brand/），按当前主题切换浅/深底版本，以圆角图标 tile 呈现。
+// 品牌标识使用仓库内真实 logo（docs/src/assets/logo-{light,dark}.png，同步至 public/brand/）。
+// 明暗双图同时渲染，由 CSS 依 html[data-mode] 显示其一（见 globals.css）——
+// data-mode 在首帧内联脚本即写好，故不再有"先浅色再闪成深色"的水合切换。
+const tileClass = "ring-foreground/10 size-8 shrink-0 rounded-[22%] ring-1";
+
 export function LogoMark({ className }: { className?: string }) {
-  const { resolvedMode } = useTheme();
-  const src = resolvedMode === "dark" ? "/brand/logo-dark.png" : "/brand/logo-light.png";
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- 品牌位图为静态资源，需按主题切换 src
-    <img
-      src={src}
-      alt=""
-      width={64}
-      height={64}
-      className={cn("ring-foreground/10 size-8 shrink-0 rounded-[22%] ring-1", className)}
-    />
+    <>
+      {/* eslint-disable-next-line @next/next/no-img-element -- 品牌位图为静态资源，明暗双图由 CSS 切换 */}
+      <img
+        src="/brand/logo-light.png"
+        alt=""
+        width={64}
+        height={64}
+        className={cn(tileClass, "logo-light", className)}
+      />
+      {/* eslint-disable-next-line @next/next/no-img-element -- 品牌位图为静态资源，明暗双图由 CSS 切换 */}
+      <img
+        src="/brand/logo-dark.png"
+        alt=""
+        width={64}
+        height={64}
+        className={cn(tileClass, "logo-dark", className)}
+      />
+    </>
   );
 }
 

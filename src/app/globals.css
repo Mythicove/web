@@ -125,6 +125,14 @@
     background: var(--primary);
     color: var(--primary-foreground);
   }
+
+  /* 品牌 logo 明暗双图按 html[data-mode] 纯 CSS 切换。
+     data-mode 由首帧内联脚本（theme-init.tsx）在水合前写入、ThemeProvider 保持同步，
+     避免 JS 读主题换 src 造成"先浅色后深色"的闪烁。 */
+  html[data-mode="dark"] .logo-light,
+  html:not([data-mode="dark"]) .logo-dark {
+    display: none;
+  }
 }
 
 /* 动效只用于响应交互；尊重系统减弱动效偏好（设计文档 §3.9） */

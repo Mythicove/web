@@ -105,6 +105,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     // 不设置则深色 UI 里会出现浅色系统控件。
     const root = document.documentElement;
     root.style.colorScheme = resolvedMode;
+    // 与首帧脚本（theme-init.tsx）写入同一 data-mode：CSS 据此切换品牌 logo 明暗双图。
+    // 用户运行时改主题时也在此保持同步，避免只在初始加载正确。
+    root.dataset.mode = resolvedMode;
     // 滚动条槽常驻：长短页/加载态切换不因滚动条出现与消失产生横向扰动。
     // 走 JS 而非 CSS：构建管线（Lightning CSS）会丢弃 scrollbar-gutter 声明。
     root.style.scrollbarGutter = "stable";
