@@ -8,7 +8,7 @@ This project follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) an
 
 ### Added
 
-- **Account page "Launcher login" section** ([ADR-0012](https://mythicove.github.io/docs/architecture/adr-0012-credential-separation/)): create/view/revoke independent per-player passwords (name + created time + last used); revocation requires confirmation and explains that launchers signed in with it disconnect immediately; when no credential exists yet, explicitly warns that launcher login will not be possible
+- **Account page "Launcher login" section** ([ADR-0012](https://docs.gov.skin/architecture/adr-0012-credential-separation/)): create/view/revoke independent per-player passwords (name + created time + last used); revocation requires confirmation and explains that launchers signed in with it disconnect immediately; when no credential exists yet, explicitly warns that launcher login will not be possible
 - **Account page "Third-party accounts" section**: lists bound providers and emails; when the site enforces binding and the account is unbound, shows a warning with per-provider bind buttons. No unbinding (under an enforced-binding policy, unbinding equals locking yourself out)
 - **Admin console "Login methods" panel extensions**: enforce-third-party-binding switch, per-account player cap, and after disabling primary-password login a "N password-only accounts remain" counter hint (with an explanation of why it naturally decays to zero)
 - Stable backend error codes `binding_required` / `password_login_disabled` mapped to `errors.*` localized copy (previously `ApiError.code` was only used for network/contract)

@@ -8,7 +8,7 @@
 
 ### 新增
 
-- **账号页「启动器登录」区**（[ADR-0012](https://mythicove.github.io/docs/architecture/adr-0012-credential-separation/)）：为选中玩家创建/查看/撤销独立密码（名称 + 创建时间 + 最近使用），撤销前二次确认并说明"用它登录的启动器会立刻掉线"；尚无凭证时明确提示"将无法从启动器登录"
+- **账号页「启动器登录」区**（[ADR-0012](https://docs.gov.skin/architecture/adr-0012-credential-separation/)）：为选中玩家创建/查看/撤销独立密码（名称 + 创建时间 + 最近使用），撤销前二次确认并说明"用它登录的启动器会立刻掉线"；尚无凭证时明确提示"将无法从启动器登录"
 - **账号页「第三方账号」区**：列出已绑定的 provider 与邮箱；站点强制绑定而未绑定时给出告警与逐个 provider 的绑定按钮。不提供解绑（强制绑定策略下解绑等于自锁）
 - **管理后台「登录方式」面板扩展**：强制绑定第三方开关、每账号玩家数上限，以及关闭主密码登录后的"还有 N 个纯密码账号"计数提示（含它为何会自然归零的说明）
 - 后端稳定错误码 `binding_required` / `password_login_disabled` 映射到 `errors.*` 本地化文案（此前 `ApiError.code` 只用于 network/contract）
