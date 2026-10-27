@@ -25,6 +25,7 @@ export type Announcement = mirror["schemas"]["Announcement"];
 export type BrandConfig = mirror["schemas"]["BrandConfig"];
 export type SitePublic = mirror["schemas"]["SitePublic"];
 export type SiteAdmin = mirror["schemas"]["SiteAdmin"];
+export type RegistrationPolicy = mirror["schemas"]["RegistrationPolicy"];
 export type SkinLibItem = mirror["schemas"]["SkinLibItem"];
 export type SkinLibPage = mirror["schemas"]["SkinLibPage"];
 export type SkinComment = mirror["schemas"]["SkinComment"];
@@ -378,6 +379,14 @@ export const apiClient = {
         method: "PUT",
         headers: authHeaders(token),
         body: JSON.stringify(v),
+      }),
+    registration: (token: string) =>
+      request<RegistrationPolicy>("/api/admin/registration", { headers: authHeaders(token) }),
+    setRegistration: (token: string, p: RegistrationPolicy) =>
+      request<void>("/api/admin/registration", {
+        method: "PUT",
+        headers: authHeaders(token),
+        body: JSON.stringify(p),
       }),
     inviteCodes: (token: string, count: number) =>
       request<{ codes: string[] }>("/api/admin/invite-codes", {

@@ -382,7 +382,8 @@
       "reports": "Reports",
       "moderation": "Skin moderation",
       "brand": "Brand",
-      "site": "Site"
+      "site": "Site",
+      "registration": "Registration"
     },
     "colTime": "Time",
     "colActor": "Actor",
@@ -409,6 +410,10 @@
     "siteIcp": "ICP license",
     "siteCustomCss": "Custom CSS",
     "siteCustomJs": "Custom JS",
+    "regDisable": "Disable registration",
+    "regInviteOnly": "Invite-code registration only",
+    "regDomains": "Email domain whitelist (one per line/comma; empty = no restriction)",
+    "regCaptchaScopes": "Captcha protection scopes",
     "inviteCount": "Count",
     "generate": "Generate",
     "generated": "Invite codes generated",

@@ -1058,6 +1058,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/admin/registration": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 注册与验证策略（关注册/仅邀请/邮箱白名单/验证码范围） */
+        get: operations["adminGetRegistration"];
+        /** 设置注册与验证策略（唯一来源；旧环境变量已废弃，仅升级时播种） */
+        put: operations["adminSetRegistration"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/admin/brand": {
         parameters: {
             query?: never;
@@ -1533,6 +1551,14 @@ export interface components {
         SiteAdmin: {
             info: components["schemas"]["SiteInfo"];
             assets: components["schemas"]["SiteAssets"];
+        };
+        RegistrationPolicy: {
+            disableRegistration: boolean;
+            inviteOnly: boolean;
+            /** @description 允许的邮箱域名；空数组=不限制 */
+            emailDomainWhitelist: string[];
+            /** @description 验证码保护范围（register | login）；空数组=不保护 */
+            captchaScopes: string[];
         };
         Meta: {
             meta?: {
@@ -3330,6 +3356,50 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["Announcement"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminGetRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RegistrationPolicy"];
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminSetRegistration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RegistrationPolicy"];
             };
         };
         responses: {
