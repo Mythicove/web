@@ -1,6 +1,9 @@
 # ---- deps ----
 FROM node:24-alpine AS deps
 WORKDIR /app
+# 大陆 npm 官方源不稳定；corepack 与 pnpm 均走 npmmirror
+ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
+ENV npm_config_registry=https://registry.npmmirror.com
 # Node 24：让 fetch/corepack 遵循 HTTP(S)_PROXY 构建参数（受限网络下构建必需；无代理时为 no-op）
 ENV NODE_USE_ENV_PROXY=1
 COPY package.json pnpm-lock.yaml ./
@@ -10,6 +13,8 @@ RUN corepack enable && pnpm install --frozen-lockfile
 FROM node:24-alpine AS build
 WORKDIR /app
 ENV NODE_USE_ENV_PROXY=1
+ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
+ENV npm_config_registry=https://registry.npmmirror.com
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN corepack enable
