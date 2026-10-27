@@ -27,8 +27,12 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN pnpm build
 
 # ---- run ----
-FROM node:24-alpine AS runner
+# 不用 node:24-alpine 整包（含 npm/corepack 等运行时用不到的 ~40MB）：
+# alpine + 仅拷 node 二进制（musl 需 libstdc++/libgcc），保留 busybox wget 供 compose healthcheck。
+FROM alpine:3.20 AS runner
 WORKDIR /app
+RUN apk add --no-cache libstdc++ libgcc
+COPY --from=build /usr/local/bin/node /usr/local/bin/node
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
