@@ -22,7 +22,7 @@ public/site-config.json：
 | ------------------------- | ------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | NEXT_PUBLIC_LOCALE_PREFIX | never               | never 表示所有语言同路径，语言由 cookie 和 Accept-Language 决定，旧前缀链接 308 兼容；always 表示 /zh-CN/…、/en/… 每语言独立 URL |
 | NEXT_PUBLIC_INDEXABLE     | false               | false 时输出 meta robots noindex,nofollow,nocache（含 googleBot 细则）                                                           |
-| BLOCK_BOTS                | 跟随 INDEXABLE 推导 | 非索引部署对已知抓取和 AI 训练 UA 返回 403（src/proxy.ts）；显式 true 或 false 可覆盖                                            |
+| BLOCK_BOTS                | 跟随 INDEXABLE 推导 | 非索引部署对已知抓取和 AI 训练 UA 返回 403（src/proxy.ts）；显式 false 可强制关闭                                                |
 
 自用小站保持默认即可。对外 SEO 站设 LOCALE_PREFIX=always 和 INDEXABLE=true，compose 已透传为构建参数。
 

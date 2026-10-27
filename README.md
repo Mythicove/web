@@ -22,7 +22,7 @@ public/site-config.json:
 | ------------------------- | ---------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | NEXT_PUBLIC_LOCALE_PREFIX | never                  | never means all locales share one path, chosen by cookie and Accept-Language, with legacy prefixed links 308-compatible; always means separate URLs per locale (/zh-CN/…, /en/…) |
 | NEXT_PUBLIC_INDEXABLE     | false                  | when false, emits meta robots noindex,nofollow,nocache (including googleBot specifics)                                                                                           |
-| BLOCK_BOTS                | derived from INDEXABLE | non-indexed deployments return 403 to known crawler and AI-training UAs (src/proxy.ts); an explicit true or false overrides                                                      |
+| BLOCK_BOTS                | derived from INDEXABLE | non-indexed deployments return 403 to known crawler and AI-training UAs (src/proxy.ts); an explicit false forces it off                                                          |
 
 The defaults are fine for a private small site. For a public SEO-facing site set LOCALE_PREFIX=always and INDEXABLE=true; compose already passes them through as build args.
 
