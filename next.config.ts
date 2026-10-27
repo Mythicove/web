@@ -14,8 +14,12 @@ function csp() {
   // （worker-src blob: + 'wasm-unsafe-eval'），instrumentation 用 blob iframe。
   const cap = process.env.CAPTCHA_CAP_URL ?? "";
   const capSrc = cap ? ` ${cap.replace(/\/+$/, "")}` : "";
-  // dev 工具链（webpack eval-source-map / react-dev-overlay）需要 unsafe-eval；生产不含
-  const evalSrc = process.env.NODE_ENV === "production" ? "" : " 'unsafe-eval'";
+  // dev 工具链（webpack eval-source-map / react-dev-overlay）需要 unsafe-eval。
+  // 生产默认不含；但 cap 的 instrumentation 探针在 sandboxed srcdoc iframe 里
+  // 执行 new Function/eval 探测自动化环境（iframe 继承本页 CSP，无法单独放行），
+  // 不放行则探针全部抛错 → 恒 "Instrumentation timeout"，真人也过不了验证码。
+  // 仅配置了 cap 实例时追加（影响面=启用 cap 的部署）。
+  const evalSrc = process.env.NODE_ENV !== "production" || cap ? " 'unsafe-eval'" : "";
   return [
     "default-src 'self'",
     `connect-src 'self' ${api}${capSrc}`,
@@ -24,7 +28,7 @@ function csp() {
     "style-src 'self' 'unsafe-inline'",
     `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${evalSrc} https://challenges.cloudflare.com https://js.hcaptcha.com https://www.google.com https://www.gstatic.com`,
     "worker-src 'self' blob:",
-    `frame-src https://challenges.cloudflare.com https://www.hcaptcha.com https://www.google.com${cap ? " blob:" : ""}`,
+    `frame-src 'self' https://challenges.cloudflare.com https://www.hcaptcha.com https://www.google.com${cap ? " blob:" : ""}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
