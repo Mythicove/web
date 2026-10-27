@@ -202,6 +202,7 @@
     "inviteMember": "Invite",
     "memberInvited": "Invitation sent — they need to accept it",
     "pendingInvites": "Pending invitations",
+    "inviteExpires": "Expires {date}",
     "revokeInvite": "Revoke",
     "inviteRevoked": "Invitation revoked",
     "myInvites": "Team invitations",

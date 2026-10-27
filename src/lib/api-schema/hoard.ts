@@ -170,7 +170,9 @@ export interface paths {
         put?: never;
         /**
          * 邀请用户加入团队（owner 或站点 admin）
-         * @description 写入一条待处理邀请；被邀请人接受后才成为成员。重复邀请覆盖角色。
+         * @description 写入一条待处理邀请；被邀请人接受后才成为成员。重复邀请覆盖角色并**刷新有效期**
+         *     （默认 7 天，见 TeamInvite.expires_at）。过期的邀请在所有读取路径上视同不存在，
+         *     接受过期邀请返回 404。
          */
         post: operations["inviteTeamMember"];
         delete?: never;
@@ -632,7 +634,7 @@ export interface components {
             role: "owner" | "member";
             created_at: string;
         };
-        /** @description 管理者视角的待处理邀请 */
+        /** @description 管理者视角的待处理邀请（过期的邀请不会出现在任何读取路径上） */
         TeamInvite: {
             team_id: string;
             user_sub: string;
@@ -642,6 +644,8 @@ export interface components {
             /** @description 邀请人 sub；以静态管理令牌操作时为空串 */
             invited_by: string;
             created_at: string;
+            /** @description 过期时刻（RFC3339）；默认签发后 7 天，重新邀请会刷新 */
+            expires_at: string;
         };
         /** @description 被邀请人视角的待处理邀请 */
         UserInvite: {
@@ -651,6 +655,7 @@ export interface components {
             role: "owner" | "member";
             invited_by: string;
             created_at: string;
+            expires_at: string;
         };
         UserTeam: {
             team_id: string;

@@ -389,7 +389,14 @@ export function ModSettingsPageClient() {
                                     >
                                       <span>
                                         {inv.username || inv.user_sub}{" "}
-                                        <Badge variant="outline">{inv.role}</Badge>
+                                        <Badge variant="outline">
+                                          {inv.role === "owner" ? t("roleOwner") : t("roleMember")}
+                                        </Badge>{" "}
+                                        <span className="text-text-muted text-xs">
+                                          {t("inviteExpires", {
+                                            date: new Date(inv.expires_at).toLocaleDateString(),
+                                          })}
+                                        </span>
                                       </span>
                                       <Button
                                         size="sm"
@@ -430,7 +437,15 @@ export function ModSettingsPageClient() {
                         className="border-border bg-surface flex flex-wrap items-center justify-between gap-2 rounded-lg border px-4 py-2 text-sm"
                       >
                         <span>
-                          {inv.team_name || inv.team_id} <Badge variant="outline">{inv.role}</Badge>
+                          {inv.team_name || inv.team_id}{" "}
+                          <Badge variant="outline">
+                            {inv.role === "owner" ? t("roleOwner") : t("roleMember")}
+                          </Badge>{" "}
+                          <span className="text-text-muted text-xs">
+                            {t("inviteExpires", {
+                              date: new Date(inv.expires_at).toLocaleDateString(),
+                            })}
+                          </span>
                         </span>
                         <span className="flex gap-2">
                           <Button

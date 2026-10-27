@@ -202,6 +202,7 @@
     "inviteMember": "邀请",
     "memberInvited": "邀请已发出，需对方接受",
     "pendingInvites": "待处理邀请",
+    "inviteExpires": "{date} 过期",
     "revokeInvite": "撤回",
     "inviteRevoked": "邀请已撤回",
     "myInvites": "团队邀请",
