@@ -6,6 +6,8 @@
     "password": "密码",
     "submit": "继续",
     "badCredentials": "邮箱或密码不正确",
+    "passwordDisabled": "本站已关闭账号密码登录。请到登录页用第三方账号登录，登录后再回到这里继续授权。",
+    "goToLogin": "去登录页",
     "consentTitle": "授权 {client}",
     "consentHint": "该应用将获得以下权限：",
     "approve": "批准",
@@ -254,7 +256,6 @@
     "noPlayers": "还没有玩家，添加一个。",
     "currentPlayer": "当前",
     "setActive": "用这个玩家",
-    "playerActivated": "已设为当前玩家，之后新建的游戏会话将使用它。",
     "renamePlayer": "改名",
     "saveRename": "保存",
     "cancelRename": "取消",
@@ -272,7 +273,30 @@
     "premiumHint": "绑定 Microsoft 账号后保留真实 UUID，皮肤走 Mojang 兜底。",
     "bindMicrosoft": "绑定 Microsoft 账号",
     "bindOk": "正版绑定成功。",
-    "bindError": "绑定失败，请重试。"
+    "bindError": "绑定失败，请重试。",
+    "choosePlayer": "选择一个玩家",
+    "playerNameHint": "上传与应用皮肤都作用于这个玩家。",
+    "launcherTitle": "启动器登录",
+    "launcherHint": "启动器用「玩家名 + 独立密码」登录，与网站密码分开：站点关闭账号密码登录后，启动器仍能正常进服。",
+    "launcherForPlayer": "正在管理：{player}",
+    "noCredentials": "这个玩家还没有独立密码，将无法从启动器登录。",
+    "credentialName": "名称",
+    "credentialNamePlaceholder": "例如：台式机",
+    "credentialPassword": "独立密码",
+    "credentialPasswordHint": "至少 8 位。可以与网站密码相同，两者互不影响；启动器只认独立密码。",
+    "credentialMeta": "创建于 {created}，最近使用 {used}",
+    "neverUsed": "从未使用",
+    "addCredential": "添加独立密码",
+    "credentialAdded": "已添加，现在可以用「玩家名 + 这条密码」从启动器登录。",
+    "revokeCredential": "撤销",
+    "revokeCredentialTitle": "撤销这条独立密码？",
+    "revokeCredentialHint": "用它登录的启动器会立刻掉线，需要重新登录。",
+    "credentialRevoked": "已撤销，相关启动器会话已失效。",
+    "identitiesTitle": "第三方账号",
+    "identitiesHint": "绑定后可用第三方账号登录本站；首次第三方登录会自动关联到同邮箱的账号。",
+    "bindingRequired": "本站要求绑定第三方账号后才能使用皮肤、模组与启动器登录。",
+    "bindWith": "绑定 {provider}",
+    "noOauthProviders": "本站未开启第三方登录，无可绑定的来源。"
   },
   "auth": {
     "registerTitle": "注册账号",
@@ -293,7 +317,9 @@
     "registerOk": "注册成功，请查收邮箱完成验证。",
     "loginOk": "登录成功。",
     "or": "或",
-    "oauthWith": "使用 {provider} 登录"
+    "oauthWith": "使用 {provider} 登录",
+    "passwordDisabled": "本站已改用第三方账号登录，请用下面的方式登录。",
+    "passwordSignupDisabled": "本站已关闭账号密码注册：请用第三方账号登录，首次登录会自动创建账号。"
   },
   "skins": {
     "title": "皮肤库",
@@ -383,6 +409,13 @@
     "deleted": "已删除",
     "usersEmpty": "暂无用户",
     "methodsEmpty": "暂无登录方式",
+    "passwordMethodHint": "关闭后：账号密码注册立即停止，主密码登录只对尚未绑定第三方账号的历史用户放行；启动器不受影响（它用玩家独立密码）。",
+    "requireBinding": "强制绑定第三方账号",
+    "requireBindingHint": "开启后，未绑定第三方账号的用户不能使用皮肤、皮肤库、启动器登录与 SSO；账号页与绑定流程本身不受限。",
+    "maxPlayers": "每个账号的玩家数上限",
+    "maxPlayersHint": "默认 1。已经超出的存量账号不回收，只是不能再新增。",
+    "passwordOnNote": "主密码登录开启中，所有登录方式均可用。",
+    "passwordOnlyCount": "还有 {n} 个纯密码账号（有主密码、未绑定第三方、已验证且未封禁）。它们仍可用主密码登录，直到绑定第三方或消失；归零即代表主密码登录已自然停用。",
     "search": "搜索",
     "userSearchPlaceholder": "按邮箱或昵称搜索…",
     "modSearchPlaceholder": "按标题或简介搜索…",
@@ -416,6 +449,8 @@
     "rateLimited": "操作过于频繁，请稍后再试",
     "server": "服务暂时不可用，请稍后重试",
     "contract": "客户端与服务器版本不一致，请刷新页面或联系管理员",
-    "unknown": "操作失败，请稍后重试"
+    "unknown": "操作失败，请稍后重试",
+    "passwordLoginDisabled": "本站已关闭账号密码登录，请改用第三方账号",
+    "bindingRequired": "需要先绑定第三方账号才能使用该功能"
   }
 }

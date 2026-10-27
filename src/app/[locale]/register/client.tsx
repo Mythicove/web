@@ -23,12 +23,19 @@ export function RegisterPageClient() {
   const [status, setStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [passwordSignup, setPasswordSignup] = useState(true);
 
   useEffect(() => {
     apiClient
       .registerRequirements()
       .then(setReq)
       .catch(() => setReq(null));
+    // 管理员关掉主密码登录时，账号密码注册也一并关闭（后端同一条策略）：
+    // 否则新号一出生就登不进来。首次第三方登录会自动建号，故引导去登录页。
+    apiClient
+      .listLoginMethods()
+      .then((r) => setPasswordSignup(r.methods.some((m) => m.type === "password" && m.enabled)))
+      .catch(() => setPasswordSignup(true));
   }, []);
 
   const submit = async (e: FormEvent) => {
@@ -62,6 +69,13 @@ export function RegisterPageClient() {
           <CardContent className="space-y-4">
             {req?.registrationDisabled ? (
               <p className="text-text-muted text-sm">{t("registerDisabled")}</p>
+            ) : !passwordSignup ? (
+              <p className="text-text-muted text-sm">
+                {t("passwordSignupDisabled")}{" "}
+                <Link href="/login" className="hover:text-text underline underline-offset-2">
+                  {t("toLogin")}
+                </Link>
+              </p>
             ) : (
               <form onSubmit={(e) => void submit(e)} className="space-y-4">
                 <div className="space-y-1.5">

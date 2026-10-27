@@ -6,6 +6,8 @@
     "password": "Password",
     "submit": "Continue",
     "badCredentials": "Incorrect email or password",
+    "passwordDisabled": "Password sign-in is disabled on this site. Please sign in with a third-party account on the login page, then come back to continue this authorization.",
+    "goToLogin": "Go to the login page",
     "consentTitle": "Authorize {client}",
     "consentHint": "This app will be able to:",
     "approve": "Approve",
@@ -254,7 +256,6 @@
     "noPlayers": "No players yet. Add one.",
     "currentPlayer": "current",
     "setActive": "Use this player",
-    "playerActivated": "This player is now the default for new game sessions.",
     "renamePlayer": "Rename",
     "saveRename": "Save",
     "cancelRename": "Cancel",
@@ -272,7 +273,30 @@
     "premiumHint": "Bind your Microsoft account to keep your real UUID, with skins falling back to Mojang.",
     "bindMicrosoft": "Bind Microsoft account",
     "bindOk": "Premium binding succeeded.",
-    "bindError": "Binding failed. Try again."
+    "bindError": "Binding failed. Try again.",
+    "choosePlayer": "Choose a player",
+    "playerNameHint": "Uploads and skin applies act on this player.",
+    "launcherTitle": "Launcher sign-in",
+    "launcherHint": "Launchers sign in with a player name plus its own launcher password, separate from your site password — so the site can turn off password sign-in while launchers keep working.",
+    "launcherForPlayer": "Managing: {player}",
+    "noCredentials": "This player has no launcher password yet, so it cannot sign in from a launcher.",
+    "credentialName": "Name",
+    "credentialNamePlaceholder": "e.g. Desktop",
+    "credentialPassword": "Launcher password",
+    "credentialPasswordHint": "At least 8 characters. It may match your site password; the two never interfere — launchers only accept launcher passwords.",
+    "credentialMeta": "Created {created}, last used {used}",
+    "neverUsed": "never",
+    "addCredential": "Add launcher password",
+    "credentialAdded": "Added. You can now sign in from a launcher with this player name and password.",
+    "revokeCredential": "Revoke",
+    "revokeCredentialTitle": "Revoke this launcher password?",
+    "revokeCredentialHint": "Launchers signed in with it are dropped immediately and must sign in again.",
+    "credentialRevoked": "Revoked; sessions created with it are gone.",
+    "identitiesTitle": "Third-party accounts",
+    "identitiesHint": "Link an account to sign in with it. The first third-party sign-in links to the account with the same email.",
+    "bindingRequired": "This site requires a linked third-party account before you can use skins, mods or launcher sign-in.",
+    "bindWith": "Link {provider}",
+    "noOauthProviders": "This site has no third-party sign-in enabled, so there is nothing to link."
   },
   "auth": {
     "registerTitle": "Create account",
@@ -293,7 +317,9 @@
     "registerOk": "Account created. Check your email to verify.",
     "loginOk": "Signed in.",
     "or": "or",
-    "oauthWith": "Sign in with {provider}"
+    "oauthWith": "Sign in with {provider}",
+    "passwordDisabled": "This site now uses third-party sign-in. Please use one of the options below.",
+    "passwordSignupDisabled": "Password sign-up is closed on this site: sign in with a third-party account instead — an account is created on first sign-in."
   },
   "skins": {
     "title": "Skin library",
@@ -383,6 +409,13 @@
     "deleted": "Deleted",
     "usersEmpty": "No users yet",
     "methodsEmpty": "No login methods",
+    "passwordMethodHint": "Turning this off stops password sign-up immediately and leaves master-password sign-in available only to legacy accounts that have not linked a third-party account. Launchers are unaffected — they use per-player launcher passwords.",
+    "requireBinding": "Require a linked third-party account",
+    "requireBindingHint": "When on, accounts without a linked third-party account cannot use skins, the skin library, launcher sign-in or SSO. The account page and the linking flow itself stay reachable.",
+    "maxPlayers": "Max players per account",
+    "maxPlayersHint": "Defaults to 1. Accounts already above the limit keep their players; they just cannot add more.",
+    "passwordOnNote": "Password sign-in is on, so every method is available.",
+    "passwordOnlyCount": "{n} password-only accounts remain (have a master password, no third-party link, verified and not banned). They can still sign in with a password until they link an account or disappear; at zero, password sign-in has effectively retired itself.",
     "search": "Search",
     "userSearchPlaceholder": "Search by email or nickname…",
     "modSearchPlaceholder": "Search by title or summary…",
@@ -416,6 +449,8 @@
     "rateLimited": "Too many requests. Try again later",
     "server": "The service is temporarily unavailable. Try again later",
     "contract": "Client and server versions disagree. Reload or contact the administrator",
-    "unknown": "Something went wrong. Try again"
+    "unknown": "Something went wrong. Try again",
+    "passwordLoginDisabled": "Password sign-in is disabled on this site. Please use a third-party account",
+    "bindingRequired": "Link a third-party account first to use this feature"
   }
 }

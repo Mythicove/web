@@ -6,6 +6,21 @@
 
 ### 新增
 
+- **账号页「启动器登录」区**（[ADR-0012](../docs/src/content/docs/architecture/adr-0012-credential-separation.md)）：为选中玩家创建/查看/撤销独立密码（名称 + 创建时间 + 最近使用），撤销前二次确认并说明"用它登录的启动器会立刻掉线"；尚无凭证时明确提示"将无法从启动器登录"
+- **账号页「第三方账号」区**：列出已绑定的 provider 与邮箱；站点强制绑定而未绑定时给出告警与逐个 provider 的绑定按钮。不提供解绑（强制绑定策略下解绑等于自锁）
+- **管理后台「登录方式」面板扩展**：强制绑定第三方开关、每账号玩家数上限，以及关闭主密码登录后的"还有 N 个纯密码账号"计数提示（含它为何会自然归零的说明）
+- 后端稳定错误码 `binding_required` / `password_login_disabled` 映射到 `errors.*` 本地化文案（此前 `ApiError.code` 只用于 network/contract）
+- e2e 新增 `launcher-auth.spec.ts`：注册→验证→登录→账号页建独立密码→启动器认证（玩家名+独立密码 200、主密码 403、邮箱 403）→撤销后认证 403 且旧游戏会话失效、网站会话不受影响
+
+### 变更（破坏性）
+
+- **玩家选择改为浏览器本地**：服务端"当前玩家"已删除，登录后由 `AuthProvider` 从 `GET /account/players` 补齐选择并存 localStorage，改名/删除后自动跟随；账号页的上传目标从可自由输入的文本框改为**只能选自己已有玩家**的下拉（此前填别人的名字只会 404）
+- 登录页在管理员关闭「密码登录」后不再渲染密码表单（此前无条件渲染，提交必然被后端拒绝），改为提示 + 第三方按钮；注册页同条件下改为引导第三方登录（首次登录自动建号）；IdP 登录页 `/oauth/login` 同样不再给死路，改为引导去站点登录页
+- BFF `/api/auth/login` 与 `/api/auth/oauth-code` 的响应不再包含 `playerName`/`playerId`（网站会话不代表任何玩家）；`AuthState` 去掉 `playerId`
+- 账号页去掉「设为当前玩家」按钮（`activatePlayer` 客户端方法与 `profile.playerActivated` 文案一并删除）
+
+### 新增（此前轮次，仍未发布）
+
 - 验证码保护范围（`captchaScopes`）：登录页在 scope 含 `login` 时渲染验证码控件并随登录提交 token；注册页控件改为仅当 scope 含 `register` 时渲染（与后端强制点一致）。BFF `/api/auth/login` 改调 mirror 新端点 `POST /account/login` 并透传后端本地化错误文案（验证码失败 400 与凭据错误 403 可区分展示）
 - 管理后台新增「品牌」面板：上传/重置明暗自定义 logo（mirror 存储）。Logo 经 SiteConfig.brand 由 layout 服务端注入、首帧 HTML 即含正确 src，保持明暗双图 CSS 切换不闪烁；未自定义时回落内置 `/brand/*.png`
 - 注册页验证码支持 [Cap](https://github.com/tiagozip/cap)（自托管 PoW 验证码）：driver=cap 时经 npm 包 `cap-widget` 渲染 `<cap-widget>`（控件 JS 不依赖 jsdelivr CDN），实例地址来自 `/api/register-requirements` 新增的 `captchaCapUrl`；widget 所需 WASM 默认仍走 jsdelivr，实例开启 `ENABLE_ASSETS_SERVER=true` 时自动探测并改用自托管副本（jsdelivr 不可达地区的部署建议开启）

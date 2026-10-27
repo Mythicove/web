@@ -2,16 +2,16 @@ import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
 import { API_ORIGIN, setSessionCookie } from "@/lib/session";
 
-interface AuthenticateResponse {
+interface LoginSession {
   accessToken: string;
   clientToken: string;
-  selectedProfile?: { id: string; name: string };
-  availableProfiles?: { id: string; name: string }[];
 }
 
 // 服务端登录：token 只进 httpOnly cookie，响应仅回非敏感 meta。
-// 走 mirror 的 web 专用端点 /account/login（login scope 启用时强制验证码；
-// 启动器仍走 /authserver/authenticate，两者后端共用同一认证实现与限流桶）。
+// 走 mirror 的 web 专用端点 /account/login（邮箱 + 主密码；login scope 启用时强制验证码）。
+// 启动器不走这里：它用 /authserver/authenticate（玩家名 + 该玩家的独立密码），
+// 所以站点可以在第三方登录可用后关掉主密码登录而不影响进服。
+// 网站会话不代表任何玩家，故 meta 不含玩家字段——显示哪个玩家由前端从玩家列表里选。
 export async function POST(req: Request) {
   let email = "";
   let password = "";
@@ -36,21 +36,17 @@ export async function POST(req: Request) {
     cache: "no-store",
   });
   if (!res.ok) {
-    // 透传 mirror 的（已本地化）错误文案与状态码：验证码失败(400)与凭据错误(403)可区分
+    // 透传 mirror 的错误文案/错误码与状态码：验证码失败(400)、凭据错误(403)、
+    // 主密码登录已关闭(403 + password_login_disabled) 由此可区分
     const body = (await res.json().catch(() => null)) as { error?: string } | null;
     return NextResponse.json(
       { error: body?.error ?? "invalid_credentials" },
       { status: res.status },
     );
   }
-  const data = (await res.json()) as AuthenticateResponse;
-  const meta = {
-    clientToken: data.clientToken,
-    playerName: data.selectedProfile?.name ?? data.availableProfiles?.[0]?.name,
-    playerId: data.selectedProfile?.id ?? data.availableProfiles?.[0]?.id,
-  };
+  const data = (await res.json()) as LoginSession;
 
   const jar = await cookies();
   setSessionCookie(jar, data.accessToken);
-  return NextResponse.json(meta);
+  return NextResponse.json({ clientToken: data.clientToken });
 }

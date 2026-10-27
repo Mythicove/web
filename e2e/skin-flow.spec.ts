@@ -51,9 +51,19 @@ test("skin station full loop", async ({ page }) => {
   const raw = await page.evaluate(() => localStorage.getItem("mythicove-auth"));
   expect(raw).toBeTruthy();
   expect(raw).not.toContain("accessToken");
-  expect(JSON.parse(raw!).playerName).toBe(playerName);
   const visibleCookies = await page.evaluate(() => document.cookie);
   expect(visibleCookies).not.toContain("mythic_session");
+  // 玩家名不再随登录响应下发（网站会话不代表任何玩家，ADR-0012）：
+  // 登录后由前端从 /account/players 补齐，故这里轮询等待而不是紧接着断言。
+  await expect
+    .poll(
+      async () => {
+        const stored = await page.evaluate(() => localStorage.getItem("mythicove-auth"));
+        return stored ? ((JSON.parse(stored) as { playerName?: string }).playerName ?? "") : "";
+      },
+      { timeout: 15_000 },
+    )
+    .toBe(playerName);
 
   // 5. 上传皮肤
   await page.goto("/profile");

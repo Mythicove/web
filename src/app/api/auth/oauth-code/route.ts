@@ -26,17 +26,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "invalid_code" }, { status: 401 });
   }
 
-  const data = (await res.json()) as {
-    accessToken: string;
-    playerName?: string;
-    playerId?: string;
-  };
+  const data = (await res.json()) as { accessToken: string };
   const jar = await cookies();
   setSessionCookie(jar, data.accessToken);
-  // 回给浏览器的只有非敏感元数据
-  return NextResponse.json({
-    clientToken: "",
-    playerName: data.playerName ?? "",
-    playerId: data.playerId ?? "",
-  });
+  // 网站会话不代表任何玩家，故 meta 不含玩家字段（显示哪个玩家由前端从玩家列表里选）
+  return NextResponse.json({ clientToken: "" });
 }

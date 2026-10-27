@@ -14,12 +14,19 @@ export class ApiError extends Error {
   }
 }
 
+// STABLE_ERROR_CODES 是后端用于表达"前端需要采取动作"的稳定错误码（而非本地化文案）。
+// 命中时 errorKey 映射到 messages 的 errors.* 键，由前端本地化；
+// 未命中的 error 字段视为服务端已本地化的文案，可直接展示。
+export const STABLE_ERROR_CODES = new Set(["binding_required", "password_login_disabled"]);
+
 // errorKey 把任意失败映射到 messages 的 errors.* 键。
 // 组件不得再把 Error.message 直接渲染给用户。
 export function errorKey(e: unknown): string {
   if (e instanceof ApiError) {
     if (e.code === "contract") return "contract";
     if (e.code === "network") return "network";
+    if (e.code === "binding_required") return "bindingRequired";
+    if (e.code === "password_login_disabled") return "passwordLoginDisabled";
     switch (e.status) {
       case 400:
         return "badRequest";

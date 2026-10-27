@@ -29,7 +29,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 账号密码认证 */
+        /**
+         * 启动器认证（玩家名 + 独立密码）
+         * @description Yggdrasil 协议登录。username 是**玩家名**、password 是该玩家的**启动器独立密码** （ADR-0012）：网站主密码在此不被接受，邮箱也不能作用户名。因此管理员关闭主密码登录后 启动器照常工作。玩家没有独立密码时一律 403——需先到网站的账号页生成一条。 响应里的 availableProfiles/selectedProfile 只有认证到的那一个玩家： 一条独立密码只证明它所属玩家的身份。 403 的 errorMessage 可能是稳定错误码 `binding_required` （管理员强制绑定第三方而该账号尚未绑定）。
+         */
         post: operations["authenticate"];
         delete?: never;
         options?: never;
@@ -97,7 +100,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 退出登录 */
+        /**
+         * 退出登录（玩家名 + 独立密码）
+         * @description 校验玩家名与该玩家的独立密码，成功后销毁**该玩家**的游戏会话。 协议原文是"注销该账号所有令牌"，但凭证属于单个玩家， 用一条玩家凭证去销毁同账号其他玩家的会话并不合理，故只清这一个玩家的； 网站会话（player_id 为空）不受影响。
+         */
         post: operations["signout"];
         delete?: never;
         options?: never;
@@ -389,11 +395,20 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * web 登录（login scope 启用时强制验证码）
+         * web 登录（邮箱 + 主密码）
          * @description 供 web BFF（`/api/auth/login` 路由处理器）调用，不是浏览器直接端点。
-         *     与 Yggdrasil 的 /authserver/authenticate 的区别：`MIRROR_CAPTCHA_SCOPES` 含 login 时
-         *     强制校验 captchaToken；启动器等协议客户端请继续走 /authserver/authenticate（永不强制验证码）。
-         *     与 /authserver/authenticate 共用按 IP 的 "auth" 限流桶。
+         *     与 Yggdrasil 的 /authserver/authenticate 的区别：这里校验的是**网站主密码**，
+         *     且 `MIRROR_CAPTCHA_SCOPES` 含 login 时强制校验 captchaToken；
+         *     启动器请走 /authserver/authenticate（玩家名 + 独立密码，永不强制验证码）。
+         *     与 /authserver/authenticate、/oauth2/login/accept 共用按 IP 的 "auth" 限流桶。
+         *
+         *     管理员在后台关掉「密码登录」后：账号密码注册立即关闭，主密码登录只对
+         *     **尚未绑定第三方**的历史账号放行（宽限），已绑定的账号返回 403
+         *     且 `error` 为稳定错误码 `password_login_disabled`。
+         *     纯密码账号归零后主密码登录自然完全失效，无需再翻第二个开关。
+         *
+         *     网站会话不代表任何玩家，故响应不含 profile 段；
+         *     前端要显示/操作哪个玩家，从 GET /account/players 里选。
          */
         post: operations["accountLogin"];
         delete?: never;
@@ -496,7 +511,35 @@ export interface paths {
         patch: operations["renamePlayer"];
         trace?: never;
     };
-    "/account/players/{name}/activate": {
+    "/account/players/{name}/credentials": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 列出该玩家的启动器独立密码
+         * @description 只返回元数据（名称/创建时间/最近使用），永不返回哈希或明文。最近使用的排在前面。
+         */
+        get: operations["listPlayerCredentials"];
+        put?: never;
+        /**
+         * 为该玩家新增一条启动器独立密码
+         * @description 启动器登录（/authserver/authenticate）只认玩家名 + 独立密码，故玩家至少要有一条才能进服。
+         *     一个玩家至多 3 条（`account.MaxCredentialsPerPlayer`）：登录时要对候选哈希逐条做
+         *     Argon2id，条数直接放大失败尝试的成本，而"每台设备一条"用不到更多。
+         *     密码由用户自己输入，故响应不回显明文。
+         *     可以与主密码相同——两者互不影响，启动器只会匹配到独立密码。
+         */
+        post: operations["createPlayerCredential"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/players/{name}/credentials/{credentialId}": {
         parameters: {
             query?: never;
             header?: never;
@@ -505,8 +548,34 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** 设为当前玩家（建会话时优先使用） */
-        post: operations["activatePlayer"];
+        post?: never;
+        /**
+         * 撤销一条启动器独立密码
+         * @description 由该凭证建立的启动器会话经外键级联一并销毁（立刻掉线，不是等 24 小时过期）。
+         */
+        delete: operations["deletePlayerCredential"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 当前账号的第三方绑定与站点的强制绑定策略
+         * @description `required` 来自管理员策略（PUT /api/admin/auth-policy）：为 true 且 identities 为空时，
+         *     该账号不能用皮肤/皮肤库/启动器登录/SSO，前端据此弹绑定引导。
+         *     绑定由第三方登录自动写入（首次按邮箱匹配到既有账号即完成绑定），本站不提供解绑：
+         *     解绑会让"强制绑定"策略变成死锁。
+         */
+        get: operations["listIdentities"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -877,8 +946,42 @@ export interface paths {
         };
         /** 登录方式（管理视图） */
         get: operations["adminGetLoginMethods"];
-        /** 保存登录方式开关/顺序 */
+        /**
+         * 保存登录方式开关/顺序
+         * @description `password` 开关是**强制生效**的（此前只是给前端渲染按钮用的装饰）：关闭后
+         *     /account/login、/oauth2/login/accept 拒绝主密码，账号密码注册一并关闭，
+         *     前端登录页不再渲染密码表单。未绑定第三方的历史账号仍可用主密码登录（宽限），
+         *     直到它们绑定第三方或消失——见 GET /api/admin/auth-policy 的 password_only_users。
+         */
         put: operations["adminSetLoginMethods"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/admin/auth-policy": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 认证策略 + 纯密码账号计数
+         * @description `password_only_users` 是"还有多少历史纯密码账号"（有主密码、无第三方绑定、
+         *     已验证且状态正常）。它只是给管理员做决策的提示：关闭主密码登录后这些账号
+         *     仍可登录（宽限），归零即代表主密码登录已自然失效，不需要再翻第二个开关。
+         *     计数只在打开面板时算（走 `users_password_only` 部分索引），不进登录热路径——
+         *     热路径上的判定是"这个账号自己有没有绑定"，登录时本来就要读用户行。
+         */
+        get: operations["adminGetAuthPolicy"];
+        /**
+         * 保存认证策略（强制绑定 / 玩家数上限）
+         * @description 主密码开关不在此处：它归 login_methods，一个开关只留一个入口， 避免"面板关了但策略还开着"。请求体里的 password_login 字段会被忽略。
+         */
+        put: operations["adminSetAuthPolicy"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1279,6 +1382,53 @@ export interface components {
             enabled: boolean;
             order: number;
         };
+        /** @description web 登录（主密码）的结果。网站会话不代表任何玩家，故没有 profile 段； 前端要显示/操作哪个玩家，从 GET /account/players 里选。 */
+        LoginSession: {
+            /** @description 网站会话令牌；由 BFF 写入 httpOnly cookie，不回浏览器脚本。 */
+            accessToken: string;
+            clientToken: string;
+        };
+        /** @description 一条启动器独立密码的元数据。哈希与明文永不出现在任何响应里。 */
+        PlayerCredential: {
+            id: string;
+            /** @description 区分多条凭证的标签（如"台式机"），不参与认证 */
+            name: string;
+            /** Format: date-time */
+            created_at: string;
+            /**
+             * Format: date-time
+             * @description 最近一次用它登录启动器的时间；从未使用则省略
+             */
+            last_used_at?: string;
+        };
+        Identity: {
+            /** @description 第三方来源，如 github */
+            provider: string;
+            /** @description provider 侧的唯一标识 */
+            subject: string;
+            email?: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        BindingState: {
+            identities: components["schemas"]["Identity"][];
+            /** @description 站点是否强制绑定第三方；为 true 且 identities 为空时功能受限 */
+            required: boolean;
+        };
+        /** @description 管理员可调的认证策略。主密码开关不在这里——它归 login_methods 的 `password` 项， 一个开关只留一个入口。 */
+        AuthPolicy: {
+            /** @description 为 true 时未绑定第三方的账号不能用皮肤/皮肤库/启动器登录/SSO */
+            require_third_party_binding?: boolean;
+            /**
+             * @description 单账号可创建的玩家数上限（存量超额账号不回收，只是不能再加）
+             * @default 1
+             */
+            max_players: number;
+        };
+        AuthPolicyView: components["schemas"]["AuthPolicy"] & {
+            /** @description 还有多少历史纯密码账号（有主密码、无第三方绑定、已验证且状态正常）。 关闭主密码登录后它们仍可登录（宽限），归零即代表主密码登录已自然失效。 只服务管理面板的决策提示，不在登录热路径上计算。 */
+            password_only_users: number;
+        };
         Announcement: {
             title: string;
             body: string;
@@ -1303,7 +1453,9 @@ export interface components {
             signaturePublickey?: string;
         };
         AuthenticateRequest: {
+            /** @description **玩家名**（不是邮箱）。启动器登录按玩家名定位玩家。 */
             username: string;
+            /** @description 该玩家的**启动器独立密码**（见 /account/players/{name}/credentials）；网站主密码在此无效。 */
             password: string;
             clientToken?: string;
             /** @default false */
@@ -1350,8 +1502,6 @@ export interface components {
             name?: string;
             legacy?: boolean;
             demo?: boolean;
-            /** @description 是否为账号当前选用的玩家（建会话时优先使用） */
-            active?: boolean;
             /** @description 是否已绑定微软正版（绑定后不可本地改名） */
             premium?: boolean;
         };
@@ -1390,7 +1540,9 @@ export interface components {
             clientToken: string;
         };
         SignoutRequest: {
+            /** @description **玩家名**（不是邮箱） */
             username: string;
+            /** @description 该玩家的启动器独立密码；主密码在此无效 */
             password: string;
         };
         JoinRequest: {
@@ -2030,13 +2182,13 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK（形状同 /authserver/authenticate） */
+            /** @description OK */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["AuthenticateResponse"];
+                    "application/json": components["schemas"]["LoginSession"];
                 };
             };
             400: components["responses"]["Error"];
@@ -2242,7 +2394,7 @@ export interface operations {
             };
         };
     };
-    activatePlayer: {
+    listPlayerCredentials: {
         parameters: {
             query?: never;
             header?: never;
@@ -2254,7 +2406,78 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description 已设为当前玩家 */
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        credentials: components["schemas"]["PlayerCredential"][];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    createPlayerCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 玩家名（当前账号名下） */
+                name: components["parameters"]["PlayerName"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description 用于在列表里区分多条凭证的标签（如"台式机"），不参与认证 */
+                    name: string;
+                    password: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 已创建 */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PlayerCredential"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            /** @description 条数已达上限 */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
+        };
+    };
+    deletePlayerCredential: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description 玩家名（当前账号名下） */
+                name: components["parameters"]["PlayerName"];
+                credentialId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已撤销 */
             204: {
                 headers: {
                     [name: string]: unknown;
@@ -2263,6 +2486,27 @@ export interface operations {
             };
             401: components["responses"]["Error"];
             404: components["responses"]["Error"];
+        };
+    };
+    listIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BindingState"];
+                };
+            };
+            401: components["responses"]["Error"];
         };
     };
     unbindPremium: {
@@ -2368,10 +2612,8 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
+                        /** @description 网站会话令牌。会话不代表任何玩家，故不返回 profile/玩家字段。 */
                         accessToken: string;
-                        /** @description 当前玩家名（无玩家时省略） */
-                        playerName?: string;
-                        playerId?: string;
                     };
                 };
             };
@@ -2855,6 +3097,51 @@ export interface operations {
                 };
                 content?: never;
             };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminGetAuthPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthPolicyView"];
+                };
+            };
+            403: components["responses"]["Error"];
+        };
+    };
+    adminSetAuthPolicy: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AuthPolicy"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
             403: components["responses"]["Error"];
         };
     };

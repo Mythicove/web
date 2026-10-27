@@ -1,6 +1,6 @@
 // 单 API 域名：mirror 与 hoard 的路由不冲突，经同一反代按路径分流。
 // 类型来自 api/specs 生成的 schema（pnpm gen:api），不要手写重复定义。
-import { ApiError } from "@/lib/errors";
+import { ApiError, STABLE_ERROR_CODES } from "@/lib/errors";
 import type { components as mirror } from "@/lib/api-schema/mirror";
 import type { components as hoard } from "@/lib/api-schema/hoard";
 
@@ -17,6 +17,10 @@ export type RegisterRequirements = mirror["schemas"]["RegisterRequirements"];
 export type Player = mirror["schemas"]["Player"];
 export type AuthenticateResponse = mirror["schemas"]["AuthenticateResponse"];
 export type LoginMethod = mirror["schemas"]["LoginMethod"];
+export type PlayerCredential = mirror["schemas"]["PlayerCredential"];
+export type BindingState = mirror["schemas"]["BindingState"];
+export type AuthPolicy = mirror["schemas"]["AuthPolicy"];
+export type AuthPolicyView = mirror["schemas"]["AuthPolicyView"];
 export type Announcement = mirror["schemas"]["Announcement"];
 export type BrandConfig = mirror["schemas"]["BrandConfig"];
 export type SkinLibItem = mirror["schemas"]["SkinLibItem"];
@@ -73,13 +77,17 @@ async function request<T>(
   if (!res.ok) {
     const text = await res.text();
     let detail = text;
+    let code: string | undefined;
     try {
       const parsed = JSON.parse(text) as { error?: string; message?: string };
       detail = parsed.error ?? parsed.message ?? text;
+      // mirror 对"需要前端采取动作"的拒绝返回稳定错误码（不是给人看的文案），
+      // 其余 error 字段是服务端已本地化的文案，直接展示。
+      if (parsed.error && STABLE_ERROR_CODES.has(parsed.error)) code = parsed.error;
     } catch {
       // 非 JSON body（网关/反代错误页）保留截断原文，仅供日志
     }
-    throw new ApiError(res.status, `${res.status} ${detail.slice(0, 200)}`);
+    throw new ApiError(res.status, `${res.status} ${detail.slice(0, 200)}`, code);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -159,8 +167,27 @@ export const apiClient = {
   deletePlayer: (name: string) =>
     request<void>(`/account/players/${encodeURIComponent(name)}`, { method: "DELETE" }),
 
-  activatePlayer: (name: string) =>
-    request<void>(`/account/players/${encodeURIComponent(name)}/activate`, { method: "POST" }),
+  // 启动器独立密码（ADR-0012）：启动器登录只认「玩家名 + 独立密码」，主密码不参与。
+  listPlayerCredentials: (name: string) =>
+    request<{ credentials: PlayerCredential[] }>(
+      `/account/players/${encodeURIComponent(name)}/credentials`,
+    ),
+
+  createPlayerCredential: (name: string, label: string, password: string) =>
+    request<PlayerCredential>(`/account/players/${encodeURIComponent(name)}/credentials`, {
+      method: "POST",
+      body: JSON.stringify({ name: label, password }),
+    }),
+
+  // 撤销后由该凭证建立的启动器会话立刻失效
+  deletePlayerCredential: (name: string, credentialId: string) =>
+    request<void>(
+      `/account/players/${encodeURIComponent(name)}/credentials/${encodeURIComponent(credentialId)}`,
+      { method: "DELETE" },
+    ),
+
+  // 第三方绑定 + 站点是否强制绑定（required && 空列表 = 功能受限，需引导绑定）
+  identities: () => request<BindingState>("/account/identities"),
 
   // 解除微软正版绑定（幂等）；解绑后该玩家可本地改名
   unbindPremium: (name: string) =>
@@ -308,6 +335,16 @@ export const apiClient = {
         method: "PUT",
         headers: authHeaders(token),
         body: JSON.stringify({ methods }),
+      }),
+    // 认证策略（强制绑定第三方 / 玩家数上限）+ 纯密码账号计数。
+    // 主密码开关不在这儿：它归 login-methods，一个开关只留一个入口。
+    authPolicy: (token: string) =>
+      request<AuthPolicyView>("/api/admin/auth-policy", { headers: authHeaders(token) }),
+    updateAuthPolicy: (token: string, policy: AuthPolicy) =>
+      request<void>("/api/admin/auth-policy", {
+        method: "PUT",
+        headers: authHeaders(token),
+        body: JSON.stringify(policy),
       }),
     announcement: (token: string) =>
       request<Announcement>("/api/admin/announcement", {

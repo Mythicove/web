@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import {
   InfoIcon,
+  KeyRoundIcon,
   Link2Icon,
   Loader2Icon,
   PencilIcon,
@@ -13,7 +14,14 @@ import {
   UploadIcon,
   UserPlusIcon,
 } from "lucide-react";
-import { apiClient, type Player, type UploadProgress } from "@/lib/api";
+import {
+  apiClient,
+  type BindingState,
+  type LoginMethod,
+  type Player,
+  type PlayerCredential,
+  type UploadProgress,
+} from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useErrorText } from "@/lib/errors";
 import { Badge } from "@/components/ui/badge";
@@ -63,10 +71,10 @@ function ProfileInner() {
   const errText = useErrorText();
   const params = useSearchParams();
   const bind = params.get("bind");
-  const { auth, isAuthenticated } = useAuth();
-  // auth 从 localStorage 异步恢复，玩家名以 auth 为准，用户可覆盖。
-  const [playerNameOverride, setPlayerNameOverride] = useState<string | null>(null);
-  const playerName = playerNameOverride ?? auth?.playerName ?? "";
+  const { auth, isAuthenticated, selectPlayer } = useAuth();
+  // 玩哪个玩家是浏览器本地的选择（ADR-0012 删除了服务端"当前玩家"）：
+  // auth.playerName 由 AuthProvider 在登录后从玩家列表补齐，这里只做展示与切换。
+  const playerName = auth?.playerName ?? "";
   const [model, setModel] = useState("default");
   const [skinFile, setSkinFile] = useState<File | null>(null);
   const [capeFile, setCapeFile] = useState<File | null>(null);
@@ -78,11 +86,24 @@ function ProfileInner() {
   const [capeProgress, setCapeProgress] = useState<UploadProgress | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
   const [newPlayer, setNewPlayer] = useState("");
-  // 玩家管理（改名/删除/设为当前）独立的忙碌态，避免与上传/发布的 busy 联合体互相干扰
+  // 玩家管理（改名/删除）独立的忙碌态，避免与上传/发布的 busy 联合体互相干扰
   const [playerBusy, setPlayerBusy] = useState<string | null>(null);
   const [renaming, setRenaming] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  // 启动器独立密码（ADR-0012）：启动器登录只认「玩家名 + 独立密码」，与网站主密码分开。
+  // 列表与它所属的玩家一起存：切换玩家时旧列表立即不显示，而不是等新请求回来才替换。
+  const [credState, setCredState] = useState<{ player: string; list: PlayerCredential[] }>({
+    player: "",
+    list: [],
+  });
+  const [credLabel, setCredLabel] = useState("");
+  const [credPassword, setCredPassword] = useState("");
+  const [credBusy, setCredBusy] = useState(false);
+  const [pendingCred, setPendingCred] = useState<string | null>(null);
+  // 第三方绑定：站点强制绑定而账号尚未绑定时，皮肤/mods/启动器登录都会被拒
+  const [binding, setBinding] = useState<BindingState | null>(null);
+  const [oauthProviders, setOauthProviders] = useState<LoginMethod[]>([]);
 
   const reloadPlayers = useCallback(() => {
     apiClient
@@ -91,10 +112,68 @@ function ProfileInner() {
       .catch(() => setPlayers([]));
   }, []);
 
+  const reloadCredentials = useCallback((name: string) => {
+    if (!name) return;
+    apiClient
+      .listPlayerCredentials(name)
+      .then((r) => setCredState({ player: name, list: r.credentials }))
+      .catch(() => setCredState({ player: name, list: [] }));
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     reloadPlayers();
+    apiClient
+      .identities()
+      .then(setBinding)
+      .catch(() => setBinding(null));
+    apiClient
+      .listLoginMethods()
+      .then((r) => setOauthProviders(r.methods.filter((m) => m.enabled && m.type === "oauth")))
+      .catch(() => setOauthProviders([]));
   }, [isAuthenticated, reloadPlayers]);
+
+  useEffect(() => {
+    if (!isAuthenticated || !playerName) return;
+    reloadCredentials(playerName);
+  }, [isAuthenticated, playerName, reloadCredentials]);
+
+  // 只有与当前选中玩家匹配时才显示，切换玩家不会看到上一个玩家的列表
+  const creds = credState.player === playerName ? credState.list : [];
+
+  const addCredential = async () => {
+    if (credBusy || !playerName || !credLabel.trim() || !credPassword) return;
+    setCredBusy(true);
+    setError(null);
+    try {
+      await apiClient.createPlayerCredential(playerName, credLabel.trim(), credPassword);
+      setCredLabel("");
+      setCredPassword("");
+      setStatus(t("credentialAdded"));
+      reloadCredentials(playerName);
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setCredBusy(false);
+    }
+  };
+
+  // 撤销后由该凭证建立的启动器会话立刻失效（不是等令牌自然过期）
+  const deleteCredential = async (id: string) => {
+    if (credBusy || !playerName) return;
+    setCredBusy(true);
+    setError(null);
+    try {
+      await apiClient.deletePlayerCredential(playerName, id);
+      setStatus(t("credentialRevoked"));
+      reloadCredentials(playerName);
+    } catch (e) {
+      setError(errText(e));
+    } finally {
+      setCredBusy(false);
+      setPendingCred(null);
+    }
+  };
 
   const addPlayer = async () => {
     if (busy || !newPlayer.trim()) return;
@@ -122,6 +201,8 @@ function ProfileInner() {
       await apiClient.renamePlayer(oldName, next);
       setRenaming(null);
       setRenameValue("");
+      // 选中的玩家被改名后本地选择会指向不存在的名字，跟着改过来
+      if (oldName === playerName) selectPlayer(next);
       setStatus(t("playerRenamed"));
       reloadPlayers();
     } catch (e) {
@@ -137,6 +218,10 @@ function ProfileInner() {
     setError(null);
     try {
       await apiClient.deletePlayer(name);
+      // 删掉的正是选中的玩家 → 本地选择退到剩下的第一个
+      if (name === playerName) {
+        selectPlayer(players.find((p) => p.name !== name)?.name ?? "");
+      }
       setStatus(t("playerDeleted"));
       reloadPlayers();
     } catch (e) {
@@ -144,21 +229,6 @@ function ProfileInner() {
     } finally {
       setPlayerBusy(null);
       setPendingDelete(null);
-    }
-  };
-
-  const activatePlayer = async (name: string) => {
-    if (playerBusy) return;
-    setPlayerBusy(`activate-${name}`);
-    setError(null);
-    try {
-      await apiClient.activatePlayer(name);
-      setStatus(t("playerActivated"));
-      reloadPlayers();
-    } catch (e) {
-      setError(errText(e));
-    } finally {
-      setPlayerBusy(null);
     }
   };
 
@@ -269,13 +339,28 @@ function ProfileInner() {
               )}
               <div className="space-y-1.5">
                 <Label htmlFor="playerName">{t("playerName")}</Label>
-                <Input
-                  id="playerName"
+                {/* 只能在自己已有的玩家里选（此前是可自由输入的文本框，填别人的名字只会 404） */}
+                <Select
+                  name="playerName"
                   value={playerName}
-                  onChange={(e) => setPlayerNameOverride(e.target.value)}
-                  placeholder="Steve"
-                  maxLength={16}
-                />
+                  disabled={players.length === 0}
+                  onValueChange={(v) => selectPlayer(String(v))}
+                >
+                  <SelectTrigger id="playerName">
+                    <SelectValue placeholder={t("choosePlayer")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {players.map((p, i) => {
+                      const label = p.name ?? p.id ?? String(i);
+                      return (
+                        <SelectItem key={p.id ?? i} value={label}>
+                          {label}
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <p className="text-text-muted text-xs">{t("playerNameHint")}</p>
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="model">{t("model")}</Label>
@@ -421,18 +506,21 @@ function ProfileInner() {
                       <span className="flex items-center gap-2 text-sm">
                         <PlayerAvatar name={label} size={28} />
                         {label}
-                        {p.active && <Badge variant="secondary">{t("currentPlayer")}</Badge>}
+                        {playerName === label && (
+                          <Badge variant="secondary">{t("currentPlayer")}</Badge>
+                        )}
                         {p.premium && <Badge variant="outline">{t("premiumBadge")}</Badge>}
                       </span>
                     )}
                     {!isRenaming && (
                       <span className="flex items-center gap-1.5">
-                        {!p.active && (
+                        {playerName !== label && (
                           <Button
                             size="sm"
                             variant="outline"
-                            disabled={playerBusy !== null}
-                            onClick={() => void activatePlayer(label)}
+                            // 选中哪个玩家是浏览器本地的选择（服务端已无"当前玩家"）：
+                            // 它决定页头头像与上传/应用皮肤的作用对象
+                            onClick={() => selectPlayer(label)}
                           >
                             {t("setActive")}
                           </Button>
@@ -552,6 +640,151 @@ function ProfileInner() {
                       </div>
                     ))}
                 </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-surface shadow-card h-fit">
+            <CardHeader>
+              <CardTitle className="font-display">{t("launcherTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-text-muted text-sm">{t("launcherHint")}</p>
+              {!isAuthenticated ? (
+                <p className="text-text-muted flex items-center gap-1.5 text-sm">
+                  <InfoIcon className="size-4" />
+                  {t("notLoggedIn")}
+                </p>
+              ) : (
+                <>
+                  <p className="text-sm">{t("launcherForPlayer", { player: playerName || "—" })}</p>
+                  {creds.length === 0 && (
+                    <p role="status" className="text-warning text-sm">
+                      {t("noCredentials")}
+                    </p>
+                  )}
+                  {creds.map((c) => (
+                    <div key={c.id} className="flex items-center justify-between gap-2 text-sm">
+                      <span className="min-w-0">
+                        <span className="block truncate">{c.name}</span>
+                        <span className="text-text-muted block text-xs">
+                          {t("credentialMeta", {
+                            created: new Date(c.created_at).toLocaleDateString(),
+                            used: c.last_used_at
+                              ? new Date(c.last_used_at).toLocaleDateString()
+                              : t("neverUsed"),
+                          })}
+                        </span>
+                      </span>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        disabled={credBusy}
+                        onClick={() => setPendingCred(c.id)}
+                      >
+                        <Trash2Icon />
+                        {t("revokeCredential")}
+                      </Button>
+                    </div>
+                  ))}
+                  <div className="border-border space-y-2 border-t pt-3">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cred-name">{t("credentialName")}</Label>
+                      <Input
+                        id="cred-name"
+                        value={credLabel}
+                        maxLength={64}
+                        placeholder={t("credentialNamePlaceholder")}
+                        onChange={(e) => setCredLabel(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="cred-password">{t("credentialPassword")}</Label>
+                      <Input
+                        id="cred-password"
+                        type="password"
+                        autoComplete="new-password"
+                        minLength={8}
+                        value={credPassword}
+                        onChange={(e) => setCredPassword(e.target.value)}
+                      />
+                      <p className="text-text-muted text-xs">{t("credentialPasswordHint")}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      disabled={
+                        credBusy || !playerName || !credLabel.trim() || credPassword.length < 8
+                      }
+                      onClick={() => void addCredential()}
+                    >
+                      {credBusy && <Loader2Icon className="animate-spin" />}
+                      <KeyRoundIcon />
+                      {t("addCredential")}
+                    </Button>
+                  </div>
+                  <ConfirmDialog
+                    open={pendingCred !== null}
+                    onOpenChange={(open) => {
+                      if (!open) setPendingCred(null);
+                    }}
+                    title={t("revokeCredentialTitle")}
+                    description={t("revokeCredentialHint")}
+                    confirmLabel={t("revokeCredential")}
+                    busy={credBusy}
+                    onConfirm={() => {
+                      if (pendingCred) void deleteCredential(pendingCred);
+                    }}
+                  />
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-surface shadow-card h-fit">
+            <CardHeader>
+              <CardTitle className="font-display">{t("identitiesTitle")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <p className="text-text-muted text-sm">{t("identitiesHint")}</p>
+              {binding?.required && binding.identities.length === 0 && (
+                <p role="alert" className="text-danger text-sm">
+                  {t("bindingRequired")}
+                </p>
+              )}
+              {binding && binding.identities.length > 0 ? (
+                // 不提供解绑：站点若强制绑定第三方，解绑会立刻把账号锁在功能之外
+                <ul className="space-y-1.5 text-sm">
+                  {binding.identities.map((id) => (
+                    <li key={`${id.provider}:${id.subject}`} className="flex items-center gap-2">
+                      <Link2Icon className="text-success size-4" />
+                      <span>{id.provider}</span>
+                      {id.email && <span className="text-text-muted truncate">{id.email}</span>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                isAuthenticated && (
+                  <div className="space-y-2">
+                    {oauthProviders.map((m) => (
+                      <Button
+                        key={m.id}
+                        variant="outline"
+                        className="w-full"
+                        onClick={() =>
+                          window.location.assign(
+                            apiClient.oauthUrl(m.id, window.location.origin + "/profile"),
+                          )
+                        }
+                      >
+                        <Link2Icon />
+                        {t("bindWith", { provider: m.label })}
+                      </Button>
+                    ))}
+                    {oauthProviders.length === 0 && (
+                      <p className="text-text-muted text-sm">{t("noOauthProviders")}</p>
+                    )}
+                  </div>
+                )
               )}
             </CardContent>
           </Card>
