@@ -24,6 +24,8 @@ import { AdminPager } from "./pager";
 
 const LIMIT = 20;
 
+type StatusFilter = "all" | NonNullable<HoardProject["status"]>;
+
 export function ModsPanel({
   token,
   onToken,
@@ -40,13 +42,17 @@ export function ModsPanel({
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
   const [query, setQuery] = useState("");
+  // 审核队列默认先看待审项；listed/all 省略 status 参数（公开语义即只回 listed）。
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("under_review");
   const [page, setPage] = useState(1);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   const load = useCallback(() => {
     if (token === null) return;
+    // listed/all 走省略参数路径（后端公开语义只回 listed）；其余状态显式过滤
+    const status = statusFilter === "all" || statusFilter === "listed" ? undefined : statusFilter;
     hoardClient
-      .search(query, (page - 1) * LIMIT, LIMIT)
+      .search(query, (page - 1) * LIMIT, LIMIT, undefined, status)
       .then((r) => {
         setMods(r.hits);
         setTotal(Number(r.total_hits ?? 0));
@@ -55,7 +61,7 @@ export function ModsPanel({
         toast.error(errText(e));
         setMods([]);
       });
-  }, [token, query, page, errText]);
+  }, [token, query, page, statusFilter, errText]);
 
   useEffect(() => {
     load();
@@ -120,6 +126,31 @@ export function ModsPanel({
             {t("search")}
           </Button>
         </form>
+      )}
+      {token !== null && (
+        <div className="flex max-w-md items-center gap-2">
+          <Label htmlFor="hoard-status-filter" className="text-text-muted shrink-0 text-xs">
+            {t("modStatusFilter")}
+          </Label>
+          <Select
+            value={statusFilter}
+            onValueChange={(v) => {
+              setPage(1);
+              setStatusFilter(v as StatusFilter);
+            }}
+          >
+            <SelectTrigger id="hoard-status-filter" className="w-44">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="under_review">under_review</SelectItem>
+              <SelectItem value="rejected">rejected</SelectItem>
+              <SelectItem value="archived">archived</SelectItem>
+              <SelectItem value="listed">listed</SelectItem>
+              <SelectItem value="all">{t("modStatusAll")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       )}
       {token === null && <p className="text-text-muted text-sm">{t("needToken")}</p>}
       {token !== null && mods === null && <PageSkeleton />}

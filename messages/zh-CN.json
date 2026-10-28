@@ -443,6 +443,8 @@
     "search": "搜索",
     "userSearchPlaceholder": "按邮箱或昵称搜索…",
     "modSearchPlaceholder": "按标题或简介搜索…",
+    "modStatusFilter": "状态",
+    "modStatusAll": "全部（不过滤）",
     "auditSearchPlaceholder": "按操作 / 操作者 / 对象过滤…",
     "pageLabel": "第",
     "colReporter": "举报人",

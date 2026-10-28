@@ -2,9 +2,9 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Loader2Icon, Trash2Icon, UploadIcon } from "lucide-react";
+import { useRouter } from "@/i18n/navigation";
 import { hoardClient, ApiError, type UploadProgress } from "@/lib/api";
 import { useHoardUser } from "@/lib/hoard-auth";
 import { useErrorText } from "@/lib/errors";

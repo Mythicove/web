@@ -450,11 +450,18 @@ export const apiClient = {
 
 // hoardClient 是 hoard 端点的收口：SSO 会话凭 httpOnly cookie（credentials）携带。
 export const hoardClient = {
-  search: (q = "", offset = 0, limit = 20, facets?: string) =>
+  // status 为管理端专用的过滤参数（仅 admin 令牌/会话生效）：省略即公开语义（只回 listed）。
+  search: (
+    q = "",
+    offset = 0,
+    limit = 20,
+    facets?: string,
+    status?: NonNullable<HoardProject["status"]>,
+  ) =>
     request<HoardSearchResponse>(
       `/api/mods?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${
         facets ? `&facets=${encodeURIComponent(facets)}` : ""
-      }`,
+      }${status ? `&status=${encodeURIComponent(status)}` : ""}`,
       undefined,
       "same-origin",
     ),

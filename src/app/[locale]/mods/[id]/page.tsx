@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { DownloadIcon, FileTextIcon, Link2Icon } from "lucide-react";
 import { hoardClient, ApiError } from "@/lib/api";
+import { readSiteConfig } from "@/lib/site-config-server";
 import { SiteHeader } from "@/components/site-header";
 import { Link } from "@/i18n/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,6 +30,8 @@ export async function generateMetadata({ params }: PageProps) {
 export default async function ModDetailPage({ params }: PageProps) {
   const { id, locale } = await params;
   setRequestLocale(locale);
+  const { modules } = await readSiteConfig();
+  if (!modules.includes("mods")) notFound();
   const t = await getTranslations("modDetail");
 
   let project;

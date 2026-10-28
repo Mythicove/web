@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { ImageIcon, Loader2Icon } from "lucide-react";
-import { apiClient, type BrandConfig } from "@/lib/api";
+import { apiBase, apiClient, type BrandConfig } from "@/lib/api";
 import { useErrorText } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 
 type Variant = "light" | "dark";
-
-// 浏览器可达的 API 基址（与 Logo SSR 用的 NEXT_PUBLIC_API_URL 同源），用于预览自定义图。
-const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 // 品牌图标面板：上传/重置明暗两张自定义 logo（mirror 对象存储，全站 SSR 首帧生效）。
 export function BrandPanel({ token }: { token: string | null }) {
@@ -72,7 +69,7 @@ export function BrandPanel({ token }: { token: string | null }) {
   const row = (variant: Variant, ref: typeof lightRef) => {
     const custom = variant === "light" ? brand?.light : brand?.dark;
     const preview = custom
-      ? `${API_BASE}/api/brand/logo/${variant}?v=${brand?.version ?? 0}`
+      ? `${apiBase}/api/brand/logo/${variant}?v=${brand?.version ?? 0}`
       : `/brand/logo-${variant}.png`;
     return (
       <div className="grid gap-1.5">

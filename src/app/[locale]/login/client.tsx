@@ -35,7 +35,8 @@ function LoginInner() {
   const [forgotBusy, setForgotBusy] = useState(false);
 
   useEffect(() => {
-    void completeOAuthLogin();
+    // 兑换失败/IdP 回传错误不再静默：与 submit 同一渲染通道（errors.* 本地化）
+    completeOAuthLogin().catch((err) => setError(errText(err)));
     apiClient
       .listLoginMethods()
       .then((r) => setMethods(r.methods.filter((m) => m.enabled)))
@@ -45,7 +46,7 @@ function LoginInner() {
       .registerRequirements()
       .then(setReq)
       .catch(() => setReq(null));
-  }, [completeOAuthLogin]);
+  }, [completeOAuthLogin, errText]);
 
   // login scope 启用且验证码实际生效时才渲染控件（与后端强制点一致）
   const loginCaptcha =
@@ -179,11 +180,6 @@ function LoginInner() {
                         onToken={setCaptchaToken}
                       />
                     )}
-                    {error && (
-                      <p role="alert" className="text-danger text-sm">
-                        {error}
-                      </p>
-                    )}
                     <Button type="submit" className="w-full" disabled={busy}>
                       {busy && <Loader2Icon className="animate-spin" />}
                       {t("loginSubmit")}
@@ -191,6 +187,11 @@ function LoginInner() {
                   </form>
                 ) : (
                   <p className="text-text-muted text-sm">{t("passwordDisabled")}</p>
+                )}
+                {error && (
+                  <p role="alert" className="text-danger text-sm">
+                    {error}
+                  </p>
                 )}
 
                 {oauthMethods.length > 0 && (

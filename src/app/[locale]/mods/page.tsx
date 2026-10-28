@@ -1,6 +1,8 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { notFound } from "next/navigation";
 import { DownloadIcon, PackageOpenIcon } from "lucide-react";
 import { hoardClient } from "@/lib/api";
+import { readSiteConfig } from "@/lib/site-config-server";
 import { SiteHeader } from "@/components/site-header";
 import { Link } from "@/i18n/navigation";
 import { Card, CardContent } from "@/components/ui/card";
@@ -38,6 +40,9 @@ export default async function ModsPage({
 }: PageProps & { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
+  // 模块门：站点未启用 mods 时整棵子树按 404 处理
+  const { modules } = await readSiteConfig();
+  if (!modules.includes("mods")) notFound();
   const sp = await searchParams;
   const t = await getTranslations("mods");
   const q = sp.q?.trim() || undefined;

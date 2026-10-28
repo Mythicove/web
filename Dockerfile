@@ -20,6 +20,9 @@ COPY . .
 RUN corepack enable
   ARG NEXT_PUBLIC_API_URL=http://localhost:8080
   ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+  # web 应用的公开 origin（metadataBase / sitemap / robots 引用）；留空回退 http://localhost:3000
+  ARG NEXT_PUBLIC_WEB_URL=http://localhost:3000
+  ENV NEXT_PUBLIC_WEB_URL=$NEXT_PUBLIC_WEB_URL
   # 路由/索引策略为构建期开关：always=每语言独立 URL；never=同路径（默认）
   ARG NEXT_PUBLIC_LOCALE_PREFIX=never
   ENV NEXT_PUBLIC_LOCALE_PREFIX=$NEXT_PUBLIC_LOCALE_PREFIX

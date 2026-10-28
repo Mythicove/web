@@ -14,6 +14,7 @@ import { SkinPreview } from "@/components/skin-preview";
 import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
+import { readSiteConfig } from "@/lib/site-config-server";
 
 // 像素网格底纹：Minecraft 视觉锚点（设计文档 §5），仅作背景不参与交互。
 function PixelGrid() {
@@ -31,10 +32,11 @@ export const dynamic = "force-static";
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <HomeContent />;
+  const { modules } = await readSiteConfig();
+  return <HomeContent hasSkin={modules.includes("skin")} hasMods={modules.includes("mods")} />;
 }
 
-function HomeContent() {
+function HomeContent({ hasSkin, hasMods }: { hasSkin: boolean; hasMods: boolean }) {
   const t = useTranslations();
   const steps = [1, 2, 3].map((n) => ({
     title: t(`home.step${n}`),
@@ -60,16 +62,18 @@ function HomeContent() {
             <p className="text-text-muted mt-6 max-w-md text-lg leading-relaxed">
               {t("home.desc")}
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Button render={<Link href="/profile" />} size="lg">
-                <UploadIcon />
-                {t("home.ctaUpload")}
-              </Button>
-              <Button render={<Link href="/skins" />} variant="outline" size="lg">
-                <ImagesIcon />
-                {t("home.ctaLibrary")}
-              </Button>
-            </div>
+            {hasSkin && (
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Button render={<Link href="/profile" />} size="lg">
+                  <UploadIcon />
+                  {t("home.ctaUpload")}
+                </Button>
+                <Button render={<Link href="/skins" />} variant="outline" size="lg">
+                  <ImagesIcon />
+                  {t("home.ctaLibrary")}
+                </Button>
+              </div>
+            )}
           </div>
           <div className="flex justify-center">
             <SkinPreview skinUrl="/skins/steve.png" className="max-w-[320px]" />
@@ -96,20 +100,24 @@ function HomeContent() {
 
         <section className="border-border border-t">
           <div className="mx-auto grid max-w-6xl gap-6 px-6 py-16 lg:grid-cols-5">
-            <article className="border-border bg-surface shadow-card flex flex-col rounded-xl border p-6 lg:col-span-3">
-              <HeartIcon className="text-highlight size-5" />
-              <h3 className="font-display mt-3 text-xl font-semibold">{t("home.featLibTitle")}</h3>
-              <p className="text-text-muted mt-2 flex-1 text-sm leading-relaxed">
-                {t("home.featLibBody")}
-              </p>
-              <Link
-                href="/skins"
-                className="text-primary mt-6 inline-flex items-center gap-1 text-sm hover:underline"
-              >
-                {t("home.ctaLibrary")}
-                <ArrowRightIcon className="size-4" />
-              </Link>
-            </article>
+            {hasSkin && (
+              <article className="border-border bg-surface shadow-card flex flex-col rounded-xl border p-6 lg:col-span-3">
+                <HeartIcon className="text-highlight size-5" />
+                <h3 className="font-display mt-3 text-xl font-semibold">
+                  {t("home.featLibTitle")}
+                </h3>
+                <p className="text-text-muted mt-2 flex-1 text-sm leading-relaxed">
+                  {t("home.featLibBody")}
+                </p>
+                <Link
+                  href="/skins"
+                  className="text-primary mt-6 inline-flex items-center gap-1 text-sm hover:underline"
+                >
+                  {t("home.ctaLibrary")}
+                  <ArrowRightIcon className="size-4" />
+                </Link>
+              </article>
+            )}
             <div className="grid gap-6 lg:col-span-2">
               <article className="border-border bg-surface shadow-card rounded-xl border p-6">
                 <BadgeCheckIcon className="text-success size-5" />
@@ -120,15 +128,17 @@ function HomeContent() {
                   {t("home.featPremiumBody")}
                 </p>
               </article>
-              <article className="border-border bg-surface shadow-card rounded-xl border p-6">
-                <PackageIcon className="text-accent size-5" />
-                <h3 className="font-display mt-3 text-lg font-semibold">
-                  {t("home.featModsTitle")}
-                </h3>
-                <p className="text-text-muted mt-2 text-sm leading-relaxed">
-                  {t("home.featModsBody")}
-                </p>
-              </article>
+              {hasMods && (
+                <article className="border-border bg-surface shadow-card rounded-xl border p-6">
+                  <PackageIcon className="text-accent size-5" />
+                  <h3 className="font-display mt-3 text-lg font-semibold">
+                    {t("home.featModsTitle")}
+                  </h3>
+                  <p className="text-text-muted mt-2 text-sm leading-relaxed">
+                    {t("home.featModsBody")}
+                  </p>
+                </article>
+              )}
             </div>
           </div>
         </section>

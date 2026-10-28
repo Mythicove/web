@@ -1,4 +1,6 @@
-# E2E 本地单域名反代：hoard 与 mirror 按路径分流（与生产 Caddyfile.prod 同构）。
+# E2E 单域名反代：与 workspace 根目录的 Caddyfile（compose 网关）**同一套分流规则**，
+# 只把上游换成 e2e 的宿主端口：mirror=18080、hoard=18081、web=3110。
+# 生产规则改了请同步这里，否则 e2e 验的不是生产路由（反之亦然）。
 # 容器内经 host.docker.internal 访问宿主服务（Linux 需 --add-host=host.docker.internal:host-gateway）。
 {
 	admin off
@@ -6,22 +8,38 @@
 }
 
 :8090 {
-	handle /auth/* {
-		reverse_proxy host.docker.internal:18081
+	# ---- Hoard：Modrinth 兼容 API / SSO 会话 / 团队 / PAT / 文件直出 ----
+	reverse_proxy /v2/* host.docker.internal:18081
+	reverse_proxy /api/mods* host.docker.internal:18081
+	reverse_proxy /auth/* host.docker.internal:18081
+	reverse_proxy /api/team* host.docker.internal:18081
+	reverse_proxy /api/user* host.docker.internal:18081
+	reverse_proxy /cdn/* host.docker.internal:18081
+
+	# ---- Web：BFF 会话路由与 GET 落地页（必须先于 mirror 的 /api/*、/account/*、/oauth/* 兜底）----
+	reverse_proxy /api/auth/* host.docker.internal:3110
+	# 邮件落地页 GET 是 web 页面；同名 POST（/account/verify 等）是 mirror API
+	@web_landing {
+		path /account/verify /account/reset-password
+		method GET
 	}
-	handle /api/mods* {
-		reverse_proxy host.docker.internal:18081
+	reverse_proxy @web_landing host.docker.internal:3110
+	# OIDC 登录页/授权同意页由 web 渲染；mirror 只服务 /oauth/{provider}/auth|callback
+	reverse_proxy /oauth/login* host.docker.internal:3110
+	reverse_proxy /oauth/consent* host.docker.internal:3110
+
+	# ---- Mirror：Yggdrasil / 账号 / 皮肤库 / 纹理 / 渲染 / 管理 / OIDC Provider ----
+	# /metrics 有意不经网关暴露（Prometheus 直抓 mirror:18080/hoard:18081）
+	@mirror path /authserver/* /sessionserver/* /api/* /account/* /oauth/* /oauth2/* /mojang/* /skinlib* /skin/* /cape/* /textures/* /avatars/* /renders/* /usm/* /MinecraftSkins/* /MinecraftCloaks/* /admin/batch-import /site/* /reports /.well-known/openid-configuration /.well-known/jwks.json /healthz
+	reverse_proxy @mirror host.docker.internal:18080
+
+	# ---- Yggdrasil 根元信息：启动器 GET / 带 JSON Accept（浏览器落地页仍走 web）----
+	@yggmeta {
+		path /
+		header Accept *json*
 	}
-	handle /api/team* {
-		reverse_proxy host.docker.internal:18081
-	}
-	handle /api/user* {
-		reverse_proxy host.docker.internal:18081
-	}
-	handle /v2/* {
-		reverse_proxy host.docker.internal:18081
-	}
-	handle {
-		reverse_proxy host.docker.internal:18080
-	}
+	reverse_proxy @yggmeta host.docker.internal:18080
+
+	# ---- 其余（页面 / _next 静态资源 / favicon 等）→ Web 前端 ----
+	reverse_proxy host.docker.internal:3110
 }

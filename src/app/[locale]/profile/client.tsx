@@ -324,7 +324,7 @@ function ProfileInner() {
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <main className="flex flex-1 justify-center px-6 py-16">
+      <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
         <div className="grid w-full max-w-4xl items-start gap-8 lg:grid-cols-2">
           <Card className="bg-surface shadow-card">
             <CardHeader>

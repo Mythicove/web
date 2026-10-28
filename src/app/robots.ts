@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { INDEXABLE, routing } from "@/i18n/routing";
+import { INDEXABLE } from "@/i18n/routing";
 
 // 非索引部署（默认）全站 disallow；SEO 部署放开并指向 sitemap。
 export default function robots(): MetadataRoute.Robots {
@@ -14,7 +14,3 @@ export default function robots(): MetadataRoute.Robots {
 }
 
 export const dynamic = "force-static";
-
-export function generateStaticParams() {
-  return routing.locales.map((locale) => ({ locale }));
-}

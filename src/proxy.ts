@@ -30,12 +30,7 @@ export default function proxy(req: NextRequest) {
   const locale = locales.includes(first) ? first : null;
   const rest = locale ? `/${segments.slice(1).join("/")}` : req.nextUrl.pathname;
 
-  // never 模式下旧的前缀链接（含邮件/书签）308 到无前缀路径，避免 404
-  if (locale && routing.localePrefix === "never") {
-    const url = req.nextUrl.clone();
-    url.pathname = rest === "/" ? "/" : rest;
-    return NextResponse.redirect(url, 308);
-  }
+  // never 模式下旧的前缀链接交给 next-intl 中间件处理（307 + 语言 cookie 同步），不在此手写重定向。
 
   if (PROTECTED.some((p) => rest === p || rest.startsWith(`${p}/`))) {
     if (!req.cookies.has(SESSION_COOKIE)) {

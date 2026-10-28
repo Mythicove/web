@@ -9,8 +9,9 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { apiClient } from "@/lib/api";
+import { apiClient, hoardClient } from "@/lib/api";
 import { ApiError, STABLE_ERROR_CODES } from "@/lib/errors";
+import { useSiteConfig } from "@/lib/site-config";
 
 const META_KEY = "mythicove-auth";
 const AUTH_STORE_EVENT = "mythicove-auth-store";
@@ -66,6 +67,7 @@ const authStore = {
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const { has } = useSiteConfig();
   const raw = useSyncExternalStore(
     authStore.subscribe,
     authStore.getSnapshot,
@@ -101,13 +103,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     url.searchParams.delete("oauth");
     const qs = url.searchParams.toString();
     window.history.replaceState(null, "", url.pathname + (qs ? `?${qs}` : "") + url.hash);
-    if (!code) return;
+    if (!code) {
+      // IdP 回跳显式失败（?oauth=error）：不静默吞掉，交给登录页渲染 errors.*
+      if (failed) throw new ApiError(401, "oauth error");
+      return;
+    }
     const res = await fetch("/api/auth/oauth-code", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      // 与 login() 同一机制：抛 ApiError，由调用方（登录页）本地化渲染
+      const body = (await res.json().catch(() => null)) as { error?: string } | null;
+      const msg = body?.error ?? "";
+      throw new ApiError(res.status, msg, STABLE_ERROR_CODES.has(msg) ? msg : undefined);
+    }
     const meta = (await res.json()) as AuthState;
     save(meta);
   }, []);
@@ -119,7 +130,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // cookie 清除失败不阻塞本地登出
     }
-  }, []);
+    if (has("mods")) {
+      try {
+        await hoardClient.logoutHoard();
+      } catch {
+        // hoard 会话清除失败不阻塞本地登出（尽力而为）
+      }
+    }
+  }, [has]);
 
   const selectPlayer = useCallback(
     (name: string) => {

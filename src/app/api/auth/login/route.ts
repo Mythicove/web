@@ -31,7 +31,11 @@ export async function POST(req: Request) {
 
   const res = await fetch(`${API_ORIGIN}/account/login`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      // 透传客户端 IP（mirror 在受信代理链下自行解析），用于限流/审计
+      "x-forwarded-for": req.headers.get("x-forwarded-for") ?? req.headers.get("x-real-ip") ?? "",
+    },
     body: JSON.stringify({ email, password, captchaToken }),
     cache: "no-store",
   });
