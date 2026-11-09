@@ -12,6 +12,7 @@ const outDir = resolve(here, "../src/lib/api-schema");
 const targets = [
   { spec: "mirror.openapi.yaml", out: "mirror.ts" },
   { spec: "hoard.openapi.yaml", out: "hoard.ts" },
+  { spec: "isles.openapi.yaml", out: "isles.ts" },
 ];
 
 await mkdir(outDir, { recursive: true });

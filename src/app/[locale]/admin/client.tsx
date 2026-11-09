@@ -21,6 +21,7 @@ import { BrandPanel } from "./panels/brand";
 import { SitePanel } from "./panels/site";
 import { RegistrationPanel } from "./panels/registration";
 import { OAuthClientsPanel } from "./panels/oauth-clients";
+import { Link } from "@/i18n/navigation";
 
 const MIRROR_TOKEN_KEY = "mythicove:admin-token";
 const HOARD_TOKEN_KEY = "mythicove:hoard-admin-token";
@@ -31,6 +32,7 @@ const readSession = (key: string) =>
 
 export function AdminPageClient() {
   const t = useTranslations("admin");
+  const islesT = useTranslations("isles");
   const { isAuthenticated } = useAuth();
   const { user: hoardUser } = useHoardUser();
   const [manualToken, setManualToken] = useState(() => readSession(MIRROR_TOKEN_KEY));
@@ -63,6 +65,12 @@ export function AdminPageClient() {
             <ShieldCheckIcon className="text-highlight size-6" />
             {t("title")}
           </h1>
+          <Link
+            href="/admin/integrations"
+            className="text-primary mt-3 inline-block text-sm hover:underline"
+          >
+            {islesT("manage")}
+          </Link>
 
           {isAuthenticated ? (
             <p className="text-success mt-2 text-sm">{t("useSession")}</p>

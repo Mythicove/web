@@ -18,6 +18,7 @@
 
 	# ---- Web：BFF 会话路由与 GET 落地页（必须先于 mirror 的 /api/*、/account/*、/oauth/* 兜底）----
 	reverse_proxy /api/auth/* host.docker.internal:3110
+	reverse_proxy /api/isles/* host.docker.internal:3110
 	# 邮件落地页 GET 是 web 页面；同名 POST（/account/verify 等）是 mirror API
 	@web_landing {
 		path /account/verify /account/reset-password

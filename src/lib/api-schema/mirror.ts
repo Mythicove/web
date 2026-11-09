@@ -191,6 +191,92 @@ export interface paths {
         put?: never;
         /** 上传皮肤（PNG 原始字节） */
         post: operations["uploadSkin"];
+        /** 清除自定义皮肤（回落内置默认 Steve/Alex，按模型） */
+        delete: operations["clearSkin"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skin/{name}/preset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 应用 vanilla 内置预设皮肤（按体型取变体；不占配额） */
+        post: operations["applySkinPreset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skin/{name}/model": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 切换体型（default/slim）；内置皮肤自动换宽/窄变体 */
+        post: operations["setPlayerModel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skin-presets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 内置预设 id 列表 */
+        get: operations["listSkinPresets"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skin-presets/{id}/{model}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 内置预设原图（公开、长缓存） */
+        get: operations["getSkinPresetPNG"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/skin-presets/{id}/{model}/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 内置预设的 2D 渲染视图（head|body|back|side），画廊缩略用人形正面而非材质表 */
+        get: operations["renderSkinPreset"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -209,7 +295,8 @@ export interface paths {
         put?: never;
         /** 上传披风（PNG 原始字节） */
         post: operations["uploadCape"];
-        delete?: never;
+        /** 清除披风 */
+        delete: operations["clearCape"];
         options?: never;
         head?: never;
         patch?: never;
@@ -292,6 +379,23 @@ export interface paths {
         };
         /** 2D 全身渲染 */
         get: operations["getBodyRender"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/renders/by-name/{name}/{kind}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** 按玩家名出 2D 视图（head|body|back|side），无自定义皮肤时给内置默认 */
+        get: operations["renderByName"];
         put?: never;
         post?: never;
         delete?: never;
@@ -434,6 +538,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/account/verify/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** 重发验证邮件（账号不存在或已验证时静默 204，不泄露存在性） */
+        post: operations["resendVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 当前会话的账号信息（用户中心概览）
+         * @description 账号级操作，需网站会话（启动器会话 403 `web_session_required`）：响应含账号邮箱与
+         *     昵称，属于账号本身，而启动器令牌只证明了某一个玩家的身份。
+         */
+        get: operations["me"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/account/password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 登录态修改主密码（成功后全部会话失效，需重新登录）
+         * @description 账号级操作，需网站会话（启动器会话 403 `web_session_required`）。
+         *     本端点另有 `currentPassword` 校验，所以启动器令牌即使不被中间件拦下也改不动密码；
+         *     显式拒绝是为了不把"两套凭据互不越界"这条不变量寄托在一个入参校验上。
+         */
+        post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/account/forgot-password": {
         parameters: {
             query?: never;
@@ -475,10 +639,19 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 当前账号名下玩家列表 */
+        /**
+         * 当前账号名下玩家列表
+         * @description **启动器会话只看到它钉住的那一个玩家**（网站会话看到账号下全部）。
+         *     这是 ADR-0012「一条独立密码只证明它所属玩家的身份」在 HTTP 面上的落实：
+         *     若按 `UserID` 授权，知道某一个玩家的独立密码就能列出并操作同账号下别的玩家。
+         *     范围外与不存在一律同样处理，免得用玩家名探测账号结构。
+         */
         get: operations["listPlayers"];
         put?: never;
-        /** 为当前账号添加玩家名 */
+        /**
+         * 为当前账号添加玩家名
+         * @description 账号级操作，需网站会话（启动器会话 403）。
+         */
         post: operations["addPlayer"];
         delete?: never;
         options?: never;
@@ -499,6 +672,9 @@ export interface paths {
         /**
          * 删除玩家（连同其会话与服务器绑定）
          * @description 账号至少保留一个玩家，删除唯一玩家返回 409。
+         *
+         *     账号级操作，需网站会话（启动器会话 403）：删除是破坏性的且影响整个账号，
+         *     不该由一条玩家级凭据发起——包括它自己钉住的那个玩家。
          */
         delete: operations["deletePlayer"];
         options?: never;
@@ -507,6 +683,9 @@ export interface paths {
          * 玩家改名
          * @description 离线 UUID 由名字派生，改名会同时更换 uuid，并使该玩家的游戏会话与服务器绑定失效
          *     （启动器需重新登录）。已绑定微软正版的玩家（名字来自 Mojang）返回 409。
+         *
+         *     账号级操作，需网站会话（启动器会话 403）：改名会换掉身份本身，
+         *     不该由一条按设备发放、可单独撤销的玩家级凭据发起。
          */
         patch: operations["renamePlayer"];
         trace?: never;
@@ -521,6 +700,10 @@ export interface paths {
         /**
          * 列出该玩家的启动器独立密码
          * @description 只返回元数据（名称/创建时间/最近使用），永不返回哈希或明文。最近使用的排在前面。
+         *
+         *     **玩家级端点，启动器会话可用**（这正是启动器管理独立密码的入口），但只对它钉住的
+         *     那个玩家；`{name}` 指向同账号下的其它玩家时返回 404，与"玩家不存在"不可区分。
+         *     网站会话可管理账号下任意玩家。
          */
         get: operations["listPlayerCredentials"];
         put?: never;
@@ -531,6 +714,10 @@ export interface paths {
          *     Argon2id，条数直接放大失败尝试的成本，而"每台设备一条"用不到更多。
          *     密码由用户自己输入，故响应不回显明文。
          *     可以与主密码相同——两者互不影响，启动器只会匹配到独立密码。
+         *
+         *     **玩家级端点，启动器会话可用**，但只对它钉住的那个玩家；`{name}` 指向同账号下的
+         *     其它玩家时返回 404。这一条是越权面里最要紧的：能为别的玩家新建独立密码，
+         *     就等于把"知道 Alice 的一条独立密码"变成"控制 Bob"，而撤销 Alice 那条也拦不住。
          */
         post: operations["createPlayerCredential"];
         delete?: never;
@@ -552,6 +739,9 @@ export interface paths {
         /**
          * 撤销一条启动器独立密码
          * @description 由该凭证建立的启动器会话经外键级联一并销毁（立刻掉线，不是等 24 小时过期）。
+         *
+         *     **玩家级端点，启动器会话可用**，但只对它钉住的那个玩家；`{name}` 或 `{credentialId}`
+         *     落在范围外时返回 404。撤销自己正在用的那条会立刻把自己登出——这是预期的自助撤销语义。
          */
         delete: operations["deletePlayerCredential"];
         options?: never;
@@ -572,6 +762,10 @@ export interface paths {
          *     该账号不能用皮肤/皮肤库/启动器登录/SSO，前端据此弹绑定引导。
          *     绑定由第三方登录自动写入（首次按邮箱匹配到既有账号即完成绑定），本站不提供解绑：
          *     解绑会让"强制绑定"策略变成死锁。
+         *
+         *     账号级操作，需网站会话（启动器会话 403）：绑定信息含第三方邮箱，属于账号本身而不是
+         *     某个玩家。启动器也不需要它——`binding_required` 由 `/authserver/authenticate` 以稳定码
+         *     直接返回，而那时会话还没建立。
          */
         get: operations["listIdentities"];
         put?: never;
@@ -596,6 +790,9 @@ export interface paths {
          * 解除微软正版绑定
          * @description 清空该玩家的 premium_uuid，回到离线身份：此后可以本地改名，贴图不再回退 Mojang。
          *     幂等——未绑定时同样返回 204。
+         *
+         *     账号级操作，需网站会话（启动器会话 403）：解绑会改变身份来源（真 UUID → 离线 UUID），
+         *     与改名同属"改身份本身"，不该由一条玩家级凭据发起。
          */
         delete: operations["unbindPremium"];
         options?: never;
@@ -671,7 +868,12 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** 获取 Microsoft 正版绑定授权 URL */
+        /**
+         * 获取 Microsoft 正版绑定授权 URL
+         * @description 账号级操作，需网站会话（启动器会话 403 `web_session_required`）：正版绑定写在账号的
+         *     玩家上，且后续流程是浏览器授权码回跳，启动器无法参与。启动器要做的是把用户送到
+         *     网站的账号页，而不是自己发起绑定。
+         */
         get: operations["mojangOauthAuth"];
         put?: never;
         post?: never;
@@ -1444,7 +1646,9 @@ export interface components {
             captchaCapUrl: string;
             /** @description 验证码保护范围（register | login）；前端据此决定注册/登录页是否渲染控件。验证码未生效时为空数组 */
             captchaScopes: string[];
-            /** @description 密码最小长度（与后端 account.MinPasswordLength 同源） */
+            /** @description 密码复杂度策略；前端输入时逐条实时判定，与后端校验同源 */
+            passwordPolicy: components["schemas"]["PasswordPolicy"];
+            /** @description 密码最小长度（= passwordPolicy.minLength，保留作向后兼容字段） */
             minPasswordLength: number;
             /** @description 允许的邮箱域名；空数组表示不限制 */
             emailDomains: string[];
@@ -1535,6 +1739,11 @@ export interface components {
             copyright: string;
             /** @description 备案展示文本（中国部署） */
             icp: string;
+            /**
+             * @description 登录成功后的落地页（user=用户中心，默认；home=首页）；空串按 user 处理
+             * @enum {string}
+             */
+            loginLanding: "" | "user" | "home";
         };
         SiteAssets: {
             customCss: string;
@@ -1545,6 +1754,8 @@ export interface components {
             description: string;
             copyright: string;
             icp: string;
+            /** @description 登录落地页（user|home，空串=user） */
+            loginLanding: string;
             customCss: boolean;
             customJs: boolean;
         };
@@ -1559,6 +1770,27 @@ export interface components {
             emailDomainWhitelist: string[];
             /** @description 验证码保护范围（register | login）；空数组=不保护 */
             captchaScopes: string[];
+            /** @description 密码复杂度策略；归一化后 minLength 恒在 [8,64] */
+            password: components["schemas"]["PasswordPolicy"];
+            /** @description 放行未验证邮箱登录（默认 false=注册必须完成邮件验证）；仅救援/迁移场景开启 */
+            allowUnverifiedLogin: boolean;
+        };
+        AccountMe: {
+            email: string;
+            nickname: string;
+            verified: boolean;
+        };
+        PasswordPolicy: {
+            /** @description 密码最小长度；后台可配，归一化夹在 [8,64] */
+            minLength: number;
+            /** @description 需含大写字母 */
+            requireUpper: boolean;
+            /** @description 需含小写字母 */
+            requireLower: boolean;
+            /** @description 需含数字 */
+            requireDigit: boolean;
+            /** @description 需含符号（非字母数字） */
+            requireSymbol: boolean;
         };
         Meta: {
             meta?: {
@@ -1567,7 +1799,7 @@ export interface components {
                 implementationVersion?: string;
             };
             skinDomains?: string[];
-            /** @description base64 编码的 PEM 公钥 */
+            /** @description 公钥的 **PEM 文本**（`-----BEGIN PUBLIC KEY-----` 开头，含换行）。 不做 base64 包装：authlib-injector 直接按 PEM 解析这个字段， 多包一层 base64 会让它报 "Bad signature public key" 并放弃注入， 客户端因此认不到本站皮肤。 */
             signaturePublickey?: string;
         };
         AuthenticateRequest: {
@@ -1676,6 +1908,22 @@ export interface components {
         };
     };
     responses: {
+        /**
+         * @description 需要网站会话：调用方用的是启动器会话（由某条玩家独立密码建立）。
+         *     `error` 字段是稳定错误码，启动器据此引导用户回网站的账号页操作，
+         *     而不是把一个裸 403 甩给用户。
+         */
+        WebSessionRequired: {
+            headers: {
+                [name: string]: unknown;
+            };
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    error: "web_session_required";
+                };
+            };
+        };
         /** @description 通用错误响应 */
         Error: {
             headers: {
@@ -2003,6 +2251,164 @@ export interface operations {
             };
         };
     };
+    clearSkin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已清除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    applySkinPreset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description 预设 id（steve|alex|ari|efe|kai|makena|noor|sunny|zuri） */
+                    id: string;
+                    /**
+                     * @description 留空=沿用玩家当前体型
+                     * @enum {string}
+                     */
+                    model?: "default" | "slim";
+                };
+            };
+        };
+        responses: {
+            /** @description 已应用 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    setPlayerModel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    model: "default" | "slim";
+                };
+            };
+        };
+        responses: {
+            /** @description 已切换 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+        };
+    };
+    listSkinPresets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ok */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        ids: string[];
+                    };
+                };
+            };
+        };
+    };
+    getSkinPresetPNG: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                model: "default" | "slim";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PNG */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    renderSkinPreset: {
+        parameters: {
+            query?: {
+                scale?: number;
+            };
+            header?: never;
+            path: {
+                id: string;
+                model: "default" | "slim";
+                kind: "head" | "body" | "back" | "side";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PNG */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
     getCape: {
         parameters: {
             query?: never;
@@ -2049,6 +2455,28 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Error"];
+        };
+    };
+    clearCape: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description 已清除 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            401: components["responses"]["Error"];
+            404: components["responses"]["Error"];
         };
     };
     getTexture: {
@@ -2154,6 +2582,32 @@ export interface operations {
             header?: never;
             path: {
                 uuid: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description PNG */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "image/png": string;
+                };
+            };
+            404: components["responses"]["Error"];
+        };
+    };
+    renderByName: {
+        parameters: {
+            query?: {
+                scale?: number;
+            };
+            header?: never;
+            path: {
+                name: string;
+                kind: "head" | "body" | "back" | "side";
             };
             cookie?: never;
         };
@@ -2285,6 +2739,8 @@ export interface operations {
             400: components["responses"]["Error"];
             403: components["responses"]["Error"];
             409: components["responses"]["Error"];
+            /** @description captcha driver misconfigured */
+            503: components["responses"]["Error"];
         };
     };
     accountLogin: {
@@ -2337,6 +2793,95 @@ export interface operations {
                 content?: never;
             };
             400: components["responses"]["Error"];
+        };
+    };
+    resendVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: email */
+                    email: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 已受理（是否真发信不对外暴露） */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+        };
+    };
+    me: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description ok */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccountMe"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["WebSessionRequired"];
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    currentPassword: string;
+                    /** @description 须满足站点密码复杂度策略 */
+                    newPassword: string;
+                };
+            };
+        };
+        responses: {
+            /** @description 已修改 */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            /**
+             * @description 两种情况共用 403，靠 `error` 字段区分：
+             *     - 稳定码 `web_session_required`：调用方是启动器会话。
+             *     - 本地化文案：`currentPassword` 不正确。
+             */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Error"];
+                };
+            };
         };
     };
     forgotPassword: {
@@ -2435,6 +2980,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+            403: components["responses"]["WebSessionRequired"];
             409: components["responses"]["Error"];
         };
     };
@@ -2458,6 +3004,7 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Error"];
+            403: components["responses"]["WebSessionRequired"];
             404: components["responses"]["Error"];
             /** @description 不能删除账号下唯一的玩家 */
             409: {
@@ -2500,6 +3047,7 @@ export interface operations {
             };
             400: components["responses"]["Error"];
             401: components["responses"]["Error"];
+            403: components["responses"]["WebSessionRequired"];
             404: components["responses"]["Error"];
             /** @description 新名字已被占用，或该玩家已绑定正版 */
             409: {
@@ -2625,6 +3173,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+            403: components["responses"]["WebSessionRequired"];
         };
     };
     unbindPremium: {
@@ -2647,6 +3196,7 @@ export interface operations {
                 content?: never;
             };
             401: components["responses"]["Error"];
+            403: components["responses"]["WebSessionRequired"];
             404: components["responses"]["Error"];
         };
     };
@@ -2768,6 +3318,7 @@ export interface operations {
                 };
             };
             401: components["responses"]["Error"];
+            403: components["responses"]["WebSessionRequired"];
         };
     };
     mojangOauthCallback: {

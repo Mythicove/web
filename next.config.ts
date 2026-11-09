@@ -9,6 +9,15 @@ const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
 // cap 自托管验证码（CAPTCHA_CAP_URL 实例 + WASM/Worker，见下）。
 function csp() {
   const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+  const imageOrigins = (process.env.ISLES_IMAGE_ORIGINS ?? "")
+    .split(",")
+    .filter(Boolean)
+    .map((value) => {
+      const url = new URL(value.trim());
+      if (!["https:", "http:"].includes(url.protocol)) throw new Error("Invalid image origin");
+      return url.origin;
+    })
+    .join(" ");
   // cap 实例地址（driver=cap 的部署必配，需与 mirror MIRROR_CAPTCHA_CAP_URL 一致）：
   // 控件从实例取 challenge/资产（connect-src），PoW 在 blob worker 里编译 WASM
   // （worker-src blob: + 'wasm-unsafe-eval'），instrumentation 用 blob iframe。
@@ -23,7 +32,7 @@ function csp() {
   return [
     "default-src 'self'",
     `connect-src 'self' ${api}${capSrc}`,
-    `img-src 'self' ${api} data:`,
+    `img-src 'self' ${api} ${imageOrigins} data:`,
     "font-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${evalSrc} https://challenges.cloudflare.com https://js.hcaptcha.com https://www.google.com https://www.gstatic.com`,

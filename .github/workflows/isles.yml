@@ -1,0 +1,35 @@
+name: isles integration
+on: [push, pull_request]
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: web
+      - uses: actions/checkout@v4
+        with:
+          repository: Mythicove/mythic-isles
+          path: mythic-isles
+      - uses: actions/checkout@v4
+        with:
+          repository: Mythicove/api
+          path: api
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: mythic-isles/go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+        working-directory: web
+      - run: pnpm exec playwright install --with-deps chromium
+        working-directory: web
+      - run: pnpm exec playwright test --config=e2e/isles.config.ts
+        working-directory: web
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: isles-browser-results
+          path: web/test-results/

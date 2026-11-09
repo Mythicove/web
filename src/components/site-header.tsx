@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Logo } from "@/components/logo";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { cn } from "@/lib/utils";
+import { ServerNavLink } from "@/components/server-nav-link";
 
 function LanguageMenu({ compact = false }: { compact?: boolean }) {
   const t = useTranslations();
@@ -123,6 +124,7 @@ export function SiteHeader() {
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">
+          <ServerNavLink />
           {navLinks.map((l) => (
             <Link key={l.href} href={l.href} className={linkClass(l.href)}>
               {l.label}
@@ -151,6 +153,7 @@ export function SiteHeader() {
               <MenuIcon />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              <ServerNavLink menu />
               {navLinks.map((l) => (
                 <DropdownMenuItem key={l.href} render={<Link href={l.href} />}>
                   {l.label}
