@@ -26,7 +26,6 @@
   --color-chart-4: var(--success);
   --color-chart-5: var(--warning);
   --color-destructive: var(--danger);
-  --color-danger: var(--danger);
   --color-foreground: var(--text);
   --color-highlight: var(--highlight);
   --color-input: var(--border);
@@ -37,7 +36,6 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-primary-hover: var(--primary-hover);
-  --color-primary-solid: var(--primary-solid);
   --color-ring: var(--primary);
   --color-secondary: var(--surface-raised);
   --color-secondary-foreground: var(--text);
@@ -56,39 +54,37 @@
   --color-text-muted: var(--text-muted);
   --color-warning: var(--warning);
 
-  /* 方块原生圆角：比通用「友好 SaaS」更紧、更利落，呼应 MC 的方块语言（体素极简 §radius） */
-  --radius-2xl: 16px;
-  --radius-lg: 8px;
-  --radius-md: 6px;
-  --radius-sm: 4px;
-  --radius-xl: 12px;
+  --radius-2xl: 24px;
+  --radius-lg: 16px;
+  --radius-md: 10px;
+  --radius-sm: 6px;
+  --radius-xl: 20px;
 
-  /* 层级阴影：低透明度绿黑，做出真实海拔而非贴平（体素极简 §depth，不用纯黑重影） */
-  --shadow-card: 0 1px 2px var(--shadow-tint), 0 2px 8px var(--shadow-tint);
-  --shadow-lift: 0 4px 12px var(--shadow-tint), 0 16px 40px var(--shadow-tint);
-  --shadow-pop: 0 8px 24px var(--shadow-tint-strong), 0 32px 64px var(--shadow-tint-strong);
+  /* 层级阴影：低透明度深色，不用纯黑重影（设计文档 §3.8） */
+  --shadow-card: 0 1px 2px var(--shadow-tint);
+  --shadow-lift: 0 2px 6px var(--shadow-tint), 0 16px 40px var(--shadow-tint);
+  --shadow-pop: 0 4px 12px var(--shadow-tint-strong), 0 24px 64px var(--shadow-tint-strong);
 }
 
-/* 默认值（草方块绿·深色·中性石墨基底），会被 ThemeProvider/首帧脚本覆盖 */
+/* 默认值（蓝紫·深色），会被 ThemeProvider 覆盖 */
 /* stylelint-disable color-no-hex -- 原语层是全仓唯一允许 hex 的位置：语义色与别名由此派生，运行时由主题覆盖 */
 :root {
-  --accent: #7cc463;
-  --bg: #0e100f;
-  --border: #333936;
-  --danger: #e5534b;
-  --highlight: #4fd6c3;
-  --primary: #63bb4a;
+  --accent: #8b5cf6;
+  --bg: #0b1026;
+  --border: #2a3150;
+  --danger: #f43f5e;
+  --highlight: #38bdf8;
+  --primary: #4f46e5;
   --primary-foreground: #fff;
-  --primary-hover: #2ea043;
-  --primary-solid: #238636;
-  --shadow-tint: #06090759;
-  --shadow-tint-strong: #06090780;
-  --success: #3fb950;
-  --surface: #1a1e1c;
-  --surface-raised: #232826;
-  --text: #e8ebe7;
-  --text-muted: #98a09a;
-  --warning: #d9a441;
+  --primary-hover: #4338ca;
+  --shadow-tint: #00000059;
+  --shadow-tint-strong: #00000073;
+  --success: #22c55e;
+  --surface: #1a1f3a;
+  --surface-raised: #232a4d;
+  --text: #e6e9f5;
+  --text-muted: #9aa0b8;
+  --warning: #f59e0b;
 }
 /* stylelint-enable color-no-hex */
 
@@ -126,7 +122,7 @@
   }
 
   ::selection {
-    background: var(--primary-solid);
+    background: var(--primary);
     color: var(--primary-foreground);
   }
 
