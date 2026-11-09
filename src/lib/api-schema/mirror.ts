@@ -1567,7 +1567,7 @@ export interface components {
                 implementationVersion?: string;
             };
             skinDomains?: string[];
-            /** @description base64 编码的 PEM 公钥 */
+            /** @description 公钥的 **PEM 文本**（`-----BEGIN PUBLIC KEY-----` 开头，含换行）。 不做 base64 包装：authlib-injector 直接按 PEM 解析这个字段， 多包一层 base64 会让它报 "Bad signature public key" 并放弃注入， 客户端因此认不到本站皮肤。 */
             signaturePublickey?: string;
         };
         AuthenticateRequest: {
@@ -2285,6 +2285,8 @@ export interface operations {
             400: components["responses"]["Error"];
             403: components["responses"]["Error"];
             409: components["responses"]["Error"];
+            /** @description captcha driver misconfigured */
+            503: components["responses"]["Error"];
         };
     };
     accountLogin: {
