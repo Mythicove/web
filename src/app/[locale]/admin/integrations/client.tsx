@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { SiteHeader } from "@/components/site-header";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { BridgeAdmin } from "@/components/bridge-admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "@/i18n/navigation";
@@ -387,6 +388,7 @@ function ServerEditor({
     });
   return (
     <section className="min-w-0 space-y-8">
+      {initial.id && <BridgeAdmin id={value.id} call={call} />}
       <form
         className="space-y-5"
         onSubmit={(e) => {

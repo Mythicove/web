@@ -29,6 +29,9 @@ export default async function Servers({ params }: { params: Promise<{ locale: st
             <h1 className="font-display text-4xl font-semibold">{t("title")}</h1>
             <p className="text-text-muted mt-3">{t("intro")}</p>
           </div>
+          <Link href="/game" className="text-primary text-sm hover:underline">
+            {t("gameProfile")}
+          </Link>
         </div>
         {servers.length === 0 ? (
           <p role={available ? undefined : "alert"} className="text-text-muted py-12">

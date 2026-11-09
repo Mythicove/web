@@ -11,6 +11,17 @@ createServer((req, res) => {
     res.statusCode = req.headers.authorization === "Bearer scenario-mirror-admin" ? 200 : 403;
     return res.end("{}");
   }
+  if (req.url === "/account/me" || req.url === "/account/players") {
+    if (!req.headers.cookie?.includes("mythic_session=website-session")) {
+      res.statusCode = 401;
+      return res.end("{}");
+    }
+    return res.end(
+      req.url === "/account/players"
+        ? '[{"id":"owned-player","name":"Alice"}]'
+        : '{"email":"alice@example.org","nickname":"Alice","verified":true}',
+    );
+  }
   if (req.url === "/api/site") return res.end('{"name":"Test community"}');
   if (req.url === "/api/brand") return res.end('{"light":false,"dark":false,"version":0}');
   if (req.url === "/api/announcement") return res.end('{"enabled":false,"title":"","body":""}');

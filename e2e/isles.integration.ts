@@ -48,6 +48,19 @@ test("administrator publishes a server; anonymous players see public information
   const publicData = await (await request.get("/api/isles/servers")).json();
   expect(publicData[0]).not.toHaveProperty("connectionId");
   expect(publicData[0]).not.toHaveProperty("packwizUrl");
+  const otherPlayer = await request.post("/api/isles/players/someone-else/pair", {
+    headers: { Cookie: "mythic_session=website-session" },
+    data: { server: "community" },
+  });
+  expect(otherPlayer.status()).toBe(403);
+  await page
+    .context()
+    .addCookies([
+      { name: "mythic_session", value: "website-session", url: "http://localhost:19185" },
+    ]);
+  await page.goto("/game");
+  await page.getByRole("button", { name: "Generate linking code" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "/mythic link" })).toBeVisible();
   await testInfo.attach("scenario-result.json", {
     body: JSON.stringify(
       {

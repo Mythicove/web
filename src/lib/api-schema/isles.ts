@@ -229,10 +229,236 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/isles/admin/servers/{id}/bridge-token": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["rotateBridgeToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/admin/servers/{id}/bridge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        get: operations["getBridgeObservation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/admin/servers/{id}/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        get: operations["listVerifiedGameIdentities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/admin/servers/{id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        get: operations["listBridgeTasks"];
+        put?: never;
+        post: operations["setGameMembership"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/players/{player}/pair": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player: components["parameters"]["player"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Web BFF verifies website session and ownership; direct Isles calls require service token and X-Isles-Player. */
+        post: operations["createGamePairing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/players/{player}/links": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player: components["parameters"]["player"];
+            };
+            cookie?: never;
+        };
+        get: operations["listOwnGameLinks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/bridge/{id}/heartbeat": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["observeGameBridge"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/bridge/{id}/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["verifyGamePairing"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/bridge/{id}/tasks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        get: operations["getPendingBridgeTasks"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/bridge/{id}/tasks/{task}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+                task: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["acknowledgeBridgeTask"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        GameIdentity: {
+            uuid: string;
+            name: string;
+            platform: string;
+            /** Format: date-time */
+            linkedAt: string;
+        };
+        PlayerSnapshot: {
+            uuid: string;
+            name: string;
+            group?: string;
+            groups?: string[];
+            values?: {
+                [key: string]: string;
+            };
+        };
+        BridgeSnapshot: {
+            platform: string;
+            minecraft: string;
+            plugins: {
+                [key: string]: string;
+            };
+            groups: string[];
+            players: components["schemas"]["PlayerSnapshot"][];
+            tps?: number;
+            mspt?: number;
+            /** @description Fraction of system CPU usage */
+            cpu?: number;
+            /** Format: date-time */
+            readonly receivedAt: string;
+        };
+        BridgeTask: {
+            id: string;
+            /** @enum {string} */
+            kind: "whitelist" | "member";
+            uuid: string;
+            group?: string;
+            grant: boolean;
+            /** @enum {string} */
+            status: "pending" | "applied" | "failed";
+            error?: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
         Link: {
             kind: string;
             /** Format: uri */
@@ -303,6 +529,7 @@ export interface components {
     };
     responses: never;
     parameters: {
+        player: string;
         id: string;
     };
     requestBodies: never;
@@ -860,6 +1087,347 @@ export interface operations {
             };
             /** @description Source unavailable */
             502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    rotateBridgeToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Server-specific token shown only on creation; old token is immediately revoked. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        token: string;
+                    };
+                };
+            };
+            /** @description Administrator required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getBridgeObservation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Latest observation; fresh means received within 90 seconds. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        fresh: boolean;
+                        snapshot: components["schemas"]["BridgeSnapshot"];
+                    };
+                };
+            };
+            /** @description Bridge has not connected */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listVerifiedGameIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verified website-player to game identities for this server */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        player: string;
+                        identity: components["schemas"]["GameIdentity"];
+                    }[];
+                };
+            };
+        };
+    };
+    listBridgeTasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Durable desired-state task results */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeTask"][];
+                };
+            };
+        };
+    };
+    setGameMembership: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    player: string;
+                    /** @enum {string} */
+                    kind: "whitelist" | "member";
+                    /** @description Existing group reported by the Bridge */
+                    group?: string;
+                    grant: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Queued, not yet applied */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeTask"];
+                };
+            };
+            /** @description Verified identity */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    createGamePairing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player: components["parameters"]["player"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    server: string;
+                };
+            };
+        };
+        responses: {
+            /** @description One-time game linking code, valid for 10 minutes */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        code: string;
+                        command: string;
+                        /** Format: date-time */
+                        expiresAt: string;
+                    };
+                };
+            };
+            /** @description Website-player ownership required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listOwnGameLinks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                player: components["parameters"]["player"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verified game identities and own online-player data only */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        server: string;
+                        identity: components["schemas"]["GameIdentity"];
+                        fresh: boolean;
+                        player?: components["schemas"]["PlayerSnapshot"];
+                    }[];
+                };
+            };
+        };
+    };
+    observeGameBridge: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BridgeSnapshot"];
+            };
+        };
+        responses: {
+            /** @description Observation received */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Server-specific Bridge token required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    verifyGamePairing: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    uuid: string;
+                    name: string;
+                    platform: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Verified and consumed */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Code expired */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Game identity belongs to another website player */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    getPendingBridgeTasks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Up to 10 pending desired-state tasks, safe to replay before acknowledgement */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeTask"][];
+                };
+            };
+        };
+    };
+    acknowledgeBridgeTask: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+                task: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    success: boolean;
+                    error?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Result persisted; repeated acknowledgement is idempotent */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };

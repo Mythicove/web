@@ -13,8 +13,12 @@ async function proxy(req: Request, context: { params: Promise<{ path: string[] }
   if (parts.some((p) => !/^[a-zA-Z0-9-]+$/.test(p))) return new Response(null, { status: 404 });
   const path = parts.join("/");
   const admin = parts[0] === "admin";
+  const player = parts[0] === "players";
+  const bridge = /^bridge\/[a-z0-9-]+\/(heartbeat|link|tasks(?:\/[a-f0-9]+)?)$/.test(path);
   if (
     !admin &&
+    !player &&
+    !bridge &&
     (req.method !== "GET" ||
       !/^(servers(?:\/[a-z0-9-]+(?:\/status)?)?|packs\/[a-f0-9]{64})$/.test(path))
   ) {
@@ -22,20 +26,56 @@ async function proxy(req: Request, context: { params: Promise<{ path: string[] }
   }
   const headers: Record<string, string> = {};
   try {
+    if ((admin || player) && req.method !== "GET") {
+      const suppliedOrigin = req.headers.get("origin");
+      const allowed = [new URL(req.url).origin, process.env.NEXT_PUBLIC_WEB_URL].filter(Boolean);
+      if (
+        (suppliedOrigin && !allowed.includes(suppliedOrigin)) ||
+        !req.headers.get("content-type")?.startsWith("application/json")
+      )
+        return new Response(null, { status: 403 });
+    }
+    if (bridge) headers.Authorization = req.headers.get("authorization") ?? "";
+    if (player) {
+      const session = (await cookies()).get(SESSION_COOKIE)?.value;
+      if (!session) return new Response(null, { status: 401 });
+      const identityHeaders = { Cookie: `${SESSION_COOKIE}=${session}` };
+      const webSession = await fetch(`${API_ORIGIN}/account/me`, {
+        headers: identityHeaders,
+        cache: "no-store",
+        redirect: "error",
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!webSession.ok) return new Response(null, { status: 401 });
+      await webSession.body?.cancel();
+      const owned = await fetch(`${API_ORIGIN}/account/players`, {
+        headers: identityHeaders,
+        cache: "no-store",
+        redirect: "error",
+        signal: AbortSignal.timeout(10_000),
+      });
+      if (!owned.ok) return new Response(null, { status: 401 });
+      const players = (await owned.json()) as { id: string; name: string }[];
+      if (parts.length === 1 && req.method === "GET")
+        return Response.json(
+          players.map(({ id, name }) => ({ id, name })),
+          { headers: { "Cache-Control": "no-store" } },
+        );
+      if (
+        parts.length !== 3 ||
+        !["links", "pair"].includes(parts[2]) ||
+        !players.some((p) => p.id === parts[1])
+      )
+        return new Response(null, { status: 403 });
+      const serviceToken = process.env.ISLES_ADMIN_TOKEN;
+      if (!serviceToken) return new Response(null, { status: 503 });
+      headers.Authorization = `Bearer ${serviceToken}`;
+      headers["X-Isles-Player"] = parts[1];
+    }
     if (admin) {
       const serviceToken = process.env.ISLES_ADMIN_TOKEN;
       if (!serviceToken)
         return Response.json({ error: "Isles management is not configured" }, { status: 503 });
-      if (req.method !== "GET") {
-        const suppliedOrigin = req.headers.get("origin");
-        const allowed = [new URL(req.url).origin, process.env.NEXT_PUBLIC_WEB_URL].filter(Boolean);
-        if (
-          (suppliedOrigin && !allowed.includes(suppliedOrigin)) ||
-          !req.headers.get("content-type")?.startsWith("application/json")
-        ) {
-          return new Response(null, { status: 403 });
-        }
-      }
       const manual = req.headers.get("authorization");
       const session = (await cookies()).get(SESSION_COOKIE)?.value;
       if (!manual && !session) return new Response(null, { status: 401 });
