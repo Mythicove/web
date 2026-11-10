@@ -631,6 +631,54 @@ export interface components {
             /** @description Administrator-only loaded worlds and Chunky task state; absent if unavailable */
             chunky?: components["schemas"]["ChunkyWorld"][];
             plan?: components["schemas"]["PlanSnapshot"];
+            towny?: components["schemas"]["TownySnapshot"];
+        };
+        TownyReference: {
+            /** @description Stable provider UUID */
+            id: string;
+            name: string;
+        };
+        TownyTown: {
+            id: string;
+            name: string;
+            residents: number;
+            /** @description Provider townblock count; not an assumed block area or map polygon */
+            claimedTownBlocks: number;
+            /** @description Towny open-join flag; not a website join action */
+            open: boolean;
+            /** @description Towny public-spawn flag; not permission to publish the town on this website */
+            public: boolean;
+            nation?: components["schemas"]["TownyReference"];
+        };
+        TownyNation: {
+            id: string;
+            name: string;
+            towns: number;
+            residents: number;
+            open: boolean;
+            /** @description Provider public-spawn flag */
+            public: boolean;
+        };
+        /** @description Owner-only verified resident membership, including offline residents. Present without town means a known townless resident; absence means unavailable or unknown resident. */
+        TownyResident: {
+            uuid: string;
+            mayor: boolean;
+            king: boolean;
+            townRanks: string[];
+            nationRanks: string[];
+            town?: components["schemas"]["TownyTown"];
+            /** Format: date-time */
+            observedAt: string;
+        };
+        /** @description Administrator-only provider towns/nations and verified resident rows. Lists retain at most 100 towns and 100 nations in UUID order; counts describe the complete provider lists, not the retained page. No resident directory or spawn coordinates are exported. */
+        TownySnapshot: {
+            townCount: number;
+            nationCount: number;
+            towns: components["schemas"]["TownyTown"][];
+            nations: components["schemas"]["TownyNation"][];
+            residents: components["schemas"]["TownyResident"][];
+            /** Format: date-time */
+            observedAt: string;
         };
         /** @description Stored Plan sessions for one verified UUID on the current game server; available while offline. Does not include an unsaved current session. */
         PlanActivity: {
@@ -1836,6 +1884,7 @@ export interface operations {
                         fresh: boolean;
                         player?: components["schemas"]["PlayerSnapshot"];
                         activity?: components["schemas"]["PlanActivity"];
+                        towny?: components["schemas"]["TownyResident"];
                     }[];
                 };
             };

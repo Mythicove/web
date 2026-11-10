@@ -1,0 +1,96 @@
+{
+  "townless": {
+    "uuid": "7c0f77ad-4895-3c9a-a5be-05ce3d65be75",
+    "mayor": false,
+    "king": false,
+    "townRanks": [],
+    "nationRanks": [],
+    "observedAt": "2026-11-10T14:29:10.5094128Z"
+  },
+  "mayor": {
+    "uuid": "7c0f77ad-4895-3c9a-a5be-05ce3d65be75",
+    "mayor": true,
+    "king": false,
+    "townRanks": [],
+    "nationRanks": [],
+    "town": {
+      "id": "722342b0-5fd2-4c0d-ae5d-b58f6e596809",
+      "name": "IslesHarbor",
+      "residents": 1,
+      "claimedTownBlocks": 1,
+      "open": false,
+      "public": true
+    },
+    "observedAt": "2026-11-10T14:29:30.5089727Z"
+  },
+  "king": {
+    "uuid": "7c0f77ad-4895-3c9a-a5be-05ce3d65be75",
+    "mayor": true,
+    "king": true,
+    "townRanks": [],
+    "nationRanks": [],
+    "town": {
+      "id": "722342b0-5fd2-4c0d-ae5d-b58f6e596809",
+      "name": "IslesHarbor",
+      "residents": 1,
+      "claimedTownBlocks": 1,
+      "open": false,
+      "public": true,
+      "nation": { "id": "95629fda-d9be-49cd-a8a2-c11655a2d369", "name": "IslesUnion" }
+    },
+    "observedAt": "2026-11-10T14:29:50.5092104Z"
+  },
+  "aggregate": {
+    "townCount": 1,
+    "nationCount": 1,
+    "towns": [
+      {
+        "id": "722342b0-5fd2-4c0d-ae5d-b58f6e596809",
+        "name": "IslesHarbor",
+        "residents": 2,
+        "claimedTownBlocks": 1,
+        "open": true,
+        "public": true,
+        "nation": { "id": "95629fda-d9be-49cd-a8a2-c11655a2d369", "name": "IslesUnion" }
+      }
+    ],
+    "nations": [
+      {
+        "id": "95629fda-d9be-49cd-a8a2-c11655a2d369",
+        "name": "IslesUnion",
+        "towns": 1,
+        "residents": 2,
+        "open": false,
+        "public": false
+      }
+    ],
+    "residents": [
+      {
+        "uuid": "7c0f77ad-4895-3c9a-a5be-05ce3d65be75",
+        "mayor": false,
+        "king": false,
+        "townRanks": ["assistant"],
+        "nationRanks": [],
+        "town": {
+          "id": "722342b0-5fd2-4c0d-ae5d-b58f6e596809",
+          "name": "IslesHarbor",
+          "residents": 2,
+          "claimedTownBlocks": 1,
+          "open": true,
+          "public": true,
+          "nation": { "id": "95629fda-d9be-49cd-a8a2-c11655a2d369", "name": "IslesUnion" }
+        },
+        "observedAt": "2026-11-10T14:31:10.5090934Z"
+      }
+    ],
+    "observedAt": "2026-11-10T14:31:10.5090934Z"
+  },
+  "removed": {
+    "uuid": "7c0f77ad-4895-3c9a-a5be-05ce3d65be75",
+    "mayor": false,
+    "king": false,
+    "townRanks": [],
+    "nationRanks": [],
+    "observedAt": "2026-11-10T14:32:17.9685043Z"
+  }
+}

@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ChunkyAdmin } from "@/components/chunky-admin";
 import { PlanStatistics } from "@/components/plan-statistics";
+import { TownyOverview } from "@/components/towny-details";
 import type { components } from "@/lib/api-schema/isles";
 import type { IslesBridgeSnapshot } from "@/lib/isles";
 
@@ -33,7 +34,9 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const observingProviders =
-    state?.snapshot.chunky !== undefined || state?.snapshot.plugins.Plan !== undefined;
+    state?.snapshot.chunky !== undefined ||
+    state?.snapshot.plugins.Plan !== undefined ||
+    state?.snapshot.plugins.Towny !== undefined;
   useEffect(() => {
     if (!observingProviders) return;
     let active = true;
@@ -144,6 +147,10 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
             ))}
           </ul>
           {state.snapshot.plan && <PlanStatistics statistics={state.snapshot.plan} />}
+          {state.snapshot.towny && <TownyOverview snapshot={state.snapshot.towny} />}
+          {state.snapshot.plugins.Towny && !state.snapshot.towny && (
+            <p className="text-text-muted text-sm">{t("townyUnavailable")}</p>
+          )}
           {state.snapshot.plugins.Plan && !state.snapshot.plan && (
             <p className="text-text-muted text-sm">{t("planUnavailable")}</p>
           )}

@@ -532,3 +532,154 @@ test("offline Plan activity stays owner-scoped and aggregate statistics stay adm
     contentType: "application/json",
   });
 });
+
+test("Towny membership follows the verified offline resident and admin lists respect visibility boundaries", async ({
+  page,
+  request,
+}, testInfo) => {
+  const observations = JSON.parse(
+    await readFile(join(__dirname, "fixtures", "towny-observations.json"), "utf8"),
+  );
+  const headers = { Authorization: "Bearer scenario-mirror-admin" };
+  const server = "/api/isles/admin/servers/towny";
+  expect(
+    (
+      await request.put(server, {
+        headers,
+        data: {
+          name: "Towny server",
+          edition: "java",
+          address: "127.0.0.1:1",
+          published: true,
+          links: [],
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  const { token } = await (
+    await request.post(`${server}/bridge-token`, { headers, data: {} })
+  ).json();
+  const bridge = "/api/isles/bridge/towny";
+  const bridgeHeaders = { Authorization: `Bearer ${token}` };
+  const pair = await (
+    await request.post("/api/isles/players/owned-player/pair", {
+      headers: { Cookie: "mythic_session=website-session" },
+      data: { server: "towny" },
+    })
+  ).json();
+  expect(
+    (
+      await request.post(`${bridge}/link`, {
+        headers: bridgeHeaders,
+        data: {
+          code: pair.code,
+          uuid: observations.townless.uuid,
+          name: "TownyTester",
+          platform: "java",
+        },
+      })
+    ).status(),
+  ).toBe(204);
+  const heartbeat = async (towny?: unknown) => {
+    expect(
+      (
+        await request.post(`${bridge}/heartbeat`, {
+          headers: bridgeHeaders,
+          data: {
+            platform: "Purpur",
+            minecraft: "1.21.1",
+            plugins: { Towny: "0.103.2.0" },
+            groups: [],
+            players: [],
+            ...(towny ? { towny } : {}),
+          },
+        })
+      ).status(),
+    ).toBe(204);
+  };
+  const memberState = (resident: unknown) =>
+    heartbeat({ ...observations.aggregate, residents: [resident] });
+  await memberState(observations.king);
+  const own = await (
+    await request.get("/api/isles/players/owned-player/links", {
+      headers: { Cookie: "mythic_session=website-session" },
+    })
+  ).json();
+  const linked = own.find((link: { server: string }) => link.server === "towny");
+  expect(linked.towny.king).toBe(true);
+  expect(linked).not.toHaveProperty("player");
+  expect(linked.towny).not.toHaveProperty("towns");
+  expect((await request.get(`${server}/bridge`)).status()).toBe(401);
+  expect(
+    (
+      await request.get("/api/isles/players/someone-else/links", {
+        headers: { Cookie: "mythic_session=website-session" },
+      })
+    ).status(),
+  ).toBe(403);
+  expect(JSON.stringify(await (await request.get("/api/isles/servers")).json())).not.toContain(
+    "IslesHarbor",
+  );
+  await page
+    .context()
+    .addCookies([
+      { name: "mythic_session", value: "website-session", url: "http://localhost:19185" },
+    ]);
+  await page.goto("/game");
+  await expect(page.getByRole("heading", { name: "My Towny membership" })).toBeVisible();
+  await expect(page.getByText("Role: Resident / Mayor / King", { exact: true })).toBeVisible();
+  await expect(page.getByText("Nation: IslesUnion", { exact: true })).toBeVisible();
+  await heartbeat(observations.aggregate);
+  await page.reload();
+  await expect(page.getByText("Town ranks: assistant", { exact: true })).toBeVisible();
+  await expect(page.getByText("Role: Resident", { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await testInfo.attach("towny-membership-mobile.png", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+  await memberState(observations.removed);
+  await page.reload();
+  await expect(
+    page.getByText("Towny knows this resident, who currently has no town.", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Town ranks: assistant", { exact: true })).toHaveCount(0);
+  await heartbeat({ ...observations.aggregate, townCount: 101 });
+  await page.goto("/admin/integrations");
+  await page.getByLabel("Mirror rescue token", { exact: false }).fill("scenario-mirror-admin");
+  await page.getByRole("button", { name: "Load configuration" }).click();
+  await page.getByRole("button", { name: "Towny server", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh", exact: true }).last().click();
+  const overview = page.getByRole("region", { name: "Towny towns and nations" });
+  await expect(overview.getByText("101 towns / 1 nation", { exact: true })).toBeVisible();
+  await expect(
+    overview.getByText("Showing 1 town and 1 nation in UUID order", { exact: false }),
+  ).toBeVisible();
+  await expect(overview.getByText("IslesHarbor", { exact: true })).toBeVisible();
+  await expect(overview.getByText("IslesUnion", { exact: true })).toBeVisible();
+  await heartbeat();
+  await expect(
+    page.getByText("Towny is installed but its observations are unavailable.", { exact: false }),
+  ).toBeVisible({ timeout: 15000 });
+  await page.goto("/game");
+  await expect(page.getByText("TownyTester", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My Towny membership" })).toHaveCount(0);
+  await testInfo.attach("towny-result.json", {
+    body: JSON.stringify(
+      {
+        offlineMembership: "owner-only",
+        roles: ["mayor", "king", "assistant"],
+        removal: "townless",
+        unavailable: "not-townless",
+        overview: "admin-only",
+        truncation: "explicit",
+      },
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  });
+});

@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { PlanStatistics } from "@/components/plan-statistics";
+import { TownyMembership } from "@/components/towny-details";
 import type { components } from "@/lib/api-schema/isles";
 import { Link } from "@/i18n/navigation";
 import { islesRequest, type IslesServer, type IslesPlayerSnapshot } from "@/lib/isles";
@@ -14,6 +15,7 @@ interface Linked {
   fresh: boolean;
   player?: IslesPlayerSnapshot;
   activity?: components["schemas"]["PlanActivity"];
+  towny?: components["schemas"]["TownyResident"];
 }
 export function GameProfileClient() {
   const t = useTranslations("isles");
@@ -164,6 +166,7 @@ export function GameProfileClient() {
                   </p>
                 )}
                 {link.activity && <PlanStatistics statistics={link.activity} />}
+                {link.towny && <TownyMembership resident={link.towny} />}
                 {link.player?.economy && (
                   <div className="border-t pt-4">
                     <h4 className="font-semibold">{t("gameBalance")}</h4>
