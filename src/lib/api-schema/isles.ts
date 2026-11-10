@@ -1,5 +1,69 @@
 // 由 scripts/gen-api.mjs 从 api/specs/isles.openapi.yaml 生成，请勿手改。
 export interface paths {
+    "/api/isles/catalog/modrinth/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["searchModrinthCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/catalog/hangar/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["searchHangarCatalog"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/catalog/modrinth/versions/{project}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listModrinthVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/catalog/hangar/versions/{owner}/{project}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listHangarVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/isles/servers": {
         parameters: {
             query?: never;
@@ -415,6 +479,44 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CatalogFile: {
+            name: string;
+            /** Format: uri */
+            url: string;
+            hashes: {
+                [key: string]: string;
+            };
+            /** Format: int64 */
+            size: number;
+            platform?: string;
+        };
+        CatalogVersion: {
+            id: string;
+            name: string;
+            number: string;
+            channel: string;
+            gameVersions: string[];
+            loaders: string[];
+            files: components["schemas"]["CatalogFile"][];
+        };
+        CatalogProject: {
+            id: string;
+            slug: string;
+            title: string;
+            description?: string;
+            projectType?: string;
+            /** Format: uri */
+            iconUrl?: string;
+            /** @enum {string} */
+            source: "modrinth" | "hangar";
+            /** Format: uri */
+            url: string;
+            /** Format: int64 */
+            downloads?: number;
+            categories?: string[];
+            loaders?: string[];
+            gameVersions?: string[];
+        };
         GameIdentity: {
             uuid: string;
             name: string;
@@ -538,6 +640,192 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    searchModrinthCatalog: {
+        parameters: {
+            query: {
+                q: string;
+                loader?: string;
+                game_version?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fixed-origin Modrinth project metadata; files are not mirrored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogProject"][];
+                };
+            };
+            /** @description Invalid query */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Catalog upstream budget exhausted */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Upstream unavailable or invalid */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    searchHangarCatalog: {
+        parameters: {
+            query: {
+                q: string;
+                platform?: string;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Fixed-origin Hangar project metadata; files are not mirrored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogProject"][];
+                };
+            };
+            /** @description Invalid query */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Catalog upstream budget exhausted */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Upstream unavailable or invalid */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listModrinthVersions: {
+        parameters: {
+            query?: {
+                loader?: string;
+                game_version?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versions with upstream-declared file hashes, download URLs and compatibility. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogVersion"][];
+                };
+            };
+            /** @description Invalid filters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Catalog upstream budget exhausted */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Upstream unavailable or invalid */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listHangarVersions: {
+        parameters: {
+            query?: {
+                platform?: string;
+                game_version?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                owner: string;
+                project: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Versions and downloads on selected platforms; external-only artifacts have no direct download. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogVersion"][];
+                };
+            };
+            /** @description Invalid filters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Catalog upstream budget exhausted */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Upstream unavailable or invalid */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     listServers: {
         parameters: {
             query?: never;

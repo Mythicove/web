@@ -31,6 +31,8 @@ export default defineConfig({
         ISLES_ADMIN_TOKEN: token,
         ISLES_SECRET_KEY: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
         ISLES_DATA_DIR: mkdtempSync(join(tmpdir(), "isles-e2e-")),
+        ISLES_MODRINTH_URL: "http://127.0.0.1:19186/modrinth",
+        ISLES_HANGAR_URL: "http://127.0.0.1:19186/hangar",
       },
     },
     {

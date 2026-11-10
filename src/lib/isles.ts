@@ -6,6 +6,8 @@ export type IslesConfig = components["schemas"]["Config"];
 export type IslesStatus = components["schemas"]["GameStatus"];
 export type IslesInstance = components["schemas"]["Instance"];
 export type IslesRuntime = components["schemas"]["Runtime"];
+export type CatalogProject = components["schemas"]["CatalogProject"];
+export type CatalogVersion = components["schemas"]["CatalogVersion"];
 
 export async function islesRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api/isles/${path}`, {

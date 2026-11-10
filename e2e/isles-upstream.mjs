@@ -7,6 +7,88 @@ createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "http://localhost:19185");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   if (req.url === "/healthz") return res.end("{}");
+  const url = new URL(req.url, "http://127.0.0.1:19186");
+  if (url.pathname === "/modrinth/search") {
+    if (url.searchParams.get("query") !== "Fabric") {
+      res.statusCode = 400;
+      return res.end("{}");
+    }
+    return res.end(
+      JSON.stringify({
+        hits: [
+          {
+            project_id: "fabric-api",
+            slug: "fabric-api",
+            title: "Fabric API",
+            description: "Client and server components",
+            project_type: "mod",
+            categories: ["fabric"],
+            versions: ["1.21.1"],
+          },
+        ],
+      }),
+    );
+  }
+  if (url.pathname === "/modrinth/project/fabric-api/version") {
+    return res.end(
+      JSON.stringify([
+        {
+          id: "fabric-release",
+          name: "Fabric 1.21.1 release",
+          version_number: "1.0",
+          version_type: "release",
+          game_versions: ["1.21.1"],
+          loaders: ["fabric"],
+          files: [
+            {
+              filename: "fabric.jar",
+              url: "https://cdn.modrinth.com/test/fabric.jar",
+              size: 1234,
+              hashes: { sha512: "abcdef0123456789" },
+            },
+          ],
+        },
+      ]),
+    );
+  }
+  if (url.pathname === "/hangar/projects") {
+    return res.end(
+      JSON.stringify({
+        result: [
+          {
+            name: "ViaVersion",
+            namespace: { owner: "ViaVersion", slug: "ViaVersion" },
+            description: "Protocol compatibility",
+            category: "admin_tools",
+            supportedPlatforms: { PAPER: ["1.21.1"] },
+          },
+        ],
+      }),
+    );
+  }
+  if (url.pathname === "/hangar/projects/ViaVersion/ViaVersion/versions") {
+    return res.end(
+      JSON.stringify({
+        result: [
+          {
+            name: "5.0",
+            channel: { name: "Release" },
+            platformDependencies: { PAPER: ["1.21.1"] },
+            downloads: {
+              PAPER: {
+                fileInfo: {
+                  name: "ViaVersion.jar",
+                  sizeBytes: 2000,
+                  sha256Hash: "fedcba9876543210",
+                },
+                downloadUrl: "https://hangarcdn.papermc.io/test/ViaVersion.jar",
+              },
+            },
+          },
+        ],
+      }),
+    );
+  }
   if (req.url === "/api/admin/site") {
     res.statusCode = req.headers.authorization === "Bearer scenario-mirror-admin" ? 200 : 403;
     return res.end("{}");

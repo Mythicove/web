@@ -10,15 +10,20 @@ async function proxy(req: Request, context: { params: Promise<{ path: string[] }
   const origin = process.env.ISLES_URL;
   if (!origin) return Response.json({ error: "Isles is not configured" }, { status: 503 });
   const parts = (await context.params).path;
-  if (parts.some((p) => !/^[a-zA-Z0-9-]+$/.test(p))) return new Response(null, { status: 404 });
+  if (parts.some((p) => !/^[a-zA-Z0-9_-]+$/.test(p))) return new Response(null, { status: 404 });
   const path = parts.join("/");
   const admin = parts[0] === "admin";
   const player = parts[0] === "players";
   const bridge = /^bridge\/[a-z0-9-]+\/(heartbeat|link|tasks(?:\/[a-f0-9]+)?)$/.test(path);
+  const catalog =
+    /^catalog\/(modrinth\/(search|versions\/[a-zA-Z0-9_-]+)|hangar\/(search|versions\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+))$/.test(
+      path,
+    );
   if (
     !admin &&
     !player &&
     !bridge &&
+    !(catalog && req.method === "GET") &&
     (req.method !== "GET" ||
       !/^(servers(?:\/[a-z0-9-]+(?:\/status)?)?|packs\/[a-f0-9]{64})$/.test(path))
   ) {
@@ -114,7 +119,8 @@ async function proxy(req: Request, context: { params: Promise<{ path: string[] }
       body = Buffer.concat(chunks);
     }
     headers["Content-Type"] = "application/json";
-    const res = await fetch(`${origin.replace(/\/+$/, "")}/api/isles/${path}`, {
+    const query = catalog ? new URL(req.url).search : "";
+    const res = await fetch(`${origin.replace(/\/+$/, "")}/api/isles/${path}${query}`, {
       method: req.method,
       headers,
       body: body as BodyInit | undefined,
@@ -123,7 +129,7 @@ async function proxy(req: Request, context: { params: Promise<{ path: string[] }
       signal: AbortSignal.timeout(100_000),
     });
     const responseHeaders = new Headers({ "Cache-Control": "no-store" });
-    for (const name of ["content-type", "content-disposition"]) {
+    for (const name of ["content-type", "content-disposition", "retry-after"]) {
       const value = res.headers.get(name);
       if (value) responseHeaders.set(name, value);
     }

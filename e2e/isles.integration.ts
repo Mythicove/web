@@ -76,3 +76,54 @@ test("administrator publishes a server; anonymous players see public information
     contentType: "application/json",
   });
 });
+
+test("catalog searches retain source, filters, versions and download provenance", async ({
+  page,
+  request,
+}, testInfo) => {
+  await page.goto("/catalog");
+  await page.getByLabel("Project name", { exact: true }).fill("Fabric");
+  await page.getByLabel("Loader or platform").selectOption("fabric");
+  await page.getByLabel("Game version", { exact: true }).fill("1.21.1");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Fabric API" })).toBeVisible();
+  await page.getByRole("button", { name: "Choose a version" }).click();
+  await expect(page.getByRole("heading", { name: "Fabric 1.21.1 release" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Download from publisher" })).toHaveAttribute(
+    "href",
+    "https://cdn.modrinth.com/test/fabric.jar",
+  );
+  await page.getByText("Upstream file hashes", { exact: true }).click();
+  await expect(page.getByText("abcdef0123456789", { exact: true })).toBeVisible();
+  await page.getByLabel("Source", { exact: true }).selectOption("hangar");
+  await page.getByLabel("Project name", { exact: true }).fill("ViaVersion");
+  await page.getByLabel("Loader or platform").selectOption("PAPER");
+  await page.getByRole("button", { name: "Search", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "ViaVersion" })).toBeVisible();
+  await page.getByRole("button", { name: "Choose a version" }).click();
+  await expect(page.getByRole("link", { name: "Download from publisher" })).toHaveAttribute(
+    "href",
+    "https://hangarcdn.papermc.io/test/ViaVersion.jar",
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  const invalid = await request.get(
+    "/api/isles/catalog/modrinth/search?q=Fabric&url=https://example.org",
+  );
+  expect(invalid.status()).toBe(400);
+  await testInfo.attach("catalog-result.json", {
+    body: JSON.stringify(
+      {
+        modrinthVersion: "fabric-release",
+        hangarVersion: "5.0",
+        downloadOrigin: "publisher",
+        arbitraryTarget: invalid.status(),
+      },
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  });
+});
