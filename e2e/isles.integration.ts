@@ -115,6 +115,12 @@ test("administrator publishes a server; anonymous players see public information
           uuid,
           name: "AliceInGame",
           clientVersion: "1.21.1",
+          economy: {
+            provider: "EssentialsX Economy",
+            balance: 123.44999999999999,
+            formatted: "$123.44",
+            currency: "$",
+          },
           regions: [
             { id: "my-home", world: "world", role: "owner", centerX: 5, centerY: 70, centerZ: 5 },
           ],
@@ -128,6 +134,8 @@ test("administrator publishes a server; anonymous players see public information
   await expect(page.getByRole("heading", { name: "My WorldGuard regions" })).toBeVisible();
   await expect(page.getByText("my-home", { exact: false })).toBeVisible();
   await expect(page.getByText("Observed client version: 1.21.1")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Game balance" })).toBeVisible();
+  await expect(page.getByText("$123.44", { exact: true })).toBeVisible();
   await testInfo.attach("scenario-result.json", {
     body: JSON.stringify(
       {

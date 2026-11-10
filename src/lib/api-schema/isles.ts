@@ -537,6 +537,13 @@ export interface components {
             regions?: components["schemas"]["GameRegion"][];
             /** @description Additional matching regions were omitted */
             regionsTruncated?: boolean;
+            economy?: components["schemas"]["GameEconomy"];
+        };
+        GameEconomy: {
+            provider: string;
+            balance: number;
+            formatted: string;
+            currency: string;
         };
         GameRegion: {
             id: string;

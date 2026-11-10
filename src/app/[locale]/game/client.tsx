@@ -160,6 +160,16 @@ export function GameProfileClient() {
                     {t("clientProtocol")}: {link.player.clientVersion}
                   </p>
                 )}
+                {link.player?.economy && (
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold">{t("gameBalance")}</h4>
+                    <p className="mt-2 text-xl">{link.player.economy.formatted}</p>
+                    <p className="text-text-muted mt-1 text-xs">
+                      {link.player.economy.provider}
+                      {link.player.economy.currency ? ` / ${link.player.economy.currency}` : ""}
+                    </p>
+                  </div>
+                )}
                 {(link.player?.regions?.length ?? 0) > 0 && (
                   <section className="border-t pt-4">
                     <h4 className="mb-3 font-semibold">{t("myRegions")}</h4>
