@@ -49,6 +49,10 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
+# Map pages also check the allowlist at request time; retain the public build
+# setting in the standalone runner as well as the generated CSP headers.
+ARG ISLES_MAP_ORIGINS=
+ENV ISLES_MAP_ORIGINS=$ISLES_MAP_ORIGINS
 RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 COPY --from=build /app/public ./public
 COPY --from=build --chown=nextjs:nodejs /app/.next/standalone ./

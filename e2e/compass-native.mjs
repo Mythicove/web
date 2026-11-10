@@ -60,6 +60,12 @@ try {
     throw new Error("No WebView page");
   })();
   await page.getByRole("heading", { name: "开始游戏", exact: true }).waitFor();
+  const paths = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("paths_info"));
+  assert.equal(
+    paths.root.toLowerCase().replaceAll("\\", "/"),
+    join(dir, "data").toLowerCase().replaceAll("\\", "/"),
+    "Native test requires an isolated portable deployment",
+  );
   await page.getByLabel("玩家名", { exact: true }).fill("中文输入测试Alex");
   await page.getByLabel("启动器独立密码", { exact: true }).fill("not-submitted");
   assert.equal(await page.getByLabel("玩家名", { exact: true }).inputValue(), "中文输入测试Alex");
