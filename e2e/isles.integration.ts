@@ -20,6 +20,10 @@ test("administrator publishes a server; anonymous players see public information
   await page.getByLabel("Description", { exact: true }).fill("A shared world for our players.");
   await page.getByLabel("Player connection address", { exact: false }).fill("127.0.0.1:1");
   await page.getByLabel("Visible to players").check();
+  await page.getByLabel("Map tool", { exact: true }).selectOption("bluemap");
+  await page
+    .getByLabel("Browser map URL", { exact: false })
+    .fill("http://127.0.0.1:19186/world-map#saved-camera");
   await page.getByRole("button", { name: "Add link" }).click();
   await page.getByLabel("Link label", { exact: true }).fill("Explore the world");
   await page.getByLabel("Kind (BlueMap, Plan, guide…)").fill("BlueMap");
@@ -52,6 +56,14 @@ test("administrator publishes a server; anonymous players see public information
     "https://map.example.org/",
   );
   await expect(page.getByText("Connection could not be confirmed", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "World map", exact: true }).click();
+  await expect(
+    page.frameLocator("iframe").getByRole("heading", { name: "Recorded map viewport" }),
+  ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Open map in a new tab" })).toHaveAttribute(
+    "href",
+    "http://127.0.0.1:19186/world-map#saved-camera",
+  );
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
     true,

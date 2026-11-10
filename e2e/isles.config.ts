@@ -47,6 +47,7 @@ export default defineConfig({
         API_URL_INTERNAL: "http://127.0.0.1:19186",
         NEXT_PUBLIC_API_URL: "http://127.0.0.1:19186",
         NEXT_PUBLIC_WEB_URL: base,
+        ISLES_MAP_ORIGINS: "http://127.0.0.1:19186",
         BLOCK_BOTS: "false",
       },
     },

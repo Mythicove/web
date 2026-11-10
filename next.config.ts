@@ -18,6 +18,15 @@ function csp() {
       return url.origin;
     })
     .join(" ");
+  const mapOrigins = (process.env.ISLES_MAP_ORIGINS ?? "")
+    .split(",")
+    .filter(Boolean)
+    .map((value) => {
+      const url = new URL(value.trim());
+      if (!["https:", "http:"].includes(url.protocol)) throw new Error("Invalid map origin");
+      return url.origin;
+    })
+    .join(" ");
   // cap 实例地址（driver=cap 的部署必配，需与 mirror MIRROR_CAPTCHA_CAP_URL 一致）：
   // 控件从实例取 challenge/资产（connect-src），PoW 在 blob worker 里编译 WASM
   // （worker-src blob: + 'wasm-unsafe-eval'），instrumentation 用 blob iframe。
@@ -37,7 +46,7 @@ function csp() {
     "style-src 'self' 'unsafe-inline'",
     `script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${evalSrc} https://challenges.cloudflare.com https://js.hcaptcha.com https://www.google.com https://www.gstatic.com`,
     "worker-src 'self' blob:",
-    `frame-src 'self' https://challenges.cloudflare.com https://www.hcaptcha.com https://www.google.com${cap ? " blob:" : ""}`,
+    `frame-src 'self' ${mapOrigins} https://challenges.cloudflare.com https://www.hcaptcha.com https://www.google.com${cap ? " blob:" : ""}`,
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

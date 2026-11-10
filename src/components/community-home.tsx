@@ -83,6 +83,14 @@ export async function CommunityHome({
                   <Button render={<Link href={`/servers/${featured.id}`} />}>
                     {t("portalEnterWorld")}
                   </Button>
+                  {featured.map && (
+                    <Button
+                      variant="outline"
+                      render={<Link href={`/servers/${featured.id}/map`} />}
+                    >
+                      {t("worldMap")}
+                    </Button>
+                  )}
                   {featured.packVersion && (
                     <Button
                       variant="outline"

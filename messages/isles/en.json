@@ -1,4 +1,10 @@
 {
+  "worldMap": "World map",
+  "openMap": "Open map in a new tab",
+  "mapType": "Map tool",
+  "mapUrl": "Browser map URL (saved camera links allowed)",
+  "noMap": "No map configured",
+  "mapOriginMissing": "This map origin has not been enabled for embedding. Open it in a new tab, or configure ISLES_MAP_ORIGINS when building the Web service.",
   "portalIntro": "Our worlds, players and shared adventures. Prepare your client and meet us in game.",
   "portalAllWorlds": "All worlds and connections",
   "portalEnterWorld": "Explore this server",

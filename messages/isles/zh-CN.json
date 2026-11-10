@@ -1,4 +1,10 @@
 {
+  "worldMap": "世界地图",
+  "openMap": "在新标签页打开地图",
+  "mapType": "地图工具",
+  "mapUrl": "浏览器地图地址（可包含保存的视角位置）",
+  "noMap": "不配置地图",
+  "mapOriginMissing": "此地图来源尚未启用嵌入。可以在新标签页打开，或在构建 Web 服务时配置 ISLES_MAP_ORIGINS。",
   "portalIntro": "这里有我们一起生活、探索和建造的世界。准备好客户端，在游戏里见。",
   "portalAllWorlds": "全部世界与进服入口",
   "portalEnterWorld": "了解并加入服务器",

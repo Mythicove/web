@@ -7,6 +7,12 @@ createServer((req, res) => {
   res.setHeader("Access-Control-Allow-Origin", "http://localhost:19185");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   if (req.url === "/healthz") return res.end("{}");
+  if (req.url?.startsWith("/world-map")) {
+    res.setHeader("Content-Type", "text/html; charset=utf-8");
+    return res.end(
+      "<!doctype html><html lang='en'><title>Map tool boundary</title><body><h1>Recorded map viewport</h1><p>External renderer is embedded without being reimplemented.</p></body></html>",
+    );
+  }
   const url = new URL(req.url, "http://127.0.0.1:19186");
   if (url.pathname === "/modrinth/search") {
     if (url.searchParams.get("query") !== "Fabric") {

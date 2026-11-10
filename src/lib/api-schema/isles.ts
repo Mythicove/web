@@ -607,6 +607,16 @@ export interface components {
              */
             packwizUrl?: string;
             readonly packVersion?: string;
+            map?: components["schemas"]["WorldMap"];
+        };
+        WorldMap: {
+            /** @enum {string} */
+            kind: "bluemap" | "squaremap" | "dynmap";
+            /**
+             * Format: uri
+             * @description Browser-facing map URL; may retain a saved camera-location fragment
+             */
+            url: string;
         };
         Connection: {
             id: string;

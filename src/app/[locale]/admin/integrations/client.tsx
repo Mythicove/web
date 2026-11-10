@@ -459,6 +459,43 @@ function ServerEditor({
             onChange={(e) => change("coverUrl", e.target.value)}
           />
         </Field>
+        <fieldset className="grid gap-4 rounded-md border p-4">
+          <legend className="px-1 text-sm font-semibold">{t("worldMap")}</legend>
+          <label htmlFor="map-kind" className="text-text-muted text-sm">
+            {t("mapType")}
+          </label>
+          <select
+            id="map-kind"
+            className={selectStyle}
+            value={value.map?.kind ?? ""}
+            onChange={(e) =>
+              change(
+                "map",
+                e.target.value
+                  ? {
+                      kind: e.target.value as NonNullable<IslesServer["map"]>["kind"],
+                      url: value.map?.url ?? "",
+                    }
+                  : undefined,
+              )
+            }
+          >
+            <option value="">{t("noMap")}</option>
+            <option value="bluemap">BlueMap</option>
+            <option value="squaremap">squaremap</option>
+            <option value="dynmap">Dynmap</option>
+          </select>
+          {value.map && (
+            <Field label={t("mapUrl")}>
+              <Input
+                required
+                type="url"
+                value={value.map.url}
+                onChange={(e) => change("map", { ...value.map!, url: e.target.value })}
+              />
+            </Field>
+          )}
+        </fieldset>
         <label className="flex items-center gap-3 text-sm">
           <input
             type="checkbox"

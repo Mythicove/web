@@ -42,6 +42,13 @@ export default async function Server({ params }: Params) {
             <p className="text-text-muted mt-6 leading-relaxed whitespace-pre-line">
               {server.description}
             </p>
+            {server.map && (
+              <div className="mt-6">
+                <Button render={<Link href={`/servers/${server.id}/map`} />} variant="outline">
+                  {t("worldMap")}
+                </Button>
+              </div>
+            )}
             {(server.links?.length ?? 0) > 0 && (
               <div className="mt-10 border-t pt-6">
                 <h2 className="font-display text-xl font-semibold">{t("links")}</h2>
