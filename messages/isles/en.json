@@ -1,4 +1,11 @@
 {
+  "voiceCompatible": "Compatible voice client detected",
+  "voiceNoClient": "No compatible voice client detected",
+  "voiceConnected": "Voice connection: connected",
+  "voiceDisconnected": "Voice connection: disconnected",
+  "voiceDisabled": "Voice sound: disabled",
+  "voiceEnabled": "Voice sound: enabled",
+  "voiceObservationHint": "Observed by the server plugin at the last Bridge heartbeat. Other addons can override connection state. This does not verify your microphone, audio delivery, or public UDP reachability.",
   "bedrockConnection": "Observed Bedrock connection",
   "translatedJavaProtocol": "Translated Java connection version",
   "bedrockClientVersion": "Bedrock client version",

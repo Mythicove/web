@@ -684,6 +684,153 @@ test("Towny membership follows the verified offline resident and admin lists res
   });
 });
 
+test("voice status follows provider observations, stays private and disappears offline", async ({
+  page,
+  request,
+}, testInfo) => {
+  const fixture = JSON.parse(
+    await readFile(join(__dirname, "fixtures", "voicechat-observations.json"), "utf8"),
+  );
+  const headers = { Authorization: "Bearer scenario-mirror-admin" };
+  const server = "/api/isles/admin/servers/voice";
+  expect(
+    (
+      await request.put(server, {
+        headers,
+        data: {
+          name: "Voice server",
+          edition: "java",
+          address: "127.0.0.1:1",
+          published: true,
+          links: [],
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  const { token } = await (
+    await request.post(`${server}/bridge-token`, { headers, data: {} })
+  ).json();
+  const bridge = "/api/isles/bridge/voice";
+  const bridgeHeaders = { Authorization: `Bearer ${token}` };
+  const ownerHeaders = { Cookie: "mythic_session=website-session" };
+  const { code } = await (
+    await request.post("/api/isles/players/owned-player/pair", {
+      headers: ownerHeaders,
+      data: { server: "voice" },
+    })
+  ).json();
+  const player = { uuid: "7c0f77ad-4895-3c9a-a5be-05ce3d65be75", name: "IslesTester" };
+  expect(
+    (
+      await request.post(`${bridge}/link`, {
+        headers: bridgeHeaders,
+        data: { ...player, code, platform: "java" },
+      })
+    ).status(),
+  ).toBe(204);
+  const heartbeat = async (players: unknown[]) => {
+    expect(
+      (
+        await request.post(`${bridge}/heartbeat`, {
+          headers: bridgeHeaders,
+          data: {
+            platform: "Purpur",
+            minecraft: "1.21.1",
+            plugins: { voicechat: "2.6.25" },
+            groups: [],
+            players,
+          },
+        })
+      ).status(),
+    ).toBe(204);
+  };
+  await heartbeat([{ ...player, voicechat: fixture.noClient }]);
+  await page
+    .context()
+    .addCookies([
+      { name: "mythic_session", value: "website-session", url: "http://localhost:19185" },
+    ]);
+  await page.goto("/game");
+  const section = page
+    .locator("section")
+    .filter({ has: page.getByRole("heading", { name: "Simple Voice Chat", exact: true }) })
+    .last();
+  await expect(
+    section.getByText("No compatible voice client detected", { exact: true }),
+  ).toBeVisible();
+  for (const [state, connected, sound] of [
+    ["connected", "Voice connection: connected", "Voice sound: enabled"],
+    ["disabled", "Voice connection: connected", "Voice sound: disabled"],
+    ["disconnected", "Voice connection: disconnected", "Voice sound: enabled"],
+  ]) {
+    await heartbeat([{ ...player, voicechat: fixture[state] }]);
+    await page.reload();
+    await expect(
+      section.getByText("Compatible voice client detected", { exact: true }),
+    ).toBeVisible();
+    await expect(section.getByText(connected, { exact: true })).toBeVisible();
+    await expect(section.getByText(sound, { exact: true })).toBeVisible();
+  }
+  expect(
+    (
+      await request.get("/api/isles/players/someone-else/links", { headers: ownerHeaders })
+    ).status(),
+  ).toBe(403);
+  expect((await request.get(`${server}/bridge`)).status()).toBe(401);
+  expect(JSON.stringify(await (await request.get("/api/isles/servers")).json())).not.toContain(
+    "voicechat",
+  );
+  const own = await (
+    await request.get("/api/isles/players/owned-player/links", { headers: ownerHeaders })
+  ).json();
+  expect(own.find((link: { server: string }) => link.server === "voice").player.voicechat).toEqual(
+    fixture.disconnected,
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await testInfo.attach("voice-profile-mobile.png", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+  await page.goto("/zh-CN/game");
+  await expect(page.getByText("已检测到兼容语音客户端", { exact: true })).toBeVisible();
+  await expect(page.getByText("语音连接：未连接", { exact: true })).toBeVisible();
+  await expect(page.getByText("语音声音：已启用", { exact: true })).toBeVisible();
+  await page.goto("/en/game");
+  // Provider unavailable while the player is still online is also omitted.
+  await heartbeat([player]);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Simple Voice Chat", exact: true })).toHaveCount(
+    0,
+  );
+  await heartbeat([{ ...player, voicechat: fixture.connected }]);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Simple Voice Chat", exact: true })).toBeVisible();
+  await heartbeat([]);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Simple Voice Chat", exact: true })).toHaveCount(
+    0,
+  );
+  await expect(
+    page
+      .locator("article")
+      .filter({ has: page.getByRole("heading", { name: "Voice server", exact: true }) })
+      .getByText(player.uuid, { exact: true }),
+  ).toBeVisible();
+  await testInfo.attach("voicechat-result.json", {
+    body: JSON.stringify({
+      transitions: ["noClient", "connected", "disabled", "disconnected"],
+      providerUnavailableOmitted: true,
+      offlineObservationRemoved: true,
+      privateOwnershipEnforced: true,
+      scope: fixture.scope,
+    }),
+    contentType: "application/json",
+  });
+});
+
 test("Bedrock binding retains Bukkit identity and separates client and translated protocol observations", async ({
   page,
   request,

@@ -1,4 +1,11 @@
 {
+  "voiceCompatible": "已检测到兼容语音客户端",
+  "voiceNoClient": "未检测到兼容语音客户端",
+  "voiceConnected": "语音连接：已连接",
+  "voiceDisconnected": "语音连接：未连接",
+  "voiceDisabled": "语音声音：已禁用",
+  "voiceEnabled": "语音声音：已启用",
+  "voiceObservationHint": "来自最近一次 Bridge 心跳的服务端插件观察。其他附加插件可覆盖连接状态；此状态不能验证麦克风、实际音频传输或公网 UDP 可达性。",
   "bedrockConnection": "已观察到的基岩连接",
   "translatedJavaProtocol": "转换后的 Java 连接协议",
   "bedrockClientVersion": "基岩客户端版本",

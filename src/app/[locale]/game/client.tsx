@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { PlanStatistics } from "@/components/plan-statistics";
 import { TownyMembership } from "@/components/towny-details";
 import { BedrockConnection } from "@/components/crossplay-details";
+import { VoicechatDetails } from "@/components/voicechat-details";
 import type { components } from "@/lib/api-schema/isles";
 import { Link } from "@/i18n/navigation";
 import { islesRequest, type IslesServer, type IslesPlayerSnapshot } from "@/lib/isles";
@@ -168,6 +169,7 @@ export function GameProfileClient() {
                   </p>
                 )}
                 {link.activity && <PlanStatistics statistics={link.activity} />}
+                {link.player?.voicechat && <VoicechatDetails voice={link.player.voicechat} />}
                 {link.player?.connection && (
                   <BedrockConnection connection={link.player.connection} />
                 )}

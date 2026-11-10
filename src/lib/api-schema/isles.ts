@@ -598,6 +598,16 @@ export interface components {
             regionsTruncated?: boolean;
             economy?: components["schemas"]["GameEconomy"];
             connection?: components["schemas"]["GameConnection"];
+            voicechat?: components["schemas"]["GameVoicechat"];
+        };
+        /** @description Owner/admin-only Simple Voice Chat API observation for an online player. Omitted when the provider or connection state is unavailable. Other addons may override connection state; this does not attest microphone capture, audio delivery, or public UDP reachability. */
+        GameVoicechat: {
+            /** @description Provider reports a compatible client handshake */
+            installed: boolean;
+            /** @description Provider-reported voice connection */
+            connected: boolean;
+            /** @description Provider reports that the player disabled voice sound */
+            disabled: boolean;
         };
         /** @description Owner/admin-only live Bedrock observation from an installed provider. UUID remains the actual Bukkit identity; no Xbox IDs or account tokens are exported. Presence is not an independent Xbox authentication attestation. */
         GameConnection: {

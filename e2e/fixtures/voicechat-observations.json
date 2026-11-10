@@ -1,0 +1,8 @@
+{
+  "noClient": { "installed": false, "connected": false, "disabled": false },
+  "connected": { "installed": true, "connected": true, "disabled": false },
+  "disabled": { "installed": true, "connected": true, "disabled": true },
+  "disconnected": { "installed": true, "connected": false, "disabled": false },
+  "offline": "player-observation-removed",
+  "scope": "protocol-only-loopback-no-microphone-or-audio-playback"
+}
