@@ -1,4 +1,11 @@
 {
+  "clientProtocol": "Observed client version",
+  "protocolVersions": "Supported connection protocols",
+  "protocolHint": "Reported by ViaVersion after configured blocks. The proxy, authentication mode and required mods still need to match.",
+  "myRegions": "My WorldGuard regions",
+  "regionOwner": "Owner",
+  "regionMember": "Member",
+  "regionsTruncated": "Only the first 32 matching regions are shown.",
   "catalogTitle": "Find mods and plugins",
   "catalogIntro": "Search optional upstream catalogs and choose a version for your server or client. Downloads remain with their original publisher.",
   "catalogSource": "Source",

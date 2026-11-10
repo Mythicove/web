@@ -532,6 +532,20 @@ export interface components {
             values?: {
                 [key: string]: string;
             };
+            /** @description Protocol version observed by ViaVersion for this online player */
+            clientVersion?: string;
+            regions?: components["schemas"]["GameRegion"][];
+            /** @description Additional matching regions were omitted */
+            regionsTruncated?: boolean;
+        };
+        GameRegion: {
+            id: string;
+            world: string;
+            /** @enum {string} */
+            role: "owner" | "member";
+            centerX: number;
+            centerY: number;
+            centerZ: number;
         };
         BridgeSnapshot: {
             platform: string;
@@ -547,6 +561,8 @@ export interface components {
             cpu?: number;
             /** Format: date-time */
             readonly receivedAt: string;
+            /** @description ViaVersion-supported protocols after configured blocks; does not guarantee proxy/modpack compatibility */
+            protocolVersions?: string[];
         };
         BridgeTask: {
             id: string;

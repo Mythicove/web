@@ -1,4 +1,11 @@
 {
+  "clientProtocol": "已观察到的客户端版本",
+  "protocolVersions": "支持的连接协议",
+  "protocolHint": "由 ViaVersion 返回，已排除配置中禁用的协议。代理、认证方式与客户端模组仍需匹配。",
+  "myRegions": "我的 WorldGuard 领地",
+  "regionOwner": "所有者",
+  "regionMember": "成员",
+  "regionsTruncated": "仅展示前 32 个匹配领地。",
   "catalogTitle": "查找模组与插件",
   "catalogIntro": "从可选上游目录搜索项目，为服务端或客户端选择版本。文件仍从原发布者处下载。",
   "catalogSource": "内容来源",

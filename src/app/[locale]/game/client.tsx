@@ -4,13 +4,13 @@ import { useTranslations } from "next-intl";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
-import { islesRequest, type IslesServer } from "@/lib/isles";
+import { islesRequest, type IslesServer, type IslesPlayerSnapshot } from "@/lib/isles";
 
 interface Linked {
   server: string;
   identity: { uuid: string; name: string; platform: string };
   fresh: boolean;
-  player?: { group?: string; values?: Record<string, string> };
+  player?: IslesPlayerSnapshot;
 }
 export function GameProfileClient() {
   const t = useTranslations("isles");
@@ -154,6 +154,37 @@ export function GameProfileClient() {
                   <p>
                     {t("group")}: {link.player.group}
                   </p>
+                )}
+                {link.player?.clientVersion && (
+                  <p className="text-text-muted text-sm">
+                    {t("clientProtocol")}: {link.player.clientVersion}
+                  </p>
+                )}
+                {(link.player?.regions?.length ?? 0) > 0 && (
+                  <section className="border-t pt-4">
+                    <h4 className="mb-3 font-semibold">{t("myRegions")}</h4>
+                    <ul className="space-y-3">
+                      {link.player!.regions!.map((region) => (
+                        <li
+                          key={`${region.world}/${region.id}`}
+                          className="bg-surface rounded-md border p-3 text-sm"
+                        >
+                          <p>
+                            {region.id}{" "}
+                            <span className="text-text-muted">
+                              ({t(region.role === "owner" ? "regionOwner" : "regionMember")})
+                            </span>
+                          </p>
+                          <p className="text-text-muted mt-1 text-xs">
+                            {region.world} / {region.centerX}, {region.centerY}, {region.centerZ}
+                          </p>
+                        </li>
+                      ))}
+                    </ul>
+                    {link.player?.regionsTruncated && (
+                      <p className="text-text-muted mt-3 text-xs">{t("regionsTruncated")}</p>
+                    )}
+                  </section>
                 )}
                 {link.player?.values && (
                   <dl className="grid grid-cols-2 gap-3 text-sm">

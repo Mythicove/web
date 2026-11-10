@@ -36,7 +36,7 @@ export default defineConfig({
       },
     },
     {
-      command: "pnpm dev --hostname localhost --port 19185",
+      command: "pnpm build && node e2e/isles-production.mjs",
       cwd: "..",
       url: `${base}/api/isles/servers`,
       timeout: 180_000,

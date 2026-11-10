@@ -4,19 +4,11 @@ import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import type { IslesBridgeSnapshot } from "@/lib/isles";
 
 interface BridgeState {
   fresh: boolean;
-  snapshot: {
-    platform: string;
-    minecraft: string;
-    plugins: Record<string, string>;
-    groups: string[];
-    tps?: number;
-    mspt?: number;
-    cpu?: number;
-    receivedAt: string;
-  };
+  snapshot: IslesBridgeSnapshot;
 }
 interface Identity {
   player: string;
@@ -111,6 +103,15 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
               </div>
             )}
           </dl>
+          {(state.snapshot.protocolVersions?.length ?? 0) > 0 && (
+            <details className="text-sm">
+              <summary className="cursor-pointer">{t("protocolVersions")}</summary>
+              <p className="text-text-muted mt-3 break-words">
+                {state.snapshot.protocolVersions!.join(", ")}
+              </p>
+              <p className="text-text-muted mt-2 text-xs">{t("protocolHint")}</p>
+            </details>
+          )}
           <ul className="text-text-muted text-xs">
             {Object.entries(state.snapshot.plugins).map(([name, version]) => (
               <li key={name}>

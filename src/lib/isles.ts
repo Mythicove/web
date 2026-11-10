@@ -8,6 +8,8 @@ export type IslesInstance = components["schemas"]["Instance"];
 export type IslesRuntime = components["schemas"]["Runtime"];
 export type CatalogProject = components["schemas"]["CatalogProject"];
 export type CatalogVersion = components["schemas"]["CatalogVersion"];
+export type IslesPlayerSnapshot = components["schemas"]["PlayerSnapshot"];
+export type IslesBridgeSnapshot = components["schemas"]["BridgeSnapshot"];
 
 export async function islesRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`/api/isles/${path}`, {

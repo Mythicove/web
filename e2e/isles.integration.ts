@@ -61,6 +61,45 @@ test("administrator publishes a server; anonymous players see public information
   await page.goto("/game");
   await page.getByRole("button", { name: "Generate linking code" }).click();
   await expect(page.getByRole("status").filter({ hasText: "/mythic link" })).toBeVisible();
+  const pairText = await page.getByRole("status").filter({ hasText: "/mythic link" }).innerText();
+  const code = /\/mythic link ([A-F0-9]{12})/.exec(pairText)![1];
+  const generated = await request.post("/api/isles/admin/servers/community/bridge-token", {
+    headers: { Authorization: "Bearer scenario-mirror-admin", "Content-Type": "application/json" },
+  });
+  expect(generated.ok()).toBe(true);
+  const { token: bridgeToken } = await generated.json();
+  const uuid = "95db2f25-60a5-4c75-adfb-a69de4db748e";
+  const linked = await request.post("/api/isles/bridge/community/link", {
+    headers: { Authorization: `Bearer ${bridgeToken}` },
+    data: { code, uuid, name: "AliceInGame", platform: "java" },
+  });
+  expect(linked.status()).toBe(204);
+  const observed = await request.post("/api/isles/bridge/community/heartbeat", {
+    headers: { Authorization: `Bearer ${bridgeToken}` },
+    data: {
+      platform: "Paper",
+      minecraft: "1.21.1",
+      plugins: { WorldGuard: "7.0.12", ViaVersion: "5.12.2" },
+      groups: [],
+      protocolVersions: ["1.21.1"],
+      players: [
+        {
+          uuid,
+          name: "AliceInGame",
+          clientVersion: "1.21.1",
+          regions: [
+            { id: "my-home", world: "world", role: "owner", centerX: 5, centerY: 70, centerZ: 5 },
+          ],
+        },
+      ],
+    },
+  });
+  expect(observed.status()).toBe(204);
+  await page.reload();
+  await expect(page.getByText("AliceInGame", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My WorldGuard regions" })).toBeVisible();
+  await expect(page.getByText("my-home", { exact: false })).toBeVisible();
+  await expect(page.getByText("Observed client version: 1.21.1")).toBeVisible();
   await testInfo.attach("scenario-result.json", {
     body: JSON.stringify(
       {
