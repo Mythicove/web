@@ -1,4 +1,6 @@
 import { test, expect } from "@playwright/test";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
 test("administrator publishes a server; anonymous players see public information only", async ({
   page,
@@ -195,6 +197,196 @@ test("catalog searches retain source, filters, versions and download provenance"
         hangarVersion: "5.0",
         downloadOrigin: "publisher",
         arbitraryTarget: invalid.status(),
+      },
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  });
+});
+
+test("administrator controls Chunky through the durable Bridge boundary and sees observed progress", async ({
+  page,
+  request,
+}, testInfo) => {
+  // Recorded from the real Chunky/Purpur scenario. Only the external game
+  // provider is replayed; Web, BFF, Isles, authorization and storage stay real.
+  const observations = JSON.parse(
+    await readFile(join(__dirname, "fixtures", "chunky-observations.json"), "utf8"),
+  );
+  const headers = { Authorization: "Bearer scenario-mirror-admin" };
+  const path = "/api/isles/admin/servers/pregeneration";
+  expect(
+    (
+      await request.put(path, {
+        headers,
+        data: {
+          name: "Generation control",
+          edition: "java",
+          address: "127.0.0.1:1",
+          published: false,
+          links: [],
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  const rotated = await request.post(`${path}/bridge-token`, { headers, data: {} });
+  const { token } = await rotated.json();
+  const bridgeHeaders = { Authorization: `Bearer ${token}` };
+  const bridge = "/api/isles/bridge/pregeneration";
+  const heartbeat = async (world: unknown) => {
+    expect(
+      (
+        await request.post(`${bridge}/heartbeat`, {
+          headers: bridgeHeaders,
+          data: {
+            platform: "Purpur",
+            minecraft: "1.21.1",
+            plugins: { Chunky: "1.4.40" },
+            groups: [],
+            players: [],
+            chunky: [world],
+          },
+        })
+      ).status(),
+    ).toBe(204);
+  };
+  await heartbeat({ world: "world", state: "idle" });
+  const denied = await request.post(`${path}/chunky`, {
+    data: { action: "start", world: "world", shape: "square", radius: 32 },
+  });
+  expect(denied.status()).toBe(401);
+  await page.goto("/admin/integrations");
+  await page.getByLabel("Mirror rescue token", { exact: false }).fill("scenario-mirror-admin");
+  await page.getByRole("button", { name: "Load configuration" }).click();
+  await page.getByRole("button", { name: "Generation control", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh", exact: true }).last().click();
+  const panel = page.getByRole("region", { name: "World pregeneration" });
+  await expect(panel.getByText("Generation state: No saved task", { exact: true })).toBeVisible();
+  await panel.getByLabel("Radius (blocks)", { exact: true }).fill("1024");
+  await panel.getByLabel("Center X (blocks)").fill("10000");
+  await panel.getByLabel("Center Z (blocks)").fill("10000");
+  await panel.getByRole("button", { name: "Start pregeneration" }).click();
+  const finish = async (action: string, observation: unknown) => {
+    const pending = await (await request.get(`${bridge}/tasks`, { headers: bridgeHeaders })).json();
+    const task = pending.find((t: { chunky?: { action: string } }) => t.chunky?.action === action);
+    expect(task).toBeTruthy();
+    expect(task.chunky.world).toBe("world");
+    expect(
+      (
+        await request.post(`${bridge}/tasks/${task.id}/claim`, { headers: bridgeHeaders, data: {} })
+      ).status(),
+    ).toBe(204);
+    expect(
+      (
+        await request.post(`${bridge}/tasks/${task.id}/claim`, { headers: bridgeHeaders, data: {} })
+      ).status(),
+    ).toBe(409);
+    expect(
+      (
+        await request.post(`${bridge}/tasks/${task.id}`, {
+          headers: bridgeHeaders,
+          data: { success: true },
+        })
+      ).status(),
+    ).toBe(204);
+    await heartbeat(observation);
+    return task;
+  };
+  await expect(page.getByText("Generation operation queued.", { exact: false })).toBeVisible();
+  const started = await finish("start", observations.running);
+  expect(started.chunky).toMatchObject({
+    centerX: 10000,
+    centerZ: 10000,
+    radius: 1024,
+    shape: "square",
+  });
+  await expect(panel.getByText("Generation state: Generating", { exact: true })).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(panel.getByRole("progressbar", { name: "Generation progress" })).toHaveAttribute(
+    "value",
+    String(observations.running.progress.percent),
+  );
+  await panel.getByRole("button", { name: "Pause generation" }).click();
+  await expect
+    .poll(async () =>
+      (await (await request.get(`${bridge}/tasks`, { headers: bridgeHeaders })).json()).some(
+        (t: { chunky?: { action: string } }) => t.chunky?.action === "pause",
+      ),
+    )
+    .toBe(true);
+  await finish("pause", observations.paused);
+  await expect(panel.getByText("Generation state: Paused", { exact: true })).toBeVisible({
+    timeout: 15000,
+  });
+  await page.reload();
+  await page.getByLabel("Mirror rescue token", { exact: false }).fill("scenario-mirror-admin");
+  await page.getByRole("button", { name: "Load configuration" }).click();
+  await page.getByRole("button", { name: "Generation control", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh", exact: true }).last().click();
+  await expect(panel.getByText("Generation state: Paused", { exact: true })).toBeVisible();
+  await panel.getByRole("button", { name: "Resume generation" }).click();
+  await expect
+    .poll(async () =>
+      (await (await request.get(`${bridge}/tasks`, { headers: bridgeHeaders })).json()).some(
+        (t: { chunky?: { action: string } }) => t.chunky?.action === "continue",
+      ),
+    )
+    .toBe(true);
+  await finish("continue", observations.resumed);
+  await expect(panel.getByText("Generation state: Generating", { exact: true })).toBeVisible({
+    timeout: 15000,
+  });
+  await panel.getByRole("button", { name: "Cancel generation" }).click();
+  const dialog = page.getByRole("alertdialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect
+    .poll(async () =>
+      (await (await request.get(`${bridge}/tasks`, { headers: bridgeHeaders })).json()).some(
+        (t: { chunky?: { action: string } }) => t.chunky?.action === "cancel",
+      ),
+    )
+    .toBe(true);
+  await finish("cancel", observations.cancelled);
+  await expect(panel.getByText("Generation state: Cancelled", { exact: true })).toBeVisible({
+    timeout: 15000,
+  });
+  await heartbeat(observations.completed);
+  await expect(panel.getByText("Generation state: Completed", { exact: true })).toBeVisible({
+    timeout: 15000,
+  });
+  await expect(panel.getByRole("progressbar")).toHaveAttribute("value", "100");
+  await expect(panel.getByText("seconds remaining", { exact: false })).toHaveCount(0);
+  await heartbeat(observations.terminalAfterRestart);
+  await expect(panel.getByText("Generation state: Stopped", { exact: false })).toBeVisible({
+    timeout: 15000,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await testInfo.attach("chunky-mobile.png", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+  // Revoking the external provider removes its observation. The polling view
+  // must disable controls instead of continuing to act on its previous data.
+  expect((await request.post(`${path}/bridge-token`, { headers, data: {} })).ok()).toBe(true);
+  await expect(panel.getByRole("button", { name: "Start pregeneration" })).toBeDisabled({
+    timeout: 15000,
+  });
+  await testInfo.attach("chunky-result.json", {
+    body: JSON.stringify(
+      {
+        anonymousWrite: denied.status(),
+        claimedOnce: true,
+        controls: ["start", "pause", "continue", "cancel"],
+        persistedView: "paused",
+        completion: "provider-observed",
+        restartCheckpoint: "uncertain",
+        revokedControls: "disabled",
       },
       null,
       2,

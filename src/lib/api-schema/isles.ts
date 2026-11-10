@@ -365,6 +365,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/isles/admin/servers/{id}/chunky": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Queue one generation operation for a reported loaded world. Start accepts square/circle and a radius in blocks; it never overwrites paused work. Applied means the plugin accepted the operation, not that generation completed. */
+        post: operations["controlChunkyGeneration"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/isles/players/{player}/pair": {
         parameters: {
             query?: never;
@@ -450,6 +469,26 @@ export interface paths {
         get: operations["getPendingBridgeTasks"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/isles/bridge/{id}/tasks/{task}/claim": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+                task: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Persist at-most-once dispatch of a Chunky operation before invoking the provider. A lost claim or result response leaves dispatched with an uncertain outcome; no automatic replay occurs, including after restart. */
+        post: operations["claimBridgeOperation"];
         delete?: never;
         options?: never;
         head?: never;
@@ -570,16 +609,68 @@ export interface components {
             readonly receivedAt: string;
             /** @description ViaVersion-supported protocols after configured blocks; does not guarantee proxy/modpack compatibility */
             protocolVersions?: string[];
+            /** @description Administrator-only loaded worlds and Chunky task state; absent if unavailable */
+            chunky?: components["schemas"]["ChunkyWorld"][];
+        };
+        ChunkyWorld: {
+            world: string;
+            /**
+             * @description Stopped means the saved terminal checkpoint cannot establish completion versus cancellation after a restart
+             * @enum {string}
+             */
+            state: "idle" | "running" | "paused" | "completed" | "cancelled" | "stopped";
+            selection?: {
+                shape: string;
+                centerX: number;
+                centerZ: number;
+                radiusX: number;
+                radiusZ: number;
+            };
+            progress?: {
+                /** Format: int64 */
+                chunks: number;
+                /** Format: int64 */
+                total: number;
+                percent: number;
+                /** @description Plugin estimate in chunks per second; only available while running */
+                rate?: number;
+                /**
+                 * Format: int64
+                 * @description Plugin ETA while running; never completion elapsed time
+                 */
+                etaSeconds?: number;
+            };
+        };
+        ChunkyOperation: {
+            /** @description Loaded world reported by the Bridge */
+            world: string;
+            /** @enum {string} */
+            action: "start" | "pause" | "continue" | "cancel";
+            /**
+             * @description Required for start
+             * @enum {string}
+             */
+            shape?: "square" | "circle";
+            /** @description Defaults to zero */
+            centerX?: number;
+            /** @description Defaults to zero */
+            centerZ?: number;
+            /** @description Required for start; blocks, also bounded by the server Chunky radius limit */
+            radius?: number;
         };
         BridgeTask: {
             id: string;
             /** @enum {string} */
-            kind: "whitelist" | "member";
+            kind: "whitelist" | "member" | "chunky";
             uuid: string;
             group?: string;
             grant: boolean;
-            /** @enum {string} */
-            status: "pending" | "applied" | "failed";
+            /**
+             * @description Dispatched means claimed with no result yet; an interrupted operation is never automatically replayed
+             * @enum {string}
+             */
+            status: "pending" | "dispatched" | "applied" | "failed";
+            chunky?: components["schemas"]["ChunkyOperation"];
             error?: string;
             /** Format: date-time */
             createdAt: string;
@@ -1565,6 +1656,60 @@ export interface operations {
             };
         };
     };
+    controlChunkyGeneration: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChunkyOperation"];
+            };
+        };
+        responses: {
+            /** @description Operation queued */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeTask"];
+                };
+            };
+            /** @description Invalid selection or unreported world */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Bridge stale, provider unavailable, incompatible state or operation already pending */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task capacity reached */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     createGamePairing: {
         parameters: {
             query?: never;
@@ -1717,7 +1862,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Up to 10 pending desired-state tasks, safe to replay before acknowledgement */
+            /** @description Up to 10 pending tasks. Membership sets desired state; Chunky operations MUST be claimed before execution and must never be replayed after dispatch. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1725,6 +1870,41 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["BridgeTask"][];
                 };
+            };
+        };
+    };
+    claimBridgeOperation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+                task: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dispatch persisted; this caller may execute once */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Server-specific Bridge token required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Already dispatched or not a claimable operation; do not execute */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -1749,6 +1929,13 @@ export interface operations {
         responses: {
             /** @description Result persisted; repeated acknowledgement is idempotent */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Chunky operation must be claimed first */
+            409: {
                 headers: {
                     [name: string]: unknown;
                 };

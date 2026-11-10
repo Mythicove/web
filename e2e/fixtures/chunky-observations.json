@@ -1,0 +1,74 @@
+{
+  "running": {
+    "world": "world",
+    "state": "running",
+    "selection": {
+      "shape": "square",
+      "centerX": 10000,
+      "centerZ": 10000,
+      "radiusX": 1024,
+      "radiusZ": 1024
+    },
+    "progress": {
+      "chunks": 1683,
+      "total": 16641,
+      "percent": 10.113574905354245,
+      "rate": 87.05772811918062,
+      "etaSeconds": 171
+    }
+  },
+  "paused": {
+    "world": "world",
+    "state": "paused",
+    "selection": {
+      "shape": "square",
+      "centerX": 10000,
+      "centerZ": 10000,
+      "radiusX": 1024,
+      "radiusZ": 1024
+    },
+    "progress": { "chunks": 2796, "total": 16641, "percent": 16.801874887326484 }
+  },
+  "resumed": {
+    "world": "world",
+    "state": "running",
+    "selection": {
+      "shape": "square",
+      "centerX": 10000,
+      "centerZ": 10000,
+      "radiusX": 1024,
+      "radiusZ": 1024
+    },
+    "progress": {
+      "chunks": 3348,
+      "total": 16641,
+      "percent": 20.11898323418064,
+      "rate": 24.49631667702139,
+      "etaSeconds": 542
+    }
+  },
+  "cancelled": {
+    "world": "world",
+    "state": "cancelled",
+    "selection": {
+      "shape": "square",
+      "centerX": 10000,
+      "centerZ": 10000,
+      "radiusX": 1024,
+      "radiusZ": 1024
+    },
+    "progress": { "chunks": 4152, "total": 16641, "percent": 24.950423652424735 }
+  },
+  "completed": {
+    "world": "world",
+    "state": "completed",
+    "selection": { "shape": "square", "centerX": 0, "centerZ": 0, "radiusX": 32, "radiusZ": 32 },
+    "progress": { "chunks": 25, "total": 25, "percent": 100 }
+  },
+  "terminalAfterRestart": {
+    "world": "world",
+    "state": "stopped",
+    "selection": { "shape": "square", "centerX": 0, "centerZ": 0, "radiusX": 32, "radiusZ": 32 },
+    "progress": { "chunks": 0, "total": 25, "percent": 0 }
+  }
+}

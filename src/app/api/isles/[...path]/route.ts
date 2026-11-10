@@ -14,7 +14,9 @@ async function proxy(req: Request, context: { params: Promise<{ path: string[] }
   const path = parts.join("/");
   const admin = parts[0] === "admin";
   const player = parts[0] === "players";
-  const bridge = /^bridge\/[a-z0-9-]+\/(heartbeat|link|tasks(?:\/[a-f0-9]+)?)$/.test(path);
+  const bridge = /^bridge\/[a-z0-9-]+\/(heartbeat|link|tasks(?:\/[a-f0-9]+(?:\/claim)?)?)$/.test(
+    path,
+  );
   const catalog =
     /^catalog\/(modrinth\/(search|versions\/[a-zA-Z0-9_-]+)|hangar\/(search|versions\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+))$/.test(
       path,

@@ -1,9 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { ChunkyAdmin } from "@/components/chunky-admin";
+import type { components } from "@/lib/api-schema/isles";
 import type { IslesBridgeSnapshot } from "@/lib/isles";
 
 interface BridgeState {
@@ -14,15 +16,7 @@ interface Identity {
   player: string;
   identity: { name: string; uuid: string };
 }
-interface Task {
-  id: string;
-  kind: string;
-  uuid: string;
-  group?: string;
-  grant: boolean;
-  status: string;
-  error?: string;
-}
+type Task = components["schemas"]["BridgeTask"];
 type Call = <T>(path: string, init?: RequestInit) => Promise<T>;
 
 export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
@@ -37,6 +31,34 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
   const [grant, setGrant] = useState(true);
   const [busy, setBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
+  const observingChunky = state?.snapshot.chunky !== undefined;
+  useEffect(() => {
+    if (!observingChunky) return;
+    let active = true;
+    let loading = false;
+    const timer = setInterval(async () => {
+      if (loading) return;
+      loading = true;
+      try {
+        const [next, tasks] = await Promise.all([
+          call<BridgeState>(`servers/${id}/bridge`),
+          call<Task[]>(`servers/${id}/tasks`),
+        ]);
+        if (active) {
+          setState(next);
+          setTasks(tasks);
+        }
+      } catch {
+        if (active) setState((previous) => previous && { ...previous, fresh: false });
+      } finally {
+        loading = false;
+      }
+    }, 5000);
+    return () => {
+      active = false;
+      clearInterval(timer);
+    };
+  }, [observingChunky, id, call]);
   const run = async (operation: () => Promise<void>) => {
     setBusy(true);
     try {
@@ -119,6 +141,26 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
               </li>
             ))}
           </ul>
+          {state.snapshot.chunky && (
+            <ChunkyAdmin
+              worlds={state.snapshot.chunky}
+              fresh={state.fresh}
+              busy={busy}
+              pendingWorlds={tasks
+                .filter((task) => task.kind === "chunky" && task.status === "pending")
+                .map((task) => task.chunky!.world)}
+              onAction={(operation) =>
+                void run(async () => {
+                  await call(`servers/${id}/chunky`, {
+                    method: "POST",
+                    body: JSON.stringify(operation),
+                  });
+                  await refresh();
+                  toast.success(t("chunkyQueued"));
+                })
+              }
+            />
+          )}
           <form
             className="grid gap-4"
             onSubmit={(e) => {
@@ -191,7 +233,7 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
                 <thead>
                   <tr className="border-b">
                     <th className="py-2">{t("memberAction")}</th>
-                    <th>{t("group")}</th>
+                    <th>{t("taskTarget")}</th>
                     <th>{t("taskState")}</th>
                   </tr>
                 </thead>
@@ -199,11 +241,13 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
                   {tasks.map((task) => (
                     <tr key={task.id} className="border-b">
                       <td className="py-3">
-                        {task.kind} / {task.grant ? "+" : "−"}
+                        {task.kind === "chunky"
+                          ? `Chunky / ${task.chunky?.action}`
+                          : `${task.kind} / ${task.grant ? "+" : "−"}`}
                       </td>
-                      <td>{task.group || task.uuid}</td>
+                      <td>{task.chunky?.world || task.group || task.uuid}</td>
                       <td>
-                        {task.status}
+                        {task.kind === "chunky" ? t(`chunkyTask_${task.status}`) : task.status}
                         {task.error && <p className="text-danger text-xs">{task.error}</p>}
                       </td>
                     </tr>
