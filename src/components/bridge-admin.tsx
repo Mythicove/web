@@ -7,6 +7,7 @@ import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ChunkyAdmin } from "@/components/chunky-admin";
 import { PlanStatistics } from "@/components/plan-statistics";
 import { TownyOverview } from "@/components/towny-details";
+import { CrossplayVersions } from "@/components/crossplay-details";
 import type { components } from "@/lib/api-schema/isles";
 import type { IslesBridgeSnapshot } from "@/lib/isles";
 
@@ -147,6 +148,7 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
             ))}
           </ul>
           {state.snapshot.plan && <PlanStatistics statistics={state.snapshot.plan} />}
+          {state.snapshot.crossplay && <CrossplayVersions versions={state.snapshot.crossplay} />}
           {state.snapshot.towny && <TownyOverview snapshot={state.snapshot.towny} />}
           {state.snapshot.plugins.Towny && !state.snapshot.towny && (
             <p className="text-text-muted text-sm">{t("townyUnavailable")}</p>

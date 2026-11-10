@@ -5,6 +5,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
 import { PlanStatistics } from "@/components/plan-statistics";
 import { TownyMembership } from "@/components/towny-details";
+import { BedrockConnection } from "@/components/crossplay-details";
 import type { components } from "@/lib/api-schema/isles";
 import { Link } from "@/i18n/navigation";
 import { islesRequest, type IslesServer, type IslesPlayerSnapshot } from "@/lib/isles";
@@ -162,10 +163,14 @@ export function GameProfileClient() {
                 )}
                 {link.player?.clientVersion && (
                   <p className="text-text-muted text-sm">
-                    {t("clientProtocol")}: {link.player.clientVersion}
+                    {t(link.player.connection ? "translatedJavaProtocol" : "clientProtocol")}:{" "}
+                    {link.player.clientVersion}
                   </p>
                 )}
                 {link.activity && <PlanStatistics statistics={link.activity} />}
+                {link.player?.connection && (
+                  <BedrockConnection connection={link.player.connection} />
+                )}
                 {link.towny && <TownyMembership resident={link.towny} />}
                 {link.player?.economy && (
                   <div className="border-t pt-4">

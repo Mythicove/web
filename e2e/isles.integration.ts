@@ -683,3 +683,157 @@ test("Towny membership follows the verified offline resident and admin lists res
     contentType: "application/json",
   });
 });
+
+test("Bedrock binding retains Bukkit identity and separates client and translated protocol observations", async ({
+  page,
+  request,
+}, testInfo) => {
+  const fixture = JSON.parse(
+    await readFile(join(__dirname, "fixtures", "crossplay-observations.json"), "utf8"),
+  );
+  const headers = { Authorization: "Bearer scenario-mirror-admin" };
+  const server = "/api/isles/admin/servers/crossplay";
+  expect(
+    (
+      await request.put(server, {
+        headers,
+        data: {
+          name: "Crossplay server",
+          edition: "java",
+          address: "127.0.0.1:1",
+          published: true,
+          links: [],
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  const { token } = await (
+    await request.post(`${server}/bridge-token`, { headers, data: {} })
+  ).json();
+  const bridge = "/api/isles/bridge/crossplay";
+  const bridgeHeaders = { Authorization: `Bearer ${token}` };
+  const pair = await (
+    await request.post("/api/isles/players/owned-player/pair", {
+      headers: { Cookie: "mythic_session=website-session" },
+      data: { server: "crossplay" },
+    })
+  ).json();
+  expect(
+    (
+      await request.post(`${bridge}/link`, {
+        headers: bridgeHeaders,
+        data: {
+          code: pair.code,
+          uuid: fixture.bedrock.uuid,
+          name: fixture.bedrock.name,
+          platform: "bedrock",
+        },
+      })
+    ).status(),
+  ).toBe(204);
+  const heartbeat = async (players: unknown[]) => {
+    expect(
+      (
+        await request.post(`${bridge}/heartbeat`, {
+          headers: bridgeHeaders,
+          data: {
+            platform: "Purpur",
+            minecraft: "1.21.1",
+            plugins: { "Geyser-Spigot": "2.8.3 b941", floodgate: "2.2.5 b141" },
+            groups: [],
+            players,
+            crossplay: fixture.versions,
+          },
+        })
+      ).status(),
+    ).toBe(204);
+  };
+  await heartbeat([fixture.javaPlayer, fixture.bedrock]);
+  const own = await (
+    await request.get("/api/isles/players/owned-player/links", {
+      headers: { Cookie: "mythic_session=website-session" },
+    })
+  ).json();
+  const linked = own.find((link: { server: string }) => link.server === "crossplay");
+  expect(linked.identity.platform).toBe("bedrock");
+  expect(linked.player.uuid).toBe(fixture.bedrock.uuid);
+  expect(linked).not.toHaveProperty("crossplay");
+  expect(JSON.stringify(linked)).not.toContain("xuid");
+  expect((await request.get(`${server}/bridge`)).status()).toBe(401);
+  expect(
+    (
+      await request.get("/api/isles/players/someone-else/links", {
+        headers: { Cookie: "mythic_session=website-session" },
+      })
+    ).status(),
+  ).toBe(403);
+  expect(JSON.stringify(await (await request.get("/api/isles/servers")).json())).not.toContain(
+    "linkedJavaAccount",
+  );
+  await page
+    .context()
+    .addCookies([
+      { name: "mythic_session", value: "website-session", url: "http://localhost:19185" },
+    ]);
+  await page.goto("/game");
+  await expect(page.getByRole("heading", { name: "Observed Bedrock connection" })).toBeVisible();
+  await expect(page.getByText("Bedrock client version: 1.21.100", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Translated Java connection version: 1.21.7-1.21.8", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByText("Connection provider: Floodgate", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("Provider-side Java account link: Not linked", { exact: true }),
+  ).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await testInfo.attach("bedrock-profile-mobile.png", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+  await page.goto("/admin/integrations");
+  await page.getByLabel("Mirror rescue token", { exact: false }).fill("scenario-mirror-admin");
+  await page.getByRole("button", { name: "Load configuration" }).click();
+  await page.getByRole("button", { name: "Crossplay server", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh", exact: true }).last().click();
+  await expect(page.getByRole("heading", { name: "Geyser supported versions" })).toBeVisible();
+  await expect(
+    page.getByText("Geyser Java translation target: 1.21.8", { exact: true }),
+  ).toBeVisible();
+  const action = await (
+    await request.post(`${server}/tasks`, {
+      headers,
+      data: { player: "owned-player", kind: "whitelist", grant: true },
+    })
+  ).json();
+  expect(action.uuid).toBe(fixture.bedrock.uuid);
+  await heartbeat([fixture.javaPlayer]);
+  await page.goto("/game");
+  await expect(page.getByText(".BedrockTester", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Observed Bedrock connection" })).toHaveCount(0);
+  const persisted = await (
+    await request.get("/api/isles/players/owned-player/links", {
+      headers: { Cookie: "mythic_session=website-session" },
+    })
+  ).json();
+  expect(
+    persisted.find((link: { server: string }) => link.server === "crossplay").identity.platform,
+  ).toBe("bedrock");
+  await testInfo.attach("crossplay-result.json", {
+    body: JSON.stringify(
+      {
+        bindingPlatform: "bedrock",
+        membershipUUID: action.uuid,
+        clientVersion: "1.21.100",
+        translatedProtocol: "1.21.7-1.21.8",
+        offlineObservationRemoved: true,
+        xboxAuthentication: "outside-fixture-scope",
+      },
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  });
+});

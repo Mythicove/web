@@ -1,0 +1,39 @@
+{
+  "versions": {
+    "javaVersion": "1.21.8",
+    "bedrockVersions": [
+      "1.21.70",
+      "1.21.71",
+      "1.21.72",
+      "1.21.73",
+      "1.21.80",
+      "1.21.81",
+      "1.21.82",
+      "1.21.83",
+      "1.21.84",
+      "1.21.90",
+      "1.21.91",
+      "1.21.92",
+      "1.21.93",
+      "1.21.94",
+      "1.21.100",
+      "1.21.101"
+    ]
+  },
+  "javaPlayer": {
+    "uuid": "7c0f77ad-4895-3c9a-a5be-05ce3d65be75",
+    "name": "IslesTester",
+    "clientVersion": "1.21-1.21.1"
+  },
+  "bedrock": {
+    "uuid": "00000000-0000-0000-0000-000000000000",
+    "name": ".BedrockTester",
+    "clientVersion": "1.21.7-1.21.8",
+    "connection": {
+      "edition": "bedrock",
+      "provider": "floodgate",
+      "version": "1.21.100",
+      "linkedJavaAccount": false
+    }
+  }
+}

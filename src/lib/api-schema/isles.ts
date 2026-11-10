@@ -578,7 +578,8 @@ export interface components {
         GameIdentity: {
             uuid: string;
             name: string;
-            platform: string;
+            /** @enum {string} */
+            platform: "java" | "bedrock";
             /** Format: date-time */
             linkedAt: string;
         };
@@ -596,6 +597,22 @@ export interface components {
             /** @description Additional matching regions were omitted */
             regionsTruncated?: boolean;
             economy?: components["schemas"]["GameEconomy"];
+            connection?: components["schemas"]["GameConnection"];
+        };
+        /** @description Owner/admin-only live Bedrock observation from an installed provider. UUID remains the actual Bukkit identity; no Xbox IDs or account tokens are exported. Presence is not an independent Xbox authentication attestation. */
+        GameConnection: {
+            /** @enum {string} */
+            edition: "bedrock";
+            /** @enum {string} */
+            provider: "geyser" | "floodgate";
+            version: string;
+            /** @description Provider-side Java-account linking; independent of this website's one-time game binding */
+            linkedJavaAccount: boolean;
+        };
+        /** @description Administrator-only Geyser-supported versions; these are not a guarantee of proxy/authentication/mod compatibility. */
+        CrossplaySnapshot: {
+            javaVersion: string;
+            bedrockVersions: string[];
         };
         GameEconomy: {
             provider: string;
@@ -632,6 +649,7 @@ export interface components {
             chunky?: components["schemas"]["ChunkyWorld"][];
             plan?: components["schemas"]["PlanSnapshot"];
             towny?: components["schemas"]["TownySnapshot"];
+            crossplay?: components["schemas"]["CrossplaySnapshot"];
         };
         TownyReference: {
             /** @description Stable provider UUID */
@@ -1936,7 +1954,11 @@ export interface operations {
                     code: string;
                     uuid: string;
                     name: string;
-                    platform: string;
+                    /**
+                     * @description Observed in the game server; never inferred from the player name
+                     * @enum {string}
+                     */
+                    platform: "java" | "bedrock";
                 };
             };
         };
