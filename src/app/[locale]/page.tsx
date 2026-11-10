@@ -15,6 +15,8 @@ import { Logo } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Link } from "@/i18n/navigation";
 import { readSiteConfig } from "@/lib/site-config-server";
+import { readServers } from "@/lib/isles-server";
+import { CommunityHome } from "@/components/community-home";
 
 // 像素网格底纹：Minecraft 视觉锚点（设计文档 §5），仅作背景不参与交互。
 function PixelGrid() {
@@ -26,13 +28,22 @@ function PixelGrid() {
   );
 }
 
-// 壳页不取数：按 locale 预渲染为静态
-export const dynamic = "force-static";
+// Server deployments publish worlds at runtime; do not freeze an empty portal at build time.
+export const dynamic = "force-dynamic";
 
 export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
   setRequestLocale(locale);
   const { modules } = await readSiteConfig();
+  const { servers, available } = await readServers();
+  if (servers.length > 0 || !available)
+    return (
+      <CommunityHome
+        servers={servers}
+        hasSkin={modules.includes("skin")}
+        hasMods={modules.includes("mods")}
+      />
+    );
   return <HomeContent hasSkin={modules.includes("skin")} hasMods={modules.includes("mods")} />;
 }
 

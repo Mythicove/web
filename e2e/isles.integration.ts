@@ -26,6 +26,22 @@ test("administrator publishes a server; anonymous players see public information
   await page.getByLabel("Service URL", { exact: true }).fill("https://map.example.org/");
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await expect(page.getByText("Saved", { exact: true })).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByRole("heading", { name: "Test community", exact: true })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Community survival", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Explore this server" })).toBeVisible();
+  await expect(page.getByText("Yggdrasil API", { exact: true })).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await testInfo.attach("community-home.png", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+  await page.setViewportSize({ width: 1280, height: 720 });
 
   await page.goto("/servers");
   await expect(page.getByRole("heading", { name: "Community survival" })).toBeVisible();
