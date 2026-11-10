@@ -457,6 +457,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/isles/bridge/{id}/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        /** @description UUID allowlist for private offline statistics on this server; contains no website identities. Maximum 2000 verified identities; exceeding capacity fails explicitly. */
+        get: operations["listBridgeVerifiedUUIDs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/isles/bridge/{id}/tasks": {
         parameters: {
             query?: never;
@@ -611,6 +630,50 @@ export interface components {
             protocolVersions?: string[];
             /** @description Administrator-only loaded worlds and Chunky task state; absent if unavailable */
             chunky?: components["schemas"]["ChunkyWorld"][];
+            plan?: components["schemas"]["PlanSnapshot"];
+        };
+        /** @description Stored Plan sessions for one verified UUID on the current game server; available while offline. Does not include an unsaved current session. */
+        PlanActivity: {
+            uuid: string;
+            /** Format: int64 */
+            sessions: number;
+            /**
+             * Format: int64
+             * @description Stored session duration including AFK
+             */
+            playtimeMs: number;
+            /** Format: int64 */
+            afkMs: number;
+            /**
+             * Format: date-time
+             * @description Earliest stored session start
+             */
+            firstSeen: string;
+            /**
+             * Format: date-time
+             * @description Latest stored session end; not live presence
+             */
+            lastSeen: string;
+            /** Format: date-time */
+            observedAt: string;
+        };
+        /** @description Administrator-only Plan aggregate scoped by the provider's current server UUID. Individual rows include verified UUIDs only; absent when provider/query is unavailable. */
+        PlanSnapshot: {
+            serverUUID: string;
+            /**
+             * Format: int64
+             * @description Distinct players with stored sessions on this server
+             */
+            recordedPlayers: number;
+            /** Format: int64 */
+            sessions: number;
+            /** Format: int64 */
+            playtimeMs: number;
+            /** Format: int64 */
+            afkMs: number;
+            /** Format: date-time */
+            observedAt: string;
+            players: components["schemas"]["PlanActivity"][];
         };
         ChunkyWorld: {
             world: string;
@@ -1761,7 +1824,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Verified game identities and own online-player data only */
+            /** @description Verified game identities with own online-player observations and stored Plan activity only */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1772,6 +1835,7 @@ export interface operations {
                         identity: components["schemas"]["GameIdentity"];
                         fresh: boolean;
                         player?: components["schemas"]["PlayerSnapshot"];
+                        activity?: components["schemas"]["PlanActivity"];
                     }[];
                 };
             };
@@ -1843,6 +1907,42 @@ export interface operations {
                 content?: never;
             };
             /** @description Game identity belongs to another website player */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    listBridgeVerifiedUUIDs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Verified game UUIDs belonging to this server */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string[];
+                };
+            };
+            /** @description Server-specific token required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Verified identity capacity exceeded */
             409: {
                 headers: {
                     [name: string]: unknown;

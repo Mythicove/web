@@ -1,0 +1,19 @@
+{
+  "serverUUID": "a793fac3-f632-4233-be87-b81d5e6be5d8",
+  "recordedPlayers": 2,
+  "sessions": 2,
+  "playtimeMs": 21375,
+  "afkMs": 0,
+  "observedAt": "2026-11-10T13:04:06.448018Z",
+  "players": [
+    {
+      "uuid": "7c0f77ad-4895-3c9a-a5be-05ce3d65be75",
+      "sessions": 1,
+      "playtimeMs": 18321,
+      "afkMs": 0,
+      "firstSeen": "2026-11-10T13:03:08.228Z",
+      "lastSeen": "2026-11-10T13:03:26.549Z",
+      "observedAt": "2026-11-10T13:04:06.448018Z"
+    }
+  ]
+}

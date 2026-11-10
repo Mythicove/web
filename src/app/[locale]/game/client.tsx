@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { SiteHeader } from "@/components/site-header";
 import { Button } from "@/components/ui/button";
+import { PlanStatistics } from "@/components/plan-statistics";
+import type { components } from "@/lib/api-schema/isles";
 import { Link } from "@/i18n/navigation";
 import { islesRequest, type IslesServer, type IslesPlayerSnapshot } from "@/lib/isles";
 
@@ -11,6 +13,7 @@ interface Linked {
   identity: { uuid: string; name: string; platform: string };
   fresh: boolean;
   player?: IslesPlayerSnapshot;
+  activity?: components["schemas"]["PlanActivity"];
 }
 export function GameProfileClient() {
   const t = useTranslations("isles");
@@ -160,6 +163,7 @@ export function GameProfileClient() {
                     {t("clientProtocol")}: {link.player.clientVersion}
                   </p>
                 )}
+                {link.activity && <PlanStatistics statistics={link.activity} />}
                 {link.player?.economy && (
                   <div className="border-t pt-4">
                     <h4 className="font-semibold">{t("gameBalance")}</h4>

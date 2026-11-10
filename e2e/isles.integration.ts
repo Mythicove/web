@@ -394,3 +394,141 @@ test("administrator controls Chunky through the durable Bridge boundary and sees
     contentType: "application/json",
   });
 });
+
+test("offline Plan activity stays owner-scoped and aggregate statistics stay administrator-only", async ({
+  page,
+  request,
+}, testInfo) => {
+  const plan = JSON.parse(
+    await readFile(join(__dirname, "fixtures", "plan-observations.json"), "utf8"),
+  );
+  const headers = { Authorization: "Bearer scenario-mirror-admin" };
+  const server = "/api/isles/admin/servers/analytics";
+  expect(
+    (
+      await request.put(server, {
+        headers,
+        data: {
+          name: "Analytics server",
+          edition: "java",
+          address: "127.0.0.1:1",
+          published: true,
+          links: [],
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  const secret = await (await request.post(`${server}/bridge-token`, { headers, data: {} })).json();
+  const bridge = "/api/isles/bridge/analytics";
+  const bridgeHeaders = { Authorization: `Bearer ${secret.token}` };
+  const paired = await (
+    await request.post("/api/isles/players/owned-player/pair", {
+      headers: { Cookie: "mythic_session=website-session" },
+      data: { server: "analytics" },
+    })
+  ).json();
+  expect(
+    (
+      await request.post(`${bridge}/link`, {
+        headers: bridgeHeaders,
+        data: {
+          code: paired.code,
+          uuid: plan.players[0].uuid,
+          name: "IslesTester",
+          platform: "java",
+        },
+      })
+    ).status(),
+  ).toBe(204);
+  const ids = await (await request.get(`${bridge}/identities`, { headers: bridgeHeaders })).json();
+  expect(ids).toEqual([plan.players[0].uuid]);
+  expect(
+    (
+      await request.get("/api/isles/bridge/another-server/identities", { headers: bridgeHeaders })
+    ).status(),
+  ).toBe(401);
+  const heartbeat = async (statistics?: unknown) => {
+    expect(
+      (
+        await request.post(`${bridge}/heartbeat`, {
+          headers: bridgeHeaders,
+          data: {
+            platform: "Purpur",
+            minecraft: "1.21.1",
+            plugins: { Plan: "5.9 build 3705" },
+            groups: [],
+            players: [],
+            ...(statistics ? { plan: statistics } : {}),
+          },
+        })
+      ).status(),
+    ).toBe(204);
+  };
+  await heartbeat(plan);
+  expect((await request.get(`${server}/bridge`)).status()).toBe(401);
+  expect(
+    (
+      await request.get("/api/isles/players/another-player/links", {
+        headers: { Cookie: "mythic_session=website-session" },
+      })
+    ).status(),
+  ).toBe(403);
+  const personal = await (
+    await request.get("/api/isles/players/owned-player/links", {
+      headers: { Cookie: "mythic_session=website-session" },
+    })
+  ).json();
+  const linked = personal.find((item: { server: string }) => item.server === "analytics");
+  expect(linked.activity.playtimeMs).toBe(plan.players[0].playtimeMs);
+  expect(linked).not.toHaveProperty("player");
+  expect(linked).not.toHaveProperty("plan");
+  expect(JSON.stringify(personal)).not.toContain("recordedPlayers");
+  const publicServers = await (await request.get("/api/isles/servers")).json();
+  expect(JSON.stringify(publicServers)).not.toContain("playtimeMs");
+  await page
+    .context()
+    .addCookies([
+      { name: "mythic_session", value: "website-session", url: "http://localhost:19185" },
+    ]);
+  await page.goto("/game");
+  await expect(page.getByRole("heading", { name: "My Plan activity" })).toBeVisible();
+  await expect(page.getByText("0h 0m 18s", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Plan server activity" })).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await testInfo.attach("plan-player-mobile.png", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+  await page.goto("/admin/integrations");
+  await page.getByLabel("Mirror rescue token", { exact: false }).fill("scenario-mirror-admin");
+  await page.getByRole("button", { name: "Load configuration" }).click();
+  await page.getByRole("button", { name: "Analytics server", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh", exact: true }).last().click();
+  await expect(page.getByRole("heading", { name: "Plan server activity" })).toBeVisible();
+  await expect(page.getByText("0h 0m 21s", { exact: true })).toBeVisible();
+  await heartbeat();
+  await expect(
+    page.getByText("Plan is installed but its statistics are unavailable.", { exact: false }),
+  ).toBeVisible({ timeout: 15000 });
+  await expect(page.getByRole("heading", { name: "Plan server activity" })).toHaveCount(0);
+  await page.goto("/game");
+  await expect(page.getByText("IslesTester", { exact: false })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "My Plan activity" })).toHaveCount(0);
+  await testInfo.attach("plan-result.json", {
+    body: JSON.stringify(
+      {
+        offlineActivity: "owner-only",
+        storedPlaytimeMs: linked.activity.playtimeMs,
+        serverAggregate: "admin-only",
+        bridgeUUIDAllowlist: true,
+        providerUnavailable: "no-fabricated-zero",
+      },
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  });
+});
