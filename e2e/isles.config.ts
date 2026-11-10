@@ -11,7 +11,10 @@ export default defineConfig({
   timeout: 120_000,
   workers: 1,
   retries: 0,
-  reporter: "list",
+  reporter: [
+    ["list"],
+    ["html", { outputFolder: join(__dirname, "..", "playwright-report", "isles"), open: "never" }],
+  ],
   use: { baseURL: base, locale: "en-US", trace: "retain-on-failure" },
   webServer: [
     {
