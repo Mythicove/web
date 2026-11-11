@@ -93,10 +93,10 @@ export function GameProfileClient() {
                 .finally(() => setBusy(false));
             }}
           >
-            <label className="grid gap-2 text-sm">
+            <label className="grid min-w-0 gap-2 text-sm">
               {t("player")}
               <select
-                className="bg-surface h-10 rounded-md border px-3"
+                className="bg-surface h-10 w-full min-w-0 rounded-md border px-3"
                 value={player}
                 onChange={(e) => {
                   setPlayer(e.target.value);
@@ -111,10 +111,10 @@ export function GameProfileClient() {
                 ))}
               </select>
             </label>
-            <label className="grid gap-2 text-sm">
+            <label className="grid min-w-0 gap-2 text-sm">
               {t("servers")}
               <select
-                className="bg-surface h-10 rounded-md border px-3"
+                className="bg-surface h-10 w-full min-w-0 rounded-md border px-3"
                 value={server}
                 onChange={(e) => {
                   setServer(e.target.value);

@@ -117,7 +117,7 @@
   "portalLocalContent": "Mods and modpacks from this community",
   "clientProtocol": "Observed client version",
   "protocolVersions": "Supported connection protocols",
-  "protocolHint": "Reported by ViaVersion after configured blocks. The proxy, authentication mode and required mods still need to match.",
+  "protocolHint": "Reported by ViaVersion with installed ViaBackwards/ViaRewind paths and configured blocks applied. A listed protocol is not a full gameplay guarantee; the proxy, authentication mode and required mods still need to match.",
   "myRegions": "My WorldGuard regions",
   "regionOwner": "Owner",
   "regionMember": "Member",

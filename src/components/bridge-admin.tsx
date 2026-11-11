@@ -218,10 +218,10 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
               });
             }}
           >
-            <label className="grid gap-2 text-sm">
+            <label className="grid min-w-0 gap-2 text-sm">
               {t("linkedGames")}
               <select
-                className="bg-surface h-10 rounded-md border px-3"
+                className="bg-surface h-10 w-full min-w-0 rounded-md border px-3"
                 value={player}
                 required
                 onChange={(e) => setPlayer(e.target.value)}
@@ -234,10 +234,10 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
                 ))}
               </select>
             </label>
-            <label className="grid gap-2 text-sm">
+            <label className="grid min-w-0 gap-2 text-sm">
               {t("memberAction")}
               <select
-                className="bg-surface h-10 rounded-md border px-3"
+                className="bg-surface h-10 w-full min-w-0 rounded-md border px-3"
                 value={kind}
                 onChange={(e) => setKind(e.target.value)}
               >
@@ -246,10 +246,10 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
               </select>
             </label>
             {kind === "member" && (
-              <label className="grid gap-2 text-sm">
+              <label className="grid min-w-0 gap-2 text-sm">
                 {t("group")}
                 <select
-                  className="bg-surface h-10 rounded-md border px-3"
+                  className="bg-surface h-10 w-full min-w-0 rounded-md border px-3"
                   value={group}
                   required
                   onChange={(e) => setGroup(e.target.value)}

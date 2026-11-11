@@ -28,7 +28,8 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
     </label>
   );
 }
-const selectStyle = "border-border bg-surface text-text h-10 rounded-md border px-3 text-sm";
+const selectStyle =
+  "border-border bg-surface text-text h-10 w-full min-w-0 rounded-md border px-3 text-sm";
 const emptyServer = (): IslesServer => ({
   id: "",
   name: "",
@@ -508,7 +509,7 @@ function ServerEditor({
           <legend className="text-sm font-semibold">{t("connections")}</legend>
           <select
             aria-label={t("connections")}
-            className={`${selectStyle} w-full`}
+            className={selectStyle}
             value={value.connectionId ?? ""}
             onChange={(e) =>
               setValue({ ...value, connectionId: e.target.value, instanceId: "", daemonId: "" })

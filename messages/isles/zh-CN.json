@@ -117,7 +117,7 @@
   "portalLocalContent": "本站模组与整合包",
   "clientProtocol": "已观察到的客户端版本",
   "protocolVersions": "支持的连接协议",
-  "protocolHint": "由 ViaVersion 返回，已排除配置中禁用的协议。代理、认证方式与客户端模组仍需匹配。",
+  "protocolHint": "由 ViaVersion 返回，包含已安装 ViaBackwards／ViaRewind 的转换路径，并排除配置中禁用的协议。列出协议不代表所有游戏行为兼容；代理、认证方式与客户端模组仍需匹配。",
   "myRegions": "我的 WorldGuard 领地",
   "regionOwner": "所有者",
   "regionMember": "成员",

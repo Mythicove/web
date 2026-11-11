@@ -686,6 +686,139 @@ test("Towny membership follows the verified offline resident and admin lists res
   });
 });
 
+test("legacy Java clients retain their observed protocol and configured blocks update the admin range", async ({
+  page,
+  request,
+}, testInfo) => {
+  const fixture = JSON.parse(
+    await readFile(join(__dirname, "fixtures", "legacy-protocol-observations.json"), "utf8"),
+  );
+  const headers = { Authorization: "Bearer scenario-mirror-admin" };
+  const ownerHeaders = { Cookie: "mythic_session=website-session" };
+  const server = "/api/isles/admin/servers/legacy";
+  expect(
+    (
+      await request.put(server, {
+        headers,
+        data: {
+          name: "Legacy Java server",
+          edition: "java",
+          address: "127.0.0.1:1",
+          published: true,
+          links: [],
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  const { token } = await (
+    await request.post(`${server}/bridge-token`, { headers, data: {} })
+  ).json();
+  const { code } = await (
+    await request.post("/api/isles/players/owned-player/pair", {
+      headers: ownerHeaders,
+      data: { server: "legacy" },
+    })
+  ).json();
+  const oldClient = fixture.clients.find(
+    (client: { requestedVersion: string }) => client.requestedVersion === "1.8.8",
+  );
+  expect(
+    (
+      await request.post("/api/isles/bridge/legacy/link", {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { code, uuid: oldClient.uuid, name: oldClient.name, platform: "java" },
+      })
+    ).status(),
+  ).toBe(204);
+  const heartbeat = async (protocolVersions: string[], online: boolean) => {
+    expect(
+      (
+        await request.post("/api/isles/bridge/legacy/heartbeat", {
+          headers: { Authorization: `Bearer ${token}` },
+          data: {
+            platform: "Purpur",
+            minecraft: "1.21.1",
+            plugins: fixture.providers,
+            groups: [],
+            protocolVersions,
+            players: online
+              ? [
+                  {
+                    uuid: oldClient.uuid,
+                    name: oldClient.name,
+                    clientVersion: oldClient.clientVersion,
+                  },
+                ]
+              : [],
+          },
+        })
+      ).status(),
+    ).toBe(204);
+  };
+  await heartbeat(fixture.allowed, true);
+  const own = await (
+    await request.get("/api/isles/players/owned-player/links", { headers: ownerHeaders })
+  ).json();
+  const linked = own.find((link: { server: string }) => link.server === "legacy");
+  expect(linked.player.clientVersion).toBe("1.8.x");
+  expect(linked).not.toHaveProperty("protocolVersions");
+  expect((await request.get(`${server}/bridge`)).status()).toBe(401);
+  const publicData = JSON.stringify(await (await request.get("/api/isles/servers")).json());
+  expect(publicData).not.toContain("ViaRewind");
+  expect(publicData).not.toContain(oldClient.uuid);
+  await page
+    .context()
+    .addCookies([
+      { name: "mythic_session", value: "website-session", url: "http://localhost:19185" },
+    ]);
+  await page.goto("/game");
+  const profile = page
+    .locator("article")
+    .filter({ has: page.getByRole("heading", { name: "Legacy Java server", exact: true }) });
+  await expect(profile.getByText("Observed client version: 1.8.x", { exact: true })).toBeVisible();
+  await page.goto("/admin/integrations");
+  await page.getByLabel("Mirror rescue token", { exact: false }).fill("scenario-mirror-admin");
+  await page.getByRole("button", { name: "Load configuration", exact: true }).click();
+  await page.getByRole("button", { name: "Legacy Java server", exact: true }).click();
+  const refresh = () => page.getByRole("button", { name: "Refresh", exact: true }).last().click();
+  await refresh();
+  await expect(page.getByText("ViaBackwards 5.12.2", { exact: true })).toBeVisible();
+  await expect(page.getByText("ViaRewind 4.2.0", { exact: true })).toBeVisible();
+  await page.getByText("Supported connection protocols", { exact: true }).click();
+  const range = page
+    .locator("details")
+    .filter({ has: page.getByText("Supported connection protocols", { exact: true }) });
+  await expect(range).toContainText("1.8.x");
+  await expect(range).toContainText("1.12.2");
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await testInfo.attach("legacy-protocol-range-mobile.png", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+  await heartbeat(fixture.blocked, false);
+  await refresh();
+  await expect(range).not.toContainText("1.8.x");
+  await expect(range).toContainText("1.12.2");
+  await page.goto("/game");
+  await expect(profile.getByText(oldClient.uuid, { exact: true })).toBeVisible();
+  await expect(profile.getByText("Observed client version: 1.8.x", { exact: true })).toHaveCount(0);
+  await testInfo.attach("legacy-protocol-result.json", {
+    body: JSON.stringify({
+      requestedClient: oldClient.requestedVersion,
+      observedClient: oldClient.clientVersion,
+      blockedProtocol: fixture.blockedProtocol,
+      rangeRemoved: "1.8.x",
+      offlineVersionRemoved: true,
+      publicProviderExposure: false,
+      scope: fixture.scope,
+    }),
+    contentType: "application/json",
+  });
+});
+
 test("spark GC counters stay admin-only and preserve zero, unknown and reset observations", async ({
   page,
   request,

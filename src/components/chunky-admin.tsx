@@ -36,14 +36,14 @@ export function ChunkyAdmin({
   const action = (action: Operation["action"]) => {
     if (world) onAction({ world: world.world, action });
   };
-  const selectStyle = "bg-surface h-10 min-w-0 rounded-md border px-3";
+  const selectStyle = "bg-surface h-10 w-full min-w-0 rounded-md border px-3";
   return (
     <section className="space-y-4 border-t pt-5" aria-labelledby="chunky-title">
       <h4 id="chunky-title" className="font-semibold">
         {t("chunkyTitle")}
       </h4>
       <p className="text-text-muted text-sm">{t("chunkyIntro")}</p>
-      <label className="grid gap-2 text-sm">
+      <label className="grid min-w-0 gap-2 text-sm">
         {t("chunkyWorld")}
         <select
           className={selectStyle}
@@ -128,7 +128,7 @@ export function ChunkyAdmin({
                 });
               }}
             >
-              <label className="grid gap-2 text-sm">
+              <label className="grid min-w-0 gap-2 text-sm">
                 {t("chunkyShape")}
                 <select
                   className={selectStyle}
