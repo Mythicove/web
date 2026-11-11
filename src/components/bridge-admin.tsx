@@ -131,6 +131,34 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
               </div>
             )}
           </dl>
+          {state.snapshot.garbageCollectors && (
+            <section className="space-y-3 border-t pt-4 text-sm" aria-labelledby="gc-title">
+              <h4 id="gc-title" className="font-semibold">
+                {t("gcTitle")}
+              </h4>
+              <p className="text-text-muted text-xs">{t("gcScope")}</p>
+              {Object.entries(state.snapshot.garbageCollectors)
+                .sort(([a], [b]) => a.localeCompare(b))
+                .map(([name, counters]) => (
+                  <div key={name} className="space-y-2 rounded-md border p-3">
+                    <h5 className="font-semibold break-words">{name}</h5>
+                    <dl className="grid grid-cols-2 gap-3">
+                      <div>
+                        <dt>{t("gcCollections")}</dt>
+                        <dd>{counters.collections?.toLocaleString() ?? t("gcNotReported")}</dd>
+                      </div>
+                      <div>
+                        <dt>{t("gcTime")}</dt>
+                        <dd>{counters.timeMs?.toLocaleString() ?? t("gcNotReported")}</dd>
+                      </div>
+                    </dl>
+                  </div>
+                ))}
+            </section>
+          )}
+          {state.snapshot.plugins.spark && !state.snapshot.garbageCollectors && (
+            <p className="text-text-muted text-sm">{t("gcUnavailable")}</p>
+          )}
           {(state.snapshot.protocolVersions?.length ?? 0) > 0 && (
             <details className="text-sm">
               <summary className="cursor-pointer">{t("protocolVersions")}</summary>

@@ -686,6 +686,110 @@ test("Towny membership follows the verified offline resident and admin lists res
   });
 });
 
+test("spark GC counters stay admin-only and preserve zero, unknown and reset observations", async ({
+  page,
+  request,
+}, testInfo) => {
+  const fixture = JSON.parse(
+    await readFile(join(__dirname, "fixtures", "gc-observations.json"), "utf8"),
+  );
+  const server = "/api/isles/admin/servers/gc";
+  const headers = { Authorization: "Bearer scenario-mirror-admin" };
+  expect(
+    (
+      await request.put(server, {
+        headers,
+        data: {
+          name: "GC server",
+          edition: "java",
+          address: "127.0.0.1:1",
+          published: true,
+          links: [],
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  const { token } = await (
+    await request.post(`${server}/bridge-token`, { headers, data: {} })
+  ).json();
+  const heartbeat = async (garbageCollectors?: unknown) => {
+    expect(
+      (
+        await request.post("/api/isles/bridge/gc/heartbeat", {
+          headers: { Authorization: `Bearer ${token}` },
+          data: {
+            platform: "Purpur",
+            minecraft: "1.21.1",
+            plugins: { spark: "server-service" },
+            groups: [],
+            players: [],
+            garbageCollectors,
+          },
+        })
+      ).status(),
+    ).toBe(204);
+  };
+  await heartbeat(fixture.before);
+  expect((await request.get(`${server}/bridge`)).status()).toBe(401);
+  expect(JSON.stringify(await (await request.get("/api/isles/servers")).json())).not.toContain(
+    "garbageCollectors",
+  );
+  await page.goto("/admin/integrations");
+  await page.getByLabel("Mirror rescue token", { exact: false }).fill("scenario-mirror-admin");
+  await page.getByRole("button", { name: "Load configuration", exact: true }).click();
+  await page.getByRole("button", { name: "GC server", exact: true }).click();
+  const refresh = () => page.getByRole("button", { name: "Refresh", exact: true }).last().click();
+  await refresh();
+  const gc = page.getByRole("region", { name: "Garbage collection (spark)", exact: true });
+  const old = gc
+    .locator(":scope > div")
+    .filter({ has: page.getByRole("heading", { name: "G1 Old Generation", exact: true }) });
+  await expect(old.locator("dd")).toHaveText(["0", "0"]);
+  await heartbeat(fixture.after);
+  await refresh();
+  await expect(old.locator("dd")).toHaveText(["1", "102"]);
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await testInfo.attach("spark-gc-mobile.png", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+  await heartbeat({ "Unknown collector": {} });
+  await refresh();
+  await expect(gc.locator("dd")).toHaveText(["Not reported", "Not reported"]);
+  await heartbeat(fixture.before);
+  await refresh();
+  await expect(old.locator("dd")).toHaveText(["0", "0"]);
+  await heartbeat();
+  await refresh();
+  await expect(gc).toHaveCount(0);
+  await expect(
+    page.getByText("spark garbage-collector statistics are unavailable.", { exact: true }),
+  ).toBeVisible();
+  await heartbeat(fixture.after);
+  await page.goto("/zh-CN/admin/integrations");
+  await page.getByLabel("Mirror 救援令牌", { exact: false }).fill("scenario-mirror-admin");
+  await page.getByRole("button", { name: "加载配置", exact: true }).click();
+  await page.getByRole("button", { name: "GC server", exact: true }).click();
+  await page.getByRole("button", { name: "刷新", exact: true }).last().click();
+  await expect(page.getByRole("region", { name: "垃圾回收（spark）", exact: true })).toBeVisible();
+  await expect(page.getByText("累计耗时（毫秒）", { exact: true })).toHaveCount(3);
+  await testInfo.attach("spark-gc-result.json", {
+    body: JSON.stringify({
+      source: fixture.provider,
+      oldGenerationBefore: fixture.before["G1 Old Generation"],
+      oldGenerationAfter: fixture.after["G1 Old Generation"],
+      unknownPreserved: true,
+      resetReplaced: true,
+      unavailableRemoved: true,
+      publicExposure: false,
+    }),
+    contentType: "application/json",
+  });
+});
+
 test("local files are identified by browser digest without uploading bytes or names", async ({
   page,
   request,

@@ -1,4 +1,10 @@
 {
+  "gcTitle": "Garbage collection (spark)",
+  "gcNotReported": "Not reported",
+  "gcCollections": "Collections",
+  "gcTime": "Accumulated time (ms)",
+  "gcScope": "Provider counters since spark's normal-operation baseline, excluding startup GC. Values reset with the provider/server. These are not recent-interval statistics or a pause histogram; freshness follows the Bridge observation above.",
+  "gcUnavailable": "spark garbage-collector statistics are unavailable.",
   "identifyTitle": "Identify a local file",
   "identifyIntro": "Choose a mod or plugin file (up to 128 MiB). SHA-512 is computed in your browser; only the digest is sent to the Modrinth index. File contents and the local filename stay on your device.",
   "identifyFile": "Local file",

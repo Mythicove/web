@@ -664,6 +664,16 @@ export interface components {
             centerY: number;
             centerZ: number;
         };
+        /** @description Administrator-only spark GC counters since the provider's normal-operation baseline (startup activity excluded). Each unknown counter is omitted independently; zero is retained as reported. Counters reset with the provider/server, not a rolling interval or pause histogram. */
+        GarbageCollectorStats: {
+            /** Format: int64 */
+            collections?: number;
+            /**
+             * Format: int64
+             * @description Provider-reported accumulated collection time in milliseconds
+             */
+            timeMs?: number;
+        };
         BridgeSnapshot: {
             platform: string;
             minecraft: string;
@@ -676,6 +686,10 @@ export interface components {
             mspt?: number;
             /** @description Fraction of system CPU usage */
             cpu?: number;
+            /** @description GC statistics keyed by provider-reported collector name; absent when unavailable. Never exposed in the public directory or player profile. */
+            garbageCollectors?: {
+                [key: string]: components["schemas"]["GarbageCollectorStats"];
+            };
             /** Format: date-time */
             readonly receivedAt: string;
             /** @description ViaVersion-supported protocols after configured blocks; does not guarantee proxy/modpack compatibility */

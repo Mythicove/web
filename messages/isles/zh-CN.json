@@ -1,4 +1,10 @@
 {
+  "gcTitle": "垃圾回收（spark）",
+  "gcNotReported": "未提供",
+  "gcCollections": "回收次数",
+  "gcTime": "累计耗时（毫秒）",
+  "gcScope": "从 spark 正常运行基线起统计，扣除启动阶段 GC；随 provider／服务器重启而重置。不是最近时段统计或暂停分布，时效以本节上方 Bridge 观察为准。",
+  "gcUnavailable": "spark 垃圾回收统计暂不可用。",
   "identifyTitle": "识别本地文件",
   "identifyIntro": "选择模组或插件文件（最大 128 MiB）。浏览器在本地计算 SHA-512，仅将哈希发送至 Modrinth 索引；文件内容和本地文件名留在你的设备上。",
   "identifyFile": "本地文件",

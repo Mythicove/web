@@ -1,0 +1,15 @@
+{
+  "before": {
+    "G1 Concurrent GC": { "collections": 4, "timeMs": 39 },
+    "G1 Old Generation": { "collections": 0, "timeMs": 0 },
+    "G1 Young Generation": { "collections": 7, "timeMs": 40 }
+  },
+  "after": {
+    "G1 Concurrent GC": { "collections": 4, "timeMs": 39 },
+    "G1 Old Generation": { "collections": 1, "timeMs": 102 },
+    "G1 Young Generation": { "collections": 7, "timeMs": 40 }
+  },
+  "provider": "spark bundled with Purpur 1.21.1-2329",
+  "scope": "provider-normal-operation-baseline-not-jvm-lifetime-or-rolling-interval",
+  "trigger": "JDK jcmd GC.run"
+}
