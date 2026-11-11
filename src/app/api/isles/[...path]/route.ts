@@ -19,7 +19,7 @@ async function proxy(req: Request, context: { params: Promise<{ path: string[] }
       path,
     );
   const catalog =
-    /^catalog\/(modrinth\/(search|versions\/[a-zA-Z0-9_-]+)|hangar\/(search|versions\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+))$/.test(
+    /^catalog\/(modrinth\/(search|versions\/[a-zA-Z0-9_-]+|hash\/[a-fA-F0-9]{128})|hangar\/(search|versions\/[a-zA-Z0-9_-]+\/[a-zA-Z0-9_-]+))$/.test(
       path,
     );
   if (

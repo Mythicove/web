@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Link } from "@/i18n/navigation";
 import { islesRequest, type CatalogProject, type CatalogVersion } from "@/lib/isles";
+import { CatalogIdentify } from "@/components/catalog-identify";
 
 type Selection = { project: CatalogProject; versions: CatalogVersion[] };
 const control = "border-border bg-surface h-10 rounded-md border px-3 text-sm";
@@ -61,6 +62,7 @@ export function CatalogClient() {
             {t("back")}
           </Link>
         </div>
+        <CatalogIdentify />
         <form
           className="grid items-end gap-4 sm:grid-cols-2 lg:grid-cols-[140px_minmax(0,1fr)_170px_140px_auto]"
           onSubmit={(e) => {

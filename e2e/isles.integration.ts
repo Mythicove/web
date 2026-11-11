@@ -1,6 +1,8 @@
 import { test, expect } from "@playwright/test";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdtemp, open, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { createHash } from "node:crypto";
 
 test("administrator publishes a server; anonymous players see public information only", async ({
   page,
@@ -680,6 +682,110 @@ test("Towny membership follows the verified offline resident and admin lists res
       null,
       2,
     ),
+    contentType: "application/json",
+  });
+});
+
+test("local files are identified by browser digest without uploading bytes or names", async ({
+  page,
+  request,
+}, testInfo) => {
+  const bytes = Buffer.from("local file contents");
+  const hash = createHash("sha512").update(bytes).digest("hex");
+  await page.goto("/catalog");
+  const file = page.getByLabel("Local file", { exact: true });
+  await file.setInputFiles({
+    name: "renamed-private-file.jar",
+    mimeType: "application/java-archive",
+    buffer: bytes,
+  });
+  const outgoing = page.waitForRequest((req) =>
+    req.url().includes(`/catalog/modrinth/hash/${hash}`),
+  );
+  await page.getByRole("button", { name: "Identify with Modrinth", exact: true }).click();
+  const sent = await outgoing;
+  expect(sent.method()).toBe("GET");
+  expect(sent.postData()).toBeNull();
+  expect(sent.url()).not.toContain("renamed-private-file");
+  const result = page.getByRole("status");
+  await expect(
+    result.getByText("Exact file digest found in Modrinth", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    result.getByRole("heading", { name: "Known exact-file release", exact: true }),
+  ).toBeVisible();
+  await expect(
+    result.getByText("Publisher filename: publisher.jar", { exact: true }),
+  ).toBeVisible();
+  await expect(result.getByRole("link", { name: "Original project", exact: true })).toHaveAttribute(
+    "href",
+    "https://modrinth.com/project/known-project/version/known-release",
+  );
+  await result.getByText("Locally computed SHA-512", { exact: true }).click();
+  await expect(result.getByText(hash, { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  await testInfo.attach("file-identification-mobile.png", {
+    body: await page.screenshot({ fullPage: true }),
+    contentType: "image/png",
+  });
+  await file.setInputFiles({
+    name: "same-name.jar",
+    mimeType: "application/java-archive",
+    buffer: Buffer.concat([bytes, Buffer.from("modified")]),
+  });
+  await expect(result).toHaveCount(0);
+  await page.getByRole("button", { name: "Identify with Modrinth", exact: true }).click();
+  await expect(result.getByText(/This file digest is not indexed by Modrinth/)).toBeVisible();
+  await expect(result.getByRole("heading")).toHaveCount(0);
+  await file.setInputFiles({
+    name: "unavailable.jar",
+    mimeType: "application/java-archive",
+    buffer: Buffer.from("unavailable file"),
+  });
+  await page.getByRole("button", { name: "Identify with Modrinth", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Identify a local file", exact: true }).getByRole("alert"),
+  ).toContainText("502");
+  await expect(result).toHaveCount(0);
+  expect(
+    (await request.get(`/api/isles/catalog/modrinth/hash/${hash}?algorithm=sha1`)).status(),
+  ).toBe(400);
+  expect(
+    (await request.post(`/api/isles/catalog/modrinth/hash/${hash}`, { data: {} })).status(),
+  ).toBe(404);
+  const dir = await mkdtemp(join(tmpdir(), "isles-local-file-"));
+  try {
+    const path = join(dir, "too-large.jar");
+    const handle = await open(path, "w");
+    await handle.truncate(128 * 1024 * 1024 + 1);
+    await handle.close();
+    await file.setInputFiles(path);
+    await page.getByRole("button", { name: "Identify with Modrinth", exact: true }).click();
+    await expect(
+      page.getByRole("region", { name: "Identify a local file", exact: true }).getByRole("alert"),
+    ).toHaveText("Choose a file no larger than 128 MiB.");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+  await page.goto("/zh-CN/catalog");
+  await page
+    .getByLabel("本地文件", { exact: true })
+    .setInputFiles({ name: "中文改名.jar", mimeType: "application/java-archive", buffer: bytes });
+  await page.getByRole("button", { name: "通过 Modrinth 识别", exact: true }).click();
+  await expect(page.getByText("已在 Modrinth 找到精确文件哈希", { exact: true })).toBeVisible();
+  await testInfo.attach("file-identification-result.json", {
+    body: JSON.stringify({
+      algorithm: "sha512",
+      filenameIndependent: true,
+      fileContentsUploaded: false,
+      exactVersion: "known-release",
+      modifiedFile: "not-indexed",
+      oversizeFile: "rejected-locally",
+      bilingual: true,
+    }),
     contentType: "application/json",
   });
 });

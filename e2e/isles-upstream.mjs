@@ -1,6 +1,7 @@
 // External identity-provider boundary for the standalone Isles browser scenario.
 // Production Web and Isles remain real processes; no owned modules are mocked.
 import { createServer } from "node:http";
+import { createHash } from "node:crypto";
 
 createServer((req, res) => {
   res.setHeader("Content-Type", "application/json");
@@ -14,6 +15,39 @@ createServer((req, res) => {
     );
   }
   const url = new URL(req.url, "http://127.0.0.1:19186");
+  if (url.pathname.startsWith("/modrinth/version_file/")) {
+    if (url.pathname.endsWith(createHash("sha512").update("unavailable file").digest("hex"))) {
+      res.statusCode = 503;
+      return res.end("{}");
+    }
+    const known = createHash("sha512").update("local file contents").digest("hex");
+    if (
+      url.pathname !== `/modrinth/version_file/${known}` ||
+      url.searchParams.get("algorithm") !== "sha512"
+    ) {
+      res.statusCode = 404;
+      return res.end("{}");
+    }
+    return res.end(
+      JSON.stringify({
+        project_id: "known-project",
+        id: "known-release",
+        name: "Known exact-file release",
+        version_number: "1.2.3",
+        version_type: "release",
+        game_versions: ["1.21.1"],
+        loaders: ["fabric"],
+        files: [
+          {
+            filename: "publisher.jar",
+            url: "https://cdn.modrinth.com/test/publisher.jar",
+            hashes: { sha512: known },
+            size: 19,
+          },
+        ],
+      }),
+    );
+  }
   if (url.pathname === "/modrinth/search") {
     if (url.searchParams.get("query") !== "Fabric") {
       res.statusCode = 400;

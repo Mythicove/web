@@ -1,5 +1,25 @@
 // 由 scripts/gen-api.mjs 从 api/specs/isles.openapi.yaml 生成，请勿手改。
 export interface paths {
+    "/api/isles/catalog/modrinth/hash/{hash}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Identify a local file by its browser-computed SHA-512 digest
+         * @description Queries the fixed Modrinth file index; no file content or name is uploaded. Only returned files with the exact publisher digest are exposed. Identification does not attest safety or installation compatibility. Uses the shared catalog cache and request budget.
+         */
+        get: operations["identifyModrinthFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/isles/catalog/modrinth/search": {
         parameters: {
             query?: never;
@@ -537,6 +557,11 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        CatalogMatch: {
+            /** @description Modrinth project ID reported for this file */
+            projectId: string;
+            version: components["schemas"]["CatalogVersion"];
+        };
         CatalogFile: {
             name: string;
             /** Format: uri */
@@ -903,6 +928,56 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    identifyModrinthFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                hash: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Exact publisher-digest match; version.files contains only matching files */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CatalogMatch"];
+                };
+            };
+            /** @description Invalid digest or query parameters */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description File hash not indexed by Modrinth */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Shared catalog request budget exhausted */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Source unavailable or returned no consistent file identity */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     searchModrinthCatalog: {
         parameters: {
             query: {
