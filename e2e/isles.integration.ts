@@ -10,6 +10,8 @@ test("administrator publishes a server; anonymous players see public information
 }, testInfo) => {
   const denied = await request.get("/api/isles/admin/config");
   expect(denied.status()).toBe(401);
+  // Fleet scrapes use the private Isles listener, not the browser BFF.
+  expect((await request.get("/api/isles/metrics")).status()).toBe(404);
   const forged = await request.put("/api/isles/admin/servers/test", {
     headers: { Authorization: "Bearer scenario-mirror-admin", Origin: "https://another.example" },
     data: { name: "Forged" },

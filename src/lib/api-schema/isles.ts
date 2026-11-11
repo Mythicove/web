@@ -1,5 +1,42 @@
 // 由 scripts/gen-api.mjs 从 api/specs/isles.openapi.yaml 生成，请勿手改。
 export interface paths {
+    "/healthz": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Process health; does not establish game-server or Bridge health */
+        get: operations["getIslesHealth"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Private Prometheus Bridge snapshot gauges
+         * @description Direct private Isles endpoint using the existing service token. Exposes configured server IDs, Bridge freshness/observation time and fresh TPS/MSPT/system CPU/GC only. Performance series are omitted after 90 seconds or when unknown. GC gauges retain provider-reset semantics. No player data or upstream calls on scrape. Use Prometheus for history; Web BFF does not expose this route.
+         */
+        get: operations["scrapeIslesMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/isles/catalog/modrinth/hash/{hash}": {
         parameters: {
             query?: never;
@@ -942,6 +979,53 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getIslesHealth: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Isles process is serving requests */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+        };
+    };
+    scrapeIslesMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Prometheus text exposition 0.0.4, all series are gauges */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/plain": string;
+                };
+            };
+            /** @description Service token required; a per-server Bridge token is insufficient */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     identifyModrinthFile: {
         parameters: {
             query?: never;
