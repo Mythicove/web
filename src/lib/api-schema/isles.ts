@@ -26,7 +26,7 @@ export interface paths {
         };
         /**
          * Private Prometheus Bridge snapshot gauges
-         * @description Direct private Isles endpoint using the existing service token. Exposes configured server IDs, Bridge freshness/observation time and fresh TPS/MSPT/system CPU/GC only. Performance series are omitted after 90 seconds or when unknown. GC gauges retain provider-reset semantics. No player data or upstream calls on scrape. Use Prometheus for history; Web BFF does not expose this route.
+         * @description Direct private Isles endpoint. When ISLES_METRICS_TOKEN is configured only that read-only token is accepted; otherwise the existing service token is required. Exposes configured server IDs, Bridge freshness/observation time and fresh TPS/MSPT/system CPU/GC only. Performance series are omitted after 90 seconds or when unknown. GC gauges retain provider-reset semantics. No player data or upstream calls on scrape. Use Prometheus for history; Web BFF does not expose this route.
          */
         get: operations["scrapeIslesMetrics"];
         put?: never;
@@ -1017,7 +1017,7 @@ export interface operations {
                     "text/plain": string;
                 };
             };
-            /** @description Service token required; a per-server Bridge token is insufficient */
+            /** @description Configured metrics token required, or service token when no metrics token is configured; a per-server Bridge token is insufficient */
             401: {
                 headers: {
                     [name: string]: unknown;
