@@ -76,12 +76,20 @@ export default async function Server({ params }: Params) {
             </p>
             <ServerStatus id={server.id} address={server.address} />
             {server.packVersion && (
-              <Button
-                className="mt-6 w-full"
-                render={<a href={`/api/isles/packs/${server.packVersion}`} />}
-              >
-                {t("download")}
-              </Button>
+              <div className="mt-6 space-y-3">
+                <Button
+                  className="w-full"
+                  render={
+                    <a
+                      href={`/api/isles/packs/${encodeURIComponent(server.packVersion)}`}
+                      download
+                    />
+                  }
+                >
+                  {t("installCompass")}
+                </Button>
+                <p className="text-text-muted text-sm">{t("installCompassHint")}</p>
+              </div>
             )}
           </aside>
         </div>

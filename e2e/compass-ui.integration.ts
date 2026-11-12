@@ -210,11 +210,18 @@ test("grasscn launch workflow handles missing account, failure, retry, stop and 
                   slug: "survival",
                   name: "朋友一起玩的长期生存服务器实例",
                   versionId: "1.21.1",
+                  server: { host: "play.example.org", port: 25565 },
                   settings: {},
                 },
               ];
             case "game_running":
               return running;
+            case "instance_server_status":
+              return {
+                reachable: true,
+                version: "Paper 1.21.4",
+                protocolVersions: ["1.21-1.21.1", "1.21.4"],
+              };
             case "mirror_skin_data_url":
               return null;
             case "instance_launch":
@@ -264,6 +271,13 @@ test("grasscn launch workflow handles missing account, failure, retry, stop and 
   await expect(page.getByLabel("玩家名", { exact: true })).toHaveCSS("border-radius", "0px");
   await page.getByRole("button", { name: "登录", exact: true }).click();
   await expect(launch).toBeEnabled();
+  await expect(page.getByText("服务器报告版本: Paper 1.21.4", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("允许的协议（Bridge 最新上报）: 1.21-1.21.1, 1.21.4", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("此实例的 Minecraft: 1.21.1 · play.example.org:25565", { exact: true }),
+  ).toBeVisible();
   await launch.click();
   await expect(page.locator(".start-error")).toBeVisible();
   await expect(launch).toBeEnabled();
@@ -300,6 +314,7 @@ test("grasscn launch workflow handles missing account, failure, retry, stop and 
         retry: "succeeded",
         stop: true,
         chineseLabels: true,
+        protocolHintBeforeLaunch: true,
       },
       null,
       2,

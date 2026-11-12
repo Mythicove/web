@@ -1001,6 +1001,8 @@ export interface components {
             version?: string;
             motd?: string;
             error?: string;
+            /** @description Allowed protocol names from a Bridge heartbeat less than 90 seconds old. Omitted when unavailable or stale; does not establish modpack or authentication compatibility. */
+            protocolVersions?: string[];
         };
         Instance: {
             id: string;

@@ -75,6 +75,13 @@ export function ServerStatus({ id, address }: { id: string; address: string }) {
           )}
         </dl>
       )}
+      {!failed && !!status?.protocolVersions?.length && (
+        <div className="space-y-2 text-sm">
+          <p className="text-text-muted">{t("publicProtocols")}</p>
+          <p className="break-words">{status.protocolVersions.join(", ")}</p>
+          <p className="text-text-muted">{t("protocolHint")}</p>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3 border-t pt-4">
         <code className="text-sm break-all">{address}</code>
         <Button

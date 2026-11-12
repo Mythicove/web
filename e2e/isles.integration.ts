@@ -4,6 +4,90 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 
+test("published server pack downloads for Compass and exposes only fresh protocol hints", async ({
+  page,
+  request,
+}, testInfo) => {
+  const path = "/api/isles/admin/servers/client-pack";
+  const headers = {
+    Authorization: "Bearer scenario-mirror-admin",
+    "Content-Type": "application/json",
+  };
+  expect(
+    (
+      await request.put(path, {
+        headers,
+        data: {
+          name: "Pack installation server",
+          edition: "java",
+          address: "127.0.0.1:1",
+          published: true,
+          packwizUrl: "http://127.0.0.1:19186/client-pack/pack.toml",
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  await page.goto("/servers/client-pack");
+  await expect(
+    page.getByRole("button", { name: "Download pack for Compass", exact: true }),
+  ).toHaveCount(0);
+  const published = await request.post(`${path}/publish-pack`, { headers, data: {} });
+  expect(published.ok()).toBe(true);
+  const { version } = await published.json();
+  const { token } = await (
+    await request.post(`${path}/bridge-token`, { headers, data: {} })
+  ).json();
+  expect(
+    (
+      await request.post("/api/isles/bridge/client-pack/heartbeat", {
+        headers: { Authorization: `Bearer ${token}` },
+        data: {
+          platform: "Paper",
+          minecraft: "1.21.4",
+          plugins: { ViaVersion: "5.12.2" },
+          groups: [],
+          protocolVersions: ["1.21-1.21.1", "1.21.4"],
+          players: [{ uuid: "95db2f25-60a5-4c75-adfb-a69de4db748e", name: "PrivatePlayer" }],
+        },
+      })
+    ).status(),
+  ).toBe(204);
+  await page.reload();
+  await expect(page.getByText("1.21-1.21.1, 1.21.4", { exact: true })).toBeVisible();
+  await expect(page.getByText("PrivatePlayer", { exact: true })).toHaveCount(0);
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Download pack for Compass", exact: true }).click(),
+  ]);
+  expect(download.suggestedFilename()).toBe(`${version}.mrpack`);
+  const bytes = await readFile((await download.path())!);
+  expect(createHash("sha256").update(bytes).digest("hex")).toBe(version);
+  expect(bytes.subarray(0, 2).toString()).toBe("PK");
+  await testInfo.attach("compass-pack-download.json", {
+    body: JSON.stringify(
+      {
+        filename: download.suggestedFilename(),
+        sha256: version,
+        bytes: bytes.length,
+        protocols: ["1.21-1.21.1", "1.21.4"],
+        privatePlayersExposed: false,
+      },
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  });
+  // Rotation removes the prior heartbeat, even while the network probe is cached.
+  expect((await request.post(`${path}/bridge-token`, { headers, data: {} })).ok()).toBe(true);
+  const status = await (await request.get("/api/isles/servers/client-pack/status")).json();
+  expect(status).not.toHaveProperty("protocolVersions");
+  await page.reload();
+  await expect(
+    page.getByText("Allowed protocols (fresh Bridge report)", { exact: true }),
+  ).toHaveCount(0);
+  expect((await request.delete(path, { headers })).ok()).toBe(true);
+});
+
 test("administrator queries private CoreProtect history through the real BFF and durable queue", async ({
   page,
   request,

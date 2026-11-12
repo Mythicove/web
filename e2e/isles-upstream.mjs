@@ -3,11 +3,23 @@
 import { createServer } from "node:http";
 import { createHash } from "node:crypto";
 
+const packIndex = 'hash-format = "sha256"\nfiles = []\n';
+
 createServer((req, res) => {
   res.setHeader("Content-Type", "application/json");
   res.setHeader("Access-Control-Allow-Origin", "http://localhost:19185");
   res.setHeader("Access-Control-Allow-Credentials", "true");
   if (req.url === "/healthz") return res.end("{}");
+  if (req.url === "/client-pack/index.toml") {
+    res.setHeader("Content-Type", "text/plain");
+    return res.end(packIndex);
+  }
+  if (req.url === "/client-pack/pack.toml") {
+    res.setHeader("Content-Type", "text/plain");
+    return res.end(
+      `name = "Community client"\nversion = "1.0"\npack-format = "packwiz:1.1.0"\n[versions]\nminecraft = "1.21.1"\nfabric = "0.16.14"\n[index]\nfile = "index.toml"\nhash-format = "sha256"\nhash = "${createHash("sha256").update(packIndex).digest("hex")}"\n`,
+    );
+  }
   if (req.url?.startsWith("/world-map")) {
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     return res.end(
