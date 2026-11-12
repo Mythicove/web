@@ -441,6 +441,25 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/isles/admin/servers/{id}/coreprotect": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Administrator-only exact-coordinate persisted history via CoreProtect API v12. Queues an asynchronous read; retrieve result from admin tasks. Each page is an independent read, newest first; new events can shift offsets. Returns up to 100 records, with hasMore derived from a 101st row. Read requests may replay after a lost acknowledgement. Does not modify game history or world state. */
+        post: operations["queryCoreProtectHistory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/isles/players/{player}/pair": {
         parameters: {
             query?: never;
@@ -876,7 +895,7 @@ export interface components {
         BridgeTask: {
             id: string;
             /** @enum {string} */
-            kind: "whitelist" | "member" | "chunky";
+            kind: "whitelist" | "member" | "chunky" | "coreprotect";
             uuid: string;
             group?: string;
             grant: boolean;
@@ -886,9 +905,37 @@ export interface components {
              */
             status: "pending" | "dispatched" | "applied" | "failed";
             chunky?: components["schemas"]["ChunkyOperation"];
+            coreprotect?: components["schemas"]["CoreProtectQuery"];
+            coreprotectResult?: components["schemas"]["CoreProtectResult"];
             error?: string;
             /** Format: date-time */
             createdAt: string;
+        };
+        CoreProtectQuery: {
+            world: string;
+            x: number;
+            /** @description Also checked against the actual loaded world height */
+            y: number;
+            z: number;
+            seconds: number;
+            offset: number;
+        };
+        CoreProtectResult: {
+            hasMore: boolean;
+            records: {
+                /** @description Recorded actor name, not a verified website identity */
+                player: string;
+                /**
+                 * Format: int64
+                 * @description Unix milliseconds
+                 */
+                timestampMs: number;
+                /** @description Original CoreProtect action string */
+                action: string;
+                /** @description Omitted when the provider cannot resolve material */
+                material?: string;
+                rolledBack: boolean;
+            }[];
         };
         Link: {
             kind: string;
@@ -2022,6 +2069,60 @@ export interface operations {
             };
         };
     };
+    queryCoreProtectHistory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: components["parameters"]["id"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CoreProtectQuery"];
+            };
+        };
+        responses: {
+            /** @description Query queued */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BridgeTask"];
+                };
+            };
+            /** @description Invalid coordinate or time window */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Administrator required */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Current CoreProtect observation required */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Task capacity reached */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     createGamePairing: {
         parameters: {
             query?: never;
@@ -2277,6 +2378,7 @@ export interface operations {
                 "application/json": {
                     success: boolean;
                     error?: string;
+                    coreprotectResult?: components["schemas"]["CoreProtectResult"];
                 };
             };
         };

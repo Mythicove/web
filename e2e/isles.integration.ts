@@ -4,6 +4,112 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { createHash } from "node:crypto";
 
+test("administrator queries private CoreProtect history through the real BFF and durable queue", async ({
+  page,
+  request,
+}) => {
+  const result = JSON.parse(
+    await readFile(join(__dirname, "fixtures", "coreprotect-observations.json"), "utf8"),
+  );
+  const headers = { Authorization: "Bearer scenario-mirror-admin" };
+  const path = "/api/isles/admin/servers/history";
+  expect(
+    (
+      await request.put(path, {
+        headers,
+        data: {
+          name: "Block history",
+          edition: "java",
+          address: "127.0.0.1:1",
+          published: false,
+          links: [],
+        },
+      })
+    ).ok(),
+  ).toBe(true);
+  const { token } = await (
+    await request.post(`${path}/bridge-token`, { headers, data: {} })
+  ).json();
+  const bridge = "/api/isles/bridge/history";
+  const bridgeHeaders = { Authorization: `Bearer ${token}` };
+  expect(
+    (
+      await request.post(`${bridge}/heartbeat`, {
+        headers: bridgeHeaders,
+        data: {
+          platform: "Purpur",
+          minecraft: "1.21.1",
+          plugins: { CoreProtect: result.version },
+          groups: [],
+          players: [],
+        },
+      })
+    ).status(),
+  ).toBe(204);
+  expect(
+    (
+      await request.post(`${path}/coreprotect`, {
+        data: { world: "world", x: 0, y: 101, z: 0, seconds: 3600, offset: 0 },
+      })
+    ).status(),
+  ).toBe(401);
+  await page.goto("/admin/integrations");
+  await page.getByLabel("Mirror rescue token", { exact: false }).fill("scenario-mirror-admin");
+  await page.getByRole("button", { name: "Load configuration" }).click();
+  await page.getByRole("button", { name: "Block history", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh", exact: true }).last().click();
+  const panel = page.getByRole("region", { name: "CoreProtect" });
+  await panel.getByLabel("Y", { exact: true }).fill("101");
+  await panel.getByRole("button", { name: "Query history" }).click();
+  await expect
+    .poll(
+      async () =>
+        (await (await request.get(`${bridge}/tasks`, { headers: bridgeHeaders })).json()).length,
+    )
+    .toBe(1);
+  const [task] = await (await request.get(`${bridge}/tasks`, { headers: bridgeHeaders })).json();
+  expect(task.coreprotect).toEqual({
+    world: "world",
+    x: 0,
+    y: 101,
+    z: 0,
+    seconds: 86400,
+    offset: 0,
+  });
+  expect(
+    (
+      await request.post(`${bridge}/tasks/${task.id}`, {
+        headers: bridgeHeaders,
+        data: { success: true, coreprotectResult: { records: result.records, hasMore: false } },
+      })
+    ).status(),
+  ).toBe(204);
+  await expect(panel.getByRole("cell", { name: "IslesTester", exact: true })).toHaveCount(2, {
+    timeout: 15000,
+  });
+  await expect(panel.getByRole("cell", { name: "minecraft:stone", exact: true })).toHaveCount(2);
+  await panel.getByRole("button", { name: "Query history" }).click();
+  await expect
+    .poll(
+      async () =>
+        (await (await request.get(`${bridge}/tasks`, { headers: bridgeHeaders })).json()).length,
+    )
+    .toBe(1);
+  const [empty] = await (await request.get(`${bridge}/tasks`, { headers: bridgeHeaders })).json();
+  expect(
+    (
+      await request.post(`${bridge}/tasks/${empty.id}`, {
+        headers: bridgeHeaders,
+        data: { success: true, coreprotectResult: { records: [], hasMore: false } },
+      })
+    ).status(),
+  ).toBe(204);
+  await expect(panel.getByText("No matching persisted records.", { exact: true })).toBeVisible({
+    timeout: 10000,
+  });
+  expect((await request.get(`${path}/tasks`)).status()).toBe(401);
+});
+
 test("administrator publishes a server; anonymous players see public information only", async ({
   page,
   request,

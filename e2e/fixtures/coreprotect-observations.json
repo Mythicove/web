@@ -1,0 +1,20 @@
+{
+  "version": "24.1",
+  "records": [
+    {
+      "player": "IslesTester",
+      "timestampMs": 1794422801000,
+      "action": "break",
+      "material": "minecraft:stone",
+      "rolledBack": false
+    },
+    {
+      "player": "IslesTester",
+      "timestampMs": 1794422801000,
+      "action": "place",
+      "material": "minecraft:stone",
+      "rolledBack": false
+    }
+  ],
+  "hasMore": false
+}

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ChunkyAdmin } from "@/components/chunky-admin";
+import { CoreProtectAdmin } from "@/components/coreprotect-admin";
 import { PlanStatistics } from "@/components/plan-statistics";
 import { TownyOverview } from "@/components/towny-details";
 import { CrossplayVersions } from "@/components/crossplay-details";
@@ -37,7 +38,8 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
   const observingProviders =
     state?.snapshot.chunky !== undefined ||
     state?.snapshot.plugins.Plan !== undefined ||
-    state?.snapshot.plugins.Towny !== undefined;
+    state?.snapshot.plugins.Towny !== undefined ||
+    state?.snapshot.plugins.CoreProtect !== undefined;
   useEffect(() => {
     if (!observingProviders) return;
     let active = true;
@@ -270,6 +272,21 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
               {t("queueAction")}
             </Button>
           </form>
+          {state.snapshot.plugins.CoreProtect && (
+            <CoreProtectAdmin
+              tasks={tasks}
+              disabled={busy || !state.fresh}
+              onQuery={(query) =>
+                void run(async () => {
+                  await call(`servers/${id}/coreprotect`, {
+                    method: "POST",
+                    body: JSON.stringify(query),
+                  });
+                  await refresh();
+                })
+              }
+            />
+          )}
           {tasks.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -286,9 +303,13 @@ export function BridgeAdmin({ id, call }: { id: string; call: Call }) {
                       <td className="py-3">
                         {task.kind === "chunky"
                           ? `Chunky / ${task.chunky?.action}`
-                          : `${task.kind} / ${task.grant ? "+" : "−"}`}
+                          : task.kind === "coreprotect"
+                            ? "CoreProtect"
+                            : `${task.kind} / ${task.grant ? "+" : "−"}`}
                       </td>
-                      <td>{task.chunky?.world || task.group || task.uuid}</td>
+                      <td>
+                        {task.coreprotect?.world || task.chunky?.world || task.group || task.uuid}
+                      </td>
                       <td>
                         {task.kind === "chunky" ? t(`chunkyTask_${task.status}`) : task.status}
                         {task.error && <p className="text-danger text-xs">{task.error}</p>}
