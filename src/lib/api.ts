@@ -26,6 +26,8 @@ export type BrandConfig = mirror["schemas"]["BrandConfig"];
 export type SitePublic = mirror["schemas"]["SitePublic"];
 export type SiteAdmin = mirror["schemas"]["SiteAdmin"];
 export type RegistrationPolicy = mirror["schemas"]["RegistrationPolicy"];
+export type PasswordPolicy = mirror["schemas"]["PasswordPolicy"];
+export type AccountMe = mirror["schemas"]["AccountMe"];
 export type OAuthClient = mirror["schemas"]["OAuthClient"];
 export type SkinLibItem = mirror["schemas"]["SkinLibItem"];
 export type SkinLibPage = mirror["schemas"]["SkinLibPage"];
@@ -50,6 +52,10 @@ export interface UploadProgress {
   loaded: number;
   total: number;
 }
+
+// 会话失效事件：任何请求收到 401 即广播，AuthProvider 据此清本地登录态。
+// 否则账号被删/会话被吊销后，localStorage 里的旧元数据会让页面继续装登录。
+export const SESSION_INVALID_EVENT = "mythicove-session-invalid";
 
 // request 是全站唯一的 fetch 收口：凭据、no-store、错误归一化都在这一处。
 // 会话凭 httpOnly cookie（mythic_session / hoard_session）携带；开发跨端口为 same-site，生产同源。
@@ -79,19 +85,23 @@ async function request<T>(
     throw new ApiError(0, `network: ${path}`, "network");
   }
   if (!res.ok) {
+    // 会话失效（账号被删/被吊销/过期）：广播给 AuthProvider 清本地态，再走统一错误
+    if (res.status === 401 && typeof window !== "undefined") {
+      window.dispatchEvent(new Event(SESSION_INVALID_EVENT));
+    }
     const text = await res.text();
-    let detail = text;
+    let detail: string | undefined;
     let code: string | undefined;
     try {
       const parsed = JSON.parse(text) as { error?: string; message?: string };
-      detail = parsed.error ?? parsed.message ?? text;
       // mirror 对"需要前端采取动作"的拒绝返回稳定错误码（不是给人看的文案），
       // 其余 error 字段是服务端已本地化的文案，直接展示。
       if (parsed.error && STABLE_ERROR_CODES.has(parsed.error)) code = parsed.error;
+      else detail = parsed.error ?? parsed.message ?? undefined;
     } catch {
       // 非 JSON body（网关/反代错误页）保留截断原文，仅供日志
     }
-    throw new ApiError(res.status, `${res.status} ${detail.slice(0, 200)}`, code);
+    throw new ApiError(res.status, `${res.status} ${(detail ?? text).slice(0, 200)}`, code, detail);
   }
   if (res.status === 204) return undefined as T;
   return (await res.json()) as T;
@@ -155,6 +165,9 @@ export const apiClient = {
 
   registerRequirements: () =>
     request<RegisterRequirements>("/api/register-requirements", undefined, "same-origin"),
+
+  resendVerification: (email: string) =>
+    request<void>("/account/verify/resend", { method: "POST", body: JSON.stringify({ email }) }),
 
   listPlayers: () => request<Player[]>("/account/players"),
 
@@ -300,6 +313,10 @@ export const apiClient = {
 
   skinTextureUrl: (key: string) => `${API_URL}/textures/${key}`,
 
+  // 2D 视图（head|body|back|side）：皮肤库卡片用 body 正面，详情页三视图用全部
+  renderByNameUrl: (name: string, kind: "head" | "body" | "back" | "side", scale = 8) =>
+    `${API_URL}/renders/by-name/${encodeURIComponent(name)}/${kind}?scale=${scale}`,
+
   likeSkin: (id: string) => request<void>(`/skinlib/${id}/like`, { method: "POST" }),
 
   commentSkin: (id: string, content: string) =>
@@ -307,6 +324,41 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify({ content }),
     }),
+
+  me: () => request<AccountMe>("/account/me"),
+
+  listSkinPresets: () => request<{ ids: string[] }>("/skin-presets"),
+
+  skinPresetUrl: (id: string, model: string) =>
+    `${API_URL}/skin-presets/${encodeURIComponent(id)}/${model === "slim" ? "slim" : "default"}`,
+
+  // 预设的人形渲染视图（画廊缩略用 body，而非 64x64 材质表）
+  skinPresetRenderUrl: (id: string, model: string, kind: "head" | "body" | "back" | "side") =>
+    `${API_URL}/skin-presets/${encodeURIComponent(id)}/${model === "slim" ? "slim" : "default"}/${kind}`,
+
+  applySkinPreset: (name: string, id: string, model?: string) =>
+    request<void>(`/skin/${encodeURIComponent(name)}/preset`, {
+      method: "POST",
+      body: JSON.stringify({ id, model }),
+    }),
+
+  setPlayerModel: (name: string, model: string) =>
+    request<void>(`/skin/${encodeURIComponent(name)}/model`, {
+      method: "POST",
+      body: JSON.stringify({ model }),
+    }),
+
+  changePassword: (currentPassword: string, newPassword: string) =>
+    request<void>("/account/password", {
+      method: "POST",
+      body: JSON.stringify({ currentPassword, newPassword }),
+    }),
+
+  clearSkin: (name: string) =>
+    request<void>(`/skin/${encodeURIComponent(name)}`, { method: "DELETE" }),
+
+  clearCape: (name: string) =>
+    request<void>(`/cape/${encodeURIComponent(name)}`, { method: "DELETE" }),
 
   uploadSkin: (name: string, model: string, file: File, onProgress?: (p: UploadProgress) => void) =>
     upload<void>(`/skin/${name}?model=${model}`, file, { onProgress }),

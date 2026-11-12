@@ -8,6 +8,8 @@ export class ApiError extends Error {
     readonly status: number,
     message: string,
     readonly code?: string,
+    // 服务端已本地化的具体文案（命中稳定码时优先用 code 本地化，否则直接展示它）
+    readonly detail?: string,
   ) {
     super(message);
     this.name = "ApiError";
@@ -17,7 +19,11 @@ export class ApiError extends Error {
 // STABLE_ERROR_CODES 是后端用于表达"前端需要采取动作"的稳定错误码（而非本地化文案）。
 // 命中时 errorKey 映射到 messages 的 errors.* 键，由前端本地化；
 // 未命中的 error 字段视为服务端已本地化的文案，可直接展示。
-export const STABLE_ERROR_CODES = new Set(["binding_required", "password_login_disabled"]);
+export const STABLE_ERROR_CODES = new Set([
+  "binding_required",
+  "password_login_disabled",
+  "email_not_verified",
+]);
 
 // errorKey 把任意失败映射到 messages 的 errors.* 键。
 // 组件不得再把 Error.message 直接渲染给用户。
@@ -27,6 +33,7 @@ export function errorKey(e: unknown): string {
     if (e.code === "network") return "network";
     if (e.code === "binding_required") return "bindingRequired";
     if (e.code === "password_login_disabled") return "passwordLoginDisabled";
+    if (e.code === "email_not_verified") return "emailNotVerified";
     switch (e.status) {
       case 400:
         return "badRequest";
@@ -51,9 +58,19 @@ export function errorKey(e: unknown): string {
 }
 
 // useErrorText 返回 (e) => 本地化文案。仅在客户端组件使用。
+// 优先级：稳定错误码（前端本地化）> 服务端已本地化的具体文案 > 状态码兜底文案。
 // 回调必须稳定（useCallback）：各面板把它放进 useCallback/useEffect 依赖，
 // 若每次渲染换新闭包会触发无限重取。
 export function useErrorText() {
   const t = useTranslations("errors");
-  return useCallback((e: unknown) => t(errorKey(e)), [t]);
+  return useCallback(
+    (e: unknown) => {
+      if (e instanceof ApiError) {
+        if (e.code) return t(errorKey(e));
+        if (e.detail) return e.detail;
+      }
+      return t(errorKey(e));
+    },
+    [t],
+  );
 }

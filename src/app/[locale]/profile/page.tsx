@@ -1,23 +1,11 @@
-import type { Metadata } from "next";
-import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ProfilePageClient } from "./client";
+import { redirect } from "@/i18n/navigation";
 
-// 壳页不取数：按 locale 预渲染为静态
-export const dynamic = "force-static";
-
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string }>;
-}): Promise<Metadata> {
-  const { locale } = await params;
-  setRequestLocale(locale);
-  const t = await getTranslations({ locale, namespace: "profile" });
-  return { title: t("title") };
+// 旧地址保留为重定向：用户中心已迁至 /user（子页 skin/security/bindings）
+export function generateStaticParams() {
+  return [];
 }
 
 export default async function Page({ params }: { params: Promise<{ locale: string }> }) {
   const { locale } = await params;
-  setRequestLocale(locale);
-  return <ProfilePageClient />;
+  redirect({ href: "/user/skin", locale });
 }
