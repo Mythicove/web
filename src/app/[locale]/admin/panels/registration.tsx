@@ -9,6 +9,7 @@ import { useErrorText } from "@/lib/errors";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 
 const EMPTY: RegistrationPolicy = {
@@ -16,6 +17,14 @@ const EMPTY: RegistrationPolicy = {
   inviteOnly: false,
   emailDomainWhitelist: [],
   captchaScopes: ["register"],
+  password: {
+    minLength: 8,
+    requireUpper: false,
+    requireLower: false,
+    requireDigit: false,
+    requireSymbol: false,
+  },
+  allowUnverifiedLogin: false,
 };
 
 // 注册与验证策略面板：这些开关的唯一来源是后台（settings KV）；
@@ -32,7 +41,8 @@ export function RegistrationPanel({ token }: { token: string | null }) {
     apiClient.admin
       .registration(token)
       .then((v) => {
-        setP(v);
+        // 旧后端/旧存储可能缺 password 段：合并默认值，避免面板读到 undefined
+        setP({ ...EMPTY, ...v, password: { ...EMPTY.password, ...v.password } });
         setDomains((v.emailDomainWhitelist ?? []).join("\n"));
       })
       .catch(() => setP(EMPTY));
@@ -91,6 +101,16 @@ export function RegistrationPanel({ token }: { token: string | null }) {
             {t("regInviteOnly")}
           </Label>
         </div>
+        <div className="flex items-start gap-2">
+          <Checkbox
+            id="reg-unverified"
+            checked={p.allowUnverifiedLogin}
+            onCheckedChange={(v) => setP({ ...p, allowUnverifiedLogin: v === true })}
+          />
+          <Label htmlFor="reg-unverified" className="font-normal">
+            {t("regAllowUnverified")}
+          </Label>
+        </div>
         <div className="grid gap-1.5">
           <Label htmlFor="reg-domains">{t("regDomains")}</Label>
           <textarea
@@ -126,6 +146,52 @@ export function RegistrationPanel({ token }: { token: string | null }) {
               </Label>
             </div>
           </div>
+        </div>
+        <div className="grid gap-2">
+          <Label>{t("pwTitle")}</Label>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="reg-pw-min" className="font-normal">
+              {t("pwMinLength")}
+            </Label>
+            <Input
+              id="reg-pw-min"
+              type="number"
+              min={8}
+              max={64}
+              className="w-24"
+              value={p.password.minLength}
+              onChange={(e) =>
+                setP({
+                  ...p,
+                  password: {
+                    ...p.password,
+                    minLength: Number.parseInt(e.target.value, 10) || 8,
+                  },
+                })
+              }
+            />
+          </div>
+          {(
+            [
+              ["requireUpper", "pwUpper"],
+              ["requireLower", "pwLower"],
+              ["requireDigit", "pwDigit"],
+              ["requireSymbol", "pwSymbol"],
+            ] as const
+          ).map(([key, label]) => (
+            <div key={key} className="flex items-start gap-2">
+              <Checkbox
+                id={`reg-pw-${key}`}
+                checked={p.password[key]}
+                onCheckedChange={(v) =>
+                  setP({ ...p, password: { ...p.password, [key]: v === true } })
+                }
+              />
+              <Label htmlFor={`reg-pw-${key}`} className="font-normal">
+                {t(label)}
+              </Label>
+            </div>
+          ))}
         </div>
         <Button type="button" disabled={busy} onClick={() => void save()}>
           {busy && <Loader2Icon className="animate-spin" />}

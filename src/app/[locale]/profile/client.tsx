@@ -1,14 +1,18 @@
 "use client";
 
-import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
+import { toast } from "sonner";
 import {
   InfoIcon,
   KeyRoundIcon,
+  LayoutDashboardIcon,
   Link2Icon,
   Loader2Icon,
   PencilIcon,
+  ShieldIcon,
+  ShirtIcon,
   Trash2Icon,
   UnlinkIcon,
   UploadIcon,
@@ -16,14 +20,17 @@ import {
 } from "lucide-react";
 import {
   apiClient,
+  type AccountMe,
   type BindingState,
   type LoginMethod,
   type Player,
   type PlayerCredential,
+  type RegisterRequirements,
   type UploadProgress,
 } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { useErrorText } from "@/lib/errors";
+import { PasswordChecklist } from "@/components/password-checklist";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -41,6 +48,8 @@ import { SkinPreview } from "@/components/skin-preview";
 import { FileField } from "@/components/file-field";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Link, useRouter } from "@/i18n/navigation";
+import { cn } from "@/lib/utils";
 
 const MAX_SKIN_BYTES = 2 * 1024 * 1024;
 
@@ -58,15 +67,17 @@ function ProgressLine({ p }: { p: UploadProgress | null }) {
   );
 }
 
-export function ProfilePageClient() {
+export type UserSection = "overview" | "skin" | "security" | "bindings";
+
+export function ProfilePageClient({ section }: { section: UserSection }) {
   return (
     <Suspense>
-      <ProfileInner />
+      <ProfileInner section={section} />
     </Suspense>
   );
 }
 
-function ProfileInner() {
+function ProfileInner({ section }: { section: UserSection }) {
   const t = useTranslations("profile");
   const errText = useErrorText();
   const params = useSearchParams();
@@ -76,11 +87,11 @@ function ProfileInner() {
   // auth.playerName 由 AuthProvider 在登录后从玩家列表补齐，这里只做展示与切换。
   const playerName = auth?.playerName ?? "";
   const [model, setModel] = useState("default");
+  const [presets, setPresets] = useState<string[]>([]);
+  const [previewNonce, setPreviewNonce] = useState(0);
   const [skinFile, setSkinFile] = useState<File | null>(null);
   const [capeFile, setCapeFile] = useState<File | null>(null);
   const [publishDesc, setPublishDesc] = useState("");
-  const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<"" | "skin" | "cape" | "publish">("");
   const [skinProgress, setSkinProgress] = useState<UploadProgress | null>(null);
   const [capeProgress, setCapeProgress] = useState<UploadProgress | null>(null);
@@ -144,15 +155,15 @@ function ProfileInner() {
   const addCredential = async () => {
     if (credBusy || !playerName || !credLabel.trim() || !credPassword) return;
     setCredBusy(true);
-    setError(null);
+    
     try {
       await apiClient.createPlayerCredential(playerName, credLabel.trim(), credPassword);
       setCredLabel("");
       setCredPassword("");
-      setStatus(t("credentialAdded"));
+      toast.success(t("credentialAdded"));
       reloadCredentials(playerName);
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setCredBusy(false);
     }
@@ -162,13 +173,13 @@ function ProfileInner() {
   const deleteCredential = async (id: string) => {
     if (credBusy || !playerName) return;
     setCredBusy(true);
-    setError(null);
+    
     try {
       await apiClient.deletePlayerCredential(playerName, id);
-      setStatus(t("credentialRevoked"));
+      toast.success(t("credentialRevoked"));
       reloadCredentials(playerName);
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setCredBusy(false);
       setPendingCred(null);
@@ -178,14 +189,14 @@ function ProfileInner() {
   const addPlayer = async () => {
     if (busy || !newPlayer.trim()) return;
     setBusy("publish");
-    setError(null);
+    
     try {
       await apiClient.addPlayer(newPlayer.trim());
       setNewPlayer("");
-      setStatus(t("playerAdded"));
+      toast.success(t("playerAdded"));
       reloadPlayers();
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setBusy("");
     }
@@ -196,17 +207,17 @@ function ProfileInner() {
     const next = renameValue.trim();
     if (!next || next === oldName || playerBusy) return;
     setPlayerBusy(`rename-${oldName}`);
-    setError(null);
+    
     try {
       await apiClient.renamePlayer(oldName, next);
       setRenaming(null);
       setRenameValue("");
       // 选中的玩家被改名后本地选择会指向不存在的名字，跟着改过来
       if (oldName === playerName) selectPlayer(next);
-      setStatus(t("playerRenamed"));
+      toast.success(t("playerRenamed"));
       reloadPlayers();
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setPlayerBusy(null);
     }
@@ -215,17 +226,17 @@ function ProfileInner() {
   const deletePlayer = async (name: string) => {
     if (playerBusy) return;
     setPlayerBusy(`delete-${name}`);
-    setError(null);
+    
     try {
       await apiClient.deletePlayer(name);
       // 删掉的正是选中的玩家 → 本地选择退到剩下的第一个
       if (name === playerName) {
         selectPlayer(players.find((p) => p.name !== name)?.name ?? "");
       }
-      setStatus(t("playerDeleted"));
+      toast.success(t("playerDeleted"));
       reloadPlayers();
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setPlayerBusy(null);
       setPendingDelete(null);
@@ -235,13 +246,13 @@ function ProfileInner() {
   const unbindPremium = async (name: string) => {
     if (!name || playerBusy) return;
     setPlayerBusy(`unbind-${name}`);
-    setError(null);
+    
     try {
       await apiClient.unbindPremium(name);
-      setStatus(t("premiumUnbound"));
+      toast.success(t("premiumUnbound"));
       reloadPlayers();
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setPlayerBusy(null);
     }
@@ -266,15 +277,15 @@ function ProfileInner() {
 
   const publish = async () => {
     if (busy) return;
-    if (!isAuthenticated) return setError(t("notLoggedIn"));
+    if (!isAuthenticated) return toast.error(t("notLoggedIn"));
     setBusy("publish");
-    setError(null);
-    setStatus(null);
+    
+    
     try {
       await apiClient.publishSkin(playerName, publishDesc);
-      setStatus(t("publishOk"));
+      toast.success(t("publishOk"));
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setBusy("");
     }
@@ -282,17 +293,17 @@ function ProfileInner() {
 
   const uploadSkin = async () => {
     if (busy) return;
-    if (!isAuthenticated) return setError(t("notLoggedIn"));
-    if (!skinFile) return setError(t("noFile"));
+    if (!isAuthenticated) return toast.error(t("notLoggedIn"));
+    if (!skinFile) return toast.error(t("noFile"));
     setBusy("skin");
-    setError(null);
-    setStatus(null);
+    
+    
     try {
       await apiClient.uploadSkin(playerName, model, skinFile, setSkinProgress);
-      setStatus(t("uploadOk"));
+      toast.success(t("uploadOk"));
       setSkinFile(null);
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setBusy("");
       setSkinProgress(null);
@@ -301,31 +312,98 @@ function ProfileInner() {
 
   const uploadCape = async () => {
     if (busy) return;
-    if (!isAuthenticated) return setError(t("notLoggedIn"));
-    if (!capeFile) return setError(t("noFile"));
+    if (!isAuthenticated) return toast.error(t("notLoggedIn"));
+    if (!capeFile) return toast.error(t("noFile"));
     setBusy("cape");
-    setError(null);
-    setStatus(null);
+    
+    
     try {
       await apiClient.uploadCape(playerName, capeFile, setCapeProgress);
-      setStatus(t("uploadOk"));
+      toast.success(t("uploadOk"));
       setCapeFile(null);
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setBusy("");
       setCapeProgress(null);
     }
   };
 
-  const previewUrl =
+  // 内置预设画廊（vanilla 默认皮肤）；失败不阻塞主流程
+  useEffect(() => {
+    apiClient
+      .listSkinPresets()
+      .then((r) => setPresets(r.ids))
+      .catch(() => setPresets([]));
+  }, []);
+
+  // 切换体型立即生效（服务端换内置变体/改模型标记），预览随之刷新
+  const applyModel = async (m: string) => {
+    setModel(m);
+    if (!isAuthenticated || !playerName) return;
+    
+    try {
+      await apiClient.setPlayerModel(playerName, m);
+      setLocalPreview(null);
+      setPreviewNonce((n) => n + 1);
+    } catch (err) {
+      toast.error(errText(err));
+    }
+  };
+
+  // 应用内置预设：把对应体型的 vanilla 皮肤设为该玩家的皮肤
+  const applyPreset = async (id: string) => {
+    if (!isAuthenticated || !playerName) return;
+    setBusy("skin");
+    
+    
+    try {
+      await apiClient.applySkinPreset(playerName, id, model);
+      toast.success(t("presetApplied"));
+      setLocalPreview(null);
+      setPreviewNonce((n) => n + 1);
+    } catch (err) {
+      toast.error(errText(err));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  // 清除自定义皮肤/披风 → 回落内置默认（Steve/Alex 按模型）；预览随之刷新
+  const clearBuiltin = async (kind: "skin" | "cape") => {
+    if (!playerName) return;
+    setBusy(kind);
+    
+    
+    try {
+      if (kind === "skin") await apiClient.clearSkin(playerName);
+      else await apiClient.clearCape(playerName);
+      toast.success(t("clearOk"));
+      setLocalPreview(null);
+    } catch (err) {
+      toast.error(errText(err));
+    } finally {
+      setBusy("");
+    }
+  };
+
+  const previewBase =
     localPreview ?? (playerName ? apiClient.skinUrl(playerName) : "/skins/steve.png");
+  // nonce 作查询串：清除/换预设/换体型后强制预览重新拉图（绕过浏览器缓存）
+  const previewUrl = previewNonce > 0 ? `${previewBase}?v=${previewNonce}` : previewBase;
 
   return (
     <div className="flex min-h-screen flex-col">
       <SiteHeader />
-      <main className="flex flex-1 flex-col items-center justify-center px-6 py-16">
-        <div className="grid w-full max-w-4xl items-start gap-8 lg:grid-cols-2">
+      <main className="flex-1 px-4 py-10 md:px-6">
+        <div className="mx-auto grid w-full max-w-6xl items-start gap-8 lg:grid-cols-[220px_1fr]">
+          <UserNav section={section} />
+          <div className="space-y-8">
+            {section === "overview" && (
+              <OverviewSection players={players} isAuthenticated={isAuthenticated} />
+            )}
+            {section === "skin" && (
+              <div className="grid w-full items-start gap-8 lg:grid-cols-2">
           <Card className="bg-surface shadow-card">
             <CardHeader>
               <CardTitle className="font-display">{t("title")}</CardTitle>
@@ -364,7 +442,7 @@ function ProfileInner() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="model">{t("model")}</Label>
-                <Select name="model" value={model} onValueChange={(v) => setModel(String(v))}>
+                <Select name="model" value={model} onValueChange={(v) => void applyModel(String(v))}>
                   <SelectTrigger id="model">
                     <SelectValue />
                   </SelectTrigger>
@@ -374,6 +452,52 @@ function ProfileInner() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy !== "" || !isAuthenticated || !playerName}
+                  onClick={() => void clearBuiltin("skin")}
+                >
+                  {t("clearSkin")}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={busy !== "" || !isAuthenticated || !playerName}
+                  onClick={() => void clearBuiltin("cape")}
+                >
+                  {t("clearCape")}
+                </Button>
+              </div>
+              <p className="text-text-muted text-xs">{t("builtinHint")}</p>
+              {presets.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label>{t("presets")}</Label>
+                  <div className="grid grid-cols-5 gap-2 sm:grid-cols-9">
+                    {presets.map((id) => (
+                      <button
+                        key={id}
+                        type="button"
+                        title={id}
+                        aria-label={id}
+                        disabled={busy !== "" || !isAuthenticated || !playerName}
+                        onClick={() => void applyPreset(id)}
+                        className="border-border bg-bg hover:border-primary disabled:opacity-50 overflow-hidden rounded-md border transition-colors"
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element -- 预设缩略图来自后端渲染 */}
+                        <img
+                          src={apiClient.skinPresetRenderUrl(id, model, "body")}
+                          alt={id}
+                          loading="lazy"
+                          decoding="async"
+                          className="aspect-square w-full object-contain [image-rendering:pixelated]"
+                        />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="space-y-1.5">
                 <Label htmlFor="skin-file">{t("file")}</Label>
                 <FileField
@@ -434,17 +558,6 @@ function ProfileInner() {
                 {busy === "publish" && <Loader2Icon className="animate-spin" />}
                 {t("publish")}
               </Button>
-
-              {error && (
-                <p role="alert" className="text-danger text-sm">
-                  {error}
-                </p>
-              )}
-              {status && (
-                <p role="status" className="text-success text-sm">
-                  {status}
-                </p>
-              )}
             </CardContent>
           </Card>
 
@@ -456,9 +569,11 @@ function ProfileInner() {
               <SkinPreview skinUrl={previewUrl} />
             </CardContent>
           </Card>
-        </div>
+              </div>
+            )}
 
-        <div className="mx-auto mt-8 grid w-full max-w-4xl gap-8 lg:grid-cols-2">
+            <div className="grid w-full gap-8 lg:grid-cols-2">
+          {section === "skin" && (
           <Card className="bg-surface shadow-card h-fit">
             <CardHeader>
               <CardTitle className="font-display">{t("playersTitle")}</CardTitle>
@@ -589,7 +704,9 @@ function ProfileInner() {
               </div>
             </CardContent>
           </Card>
+          )}
 
+          {section === "bindings" && (
           <Card className="bg-surface shadow-card h-fit">
             <CardHeader>
               <CardTitle className="font-display">{t("premiumTitle")}</CardTitle>
@@ -643,7 +760,13 @@ function ProfileInner() {
               )}
             </CardContent>
           </Card>
+          )}
 
+          {section === "security" && (
+          <ChangePasswordCard />
+          )}
+
+          {section === "security" && (
           <Card className="bg-surface shadow-card h-fit">
             <CardHeader>
               <CardTitle className="font-display">{t("launcherTitle")}</CardTitle>
@@ -739,7 +862,9 @@ function ProfileInner() {
               )}
             </CardContent>
           </Card>
+          )}
 
+          {section === "bindings" && (
           <Card className="bg-surface shadow-card h-fit">
             <CardHeader>
               <CardTitle className="font-display">{t("identitiesTitle")}</CardTitle>
@@ -788,8 +913,225 @@ function ProfileInner() {
               )}
             </CardContent>
           </Card>
+          )}
+            </div>
+          </div>
         </div>
       </main>
     </div>
+  );
+}
+
+// 用户中心侧栏：四个子页（概览/皮肤与玩家/安全/绑定），当前项高亮。
+function UserNav({ section }: { section: UserSection }) {
+  const t = useTranslations("profile");
+  const items: { href: "/user" | `/user/${string}`; id: UserSection; icon: typeof ShieldIcon; label: string }[] = [
+    { href: "/user", id: "overview", icon: LayoutDashboardIcon, label: t("navOverview") },
+    { href: "/user/skin", id: "skin", icon: ShirtIcon, label: t("navSkin") },
+    { href: "/user/security", id: "security", icon: ShieldIcon, label: t("navSecurity") },
+    { href: "/user/bindings", id: "bindings", icon: Link2Icon, label: t("navBindings") },
+  ];
+  return (
+    <nav
+      className="flex gap-1 overflow-x-auto lg:sticky lg:top-20 lg:flex-col"
+      aria-label={t("navLabel")}
+    >
+      {items.map((it) => (
+        <Link
+          key={it.id}
+          href={it.href}
+          className={cn(
+            "flex shrink-0 items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors hover:bg-surface hover:text-text",
+            section === it.id ? "bg-surface text-text font-medium" : "text-text-muted",
+          )}
+        >
+          <it.icon className="size-4" />
+          {it.label}
+        </Link>
+      ))}
+    </nav>
+  );
+}
+
+// 概览：账号状态 + 玩家总览两卡并排，信息密度优先（导航在侧栏，不再重复链接卡）。
+function OverviewSection({
+  players,
+  isAuthenticated,
+}: {
+  players: Player[];
+  isAuthenticated: boolean;
+}) {
+  const t = useTranslations("profile");
+  const [me, setMe] = useState<AccountMe | null>(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    apiClient
+      .me()
+      .then(setMe)
+      .catch(() => setMe(null));
+  }, [isAuthenticated]);
+
+  return (
+    <div className="grid w-full gap-8 lg:grid-cols-2">
+      <Card className="bg-surface shadow-card h-fit">
+        <CardHeader>
+          <CardTitle className="font-display">{t("accountTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          {!isAuthenticated ? (
+            <p className="text-text-muted flex items-center gap-1.5">
+              <InfoIcon className="size-4" />
+              {t("notLoggedIn")}
+            </p>
+          ) : (
+            <>
+              <Row label={t("meEmail")} value={me?.email ?? "—"} />
+              <Row label={t("meNickname")} value={me?.nickname || "—"} />
+              <Row
+                label={t("meVerified")}
+                value={
+                  me === null ? (
+                    "—"
+                  ) : me.verified ? (
+                    <Badge variant="secondary">{t("meVerifiedYes")}</Badge>
+                  ) : (
+                    <Badge variant="outline">{t("meVerifiedNo")}</Badge>
+                  )
+                }
+              />
+            </>
+          )}
+        </CardContent>
+      </Card>
+      <Card className="bg-surface shadow-card h-fit">
+        <CardHeader>
+          <CardTitle className="font-display">{t("playersTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          {!isAuthenticated ? (
+            <p className="text-text-muted flex items-center gap-1.5 text-sm">
+              <InfoIcon className="size-4" />
+              {t("notLoggedIn")}
+            </p>
+          ) : players.length === 0 ? (
+            <p className="text-text-muted text-sm">{t("noPlayers")}</p>
+          ) : (
+            players.map((p, i) => (
+              <div key={p.id ?? i} className="flex items-center justify-between gap-2 text-sm">
+                <span className="flex items-center gap-2">
+                  <PlayerAvatar name={p.name ?? ""} size={28} />
+                  {p.name}
+                </span>
+                <span className="text-text-muted flex items-center gap-1 text-xs">
+                  {p.premium && <Badge variant="outline">{t("premiumBadge")}</Badge>}
+                </span>
+              </div>
+            ))
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function Row({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-text-muted shrink-0 text-xs">{label}</span>
+      <span className="truncate">{value}</span>
+    </div>
+  );
+}
+
+// 登录态改密：成功后全部会话失效，直接送登录页重新登录。
+function ChangePasswordCard() {
+  const t = useTranslations("profile");
+  const errText = useErrorText();
+  const router = useRouter();
+  const { logout } = useAuth();
+  const [cur, setCur] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [req, setReq] = useState<RegisterRequirements | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    apiClient
+      .registerRequirements()
+      .then(setReq)
+      .catch(() => setReq(null));
+  }, []);
+
+  const submit = async () => {
+    if (busy) return;
+    setBusy(true);
+    
+    if (next !== confirm) {
+      toast.error(t("confirmMismatch"));
+      setBusy(false);
+      return;
+    }
+    try {
+      await apiClient.changePassword(cur, next);
+      // 改密即吊销全部会话：本地登出并回登录页
+      await logout();
+      router.push("/login");
+    } catch (e) {
+      toast.error(errText(e));
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Card className="bg-surface shadow-card h-fit">
+      <CardHeader>
+        <CardTitle className="font-display">{t("changePasswordTitle")}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="pw-cur">{t("currentPassword")}</Label>
+          <Input
+            id="pw-cur"
+            type="password"
+            autoComplete="current-password"
+            value={cur}
+            onChange={(e) => setCur(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="pw-new">{t("newPassword")}</Label>
+          <Input
+            id="pw-new"
+            type="password"
+            autoComplete="new-password"
+            value={next}
+            onChange={(e) => setNext(e.target.value)}
+          />
+          {req && <PasswordChecklist policy={req.passwordPolicy} value={next} />}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="pw-confirm">{t("confirmPassword")}</Label>
+          <Input
+            id="pw-confirm"
+            type="password"
+            autoComplete="new-password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+          />
+          {confirm !== "" && confirm !== next && (
+            <p className="text-danger text-xs">{t("confirmMismatch")}</p>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          disabled={busy || !cur || !next}
+          onClick={() => void submit()}
+        >
+          {busy && <Loader2Icon className="animate-spin" />}
+          {t("changePasswordTitle")}
+        </Button>
+      </CardContent>
+    </Card>
   );
 }

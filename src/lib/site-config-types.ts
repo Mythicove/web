@@ -18,6 +18,8 @@ export interface SiteRuntime {
   description?: string;
   copyright?: string;
   icp?: string;
+  // 登录成功后的落地页（后台可配）；缺省 = user（用户中心）
+  loginLanding?: "user" | "home";
   customCssUrl?: string;
   customJsUrl?: string;
 }

@@ -15,7 +15,7 @@ const codeAreaClass =
   "border-input placeholder:text-text-muted focus-visible:border-ring focus-visible:ring-ring/50 bg-input/15 flex min-h-24 w-full rounded-md border px-3 py-2 font-mono text-xs shadow-xs outline-none focus-visible:ring-[3px]";
 
 const EMPTY: SiteAdmin = {
-  info: { name: "", description: "", copyright: "", icp: "" },
+  info: { name: "", description: "", copyright: "", icp: "", loginLanding: "" },
   assets: { customCss: "", customJs: "" },
 };
 
@@ -92,6 +92,18 @@ export function SitePanel({ token }: { token: string | null }) {
             value={v.info.icp}
             onChange={(e) => setInfo("icp", e.target.value)}
           />
+        </div>
+        <div className="grid gap-1.5">
+          <Label htmlFor="site-landing">{t("siteLoginLanding")}</Label>
+          <select
+            id="site-landing"
+            className="border-input bg-input/15 focus-visible:border-ring focus-visible:ring-ring/50 h-9 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-[3px]"
+            value={v.info.loginLanding || "user"}
+            onChange={(e) => setInfo("loginLanding", e.target.value)}
+          >
+            <option value="user">{t("landingUser")}</option>
+            <option value="home">{t("landingHome")}</option>
+          </select>
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="site-css">{t("siteCustomCss")}</Label>

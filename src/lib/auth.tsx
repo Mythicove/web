@@ -9,7 +9,7 @@ import {
   useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { apiClient, hoardClient } from "@/lib/api";
+import { apiClient, hoardClient, SESSION_INVALID_EVENT } from "@/lib/api";
 import { ApiError, STABLE_ERROR_CODES } from "@/lib/errors";
 import { useSiteConfig } from "@/lib/site-config";
 
@@ -145,6 +145,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     [auth],
   );
+
+  // 任何请求 401（账号被删/会话被吊销/过期）→ 清本地登录态，页面回到未登录视图
+  useEffect(() => {
+    const onInvalid = () => save(null);
+    window.addEventListener(SESSION_INVALID_EVENT, onInvalid);
+    return () => window.removeEventListener(SESSION_INVALID_EVENT, onInvalid);
+  }, []);
 
   // 登录后（或本地选的玩家已因改名/删除失效时）从玩家列表补一个选择。
   // 只写一次：选定后 localStorage 命中，后续加载不再请求。

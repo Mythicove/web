@@ -9,6 +9,10 @@ import {
 
 let cached: SiteConfig | null = null;
 
+// 上游 fetch 统一带超时：后端 hang（如 Docker 引擎 wedged）时不得把
+// next build 的静态生成拖到 60s×3；超时按"不可达"回落为 {}。
+const UPSTREAM_TIMEOUT_MS = 5000;
+
 // 服务端读取站点配置（构建/运行期 public 目录），进程内缓存。
 export async function readSiteConfig(): Promise<SiteConfig> {
   if (cached) return cached;
@@ -28,7 +32,10 @@ export async function readBrand(): Promise<SiteBrand> {
     process.env.API_URL_INTERNAL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
   const publicBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
   try {
-    const res = await fetch(`${internal}/api/brand`, { next: { revalidate: 60 } });
+    const res = await fetch(`${internal}/api/brand`, {
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
     if (!res.ok) return {};
     const c = (await res.json()) as { light?: boolean; dark?: boolean; version?: number };
     const v = c.version ?? 0;
@@ -48,13 +55,17 @@ export async function readSite(): Promise<SiteRuntime> {
     process.env.API_URL_INTERNAL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
   const publicBase = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
   try {
-    const res = await fetch(`${internal}/api/site`, { next: { revalidate: 60 } });
+    const res = await fetch(`${internal}/api/site`, {
+      next: { revalidate: 60 },
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
     if (!res.ok) return {};
     const c = (await res.json()) as {
       name?: string;
       description?: string;
       copyright?: string;
       icp?: string;
+      loginLanding?: string;
       customCss?: boolean;
       customJs?: boolean;
     };
@@ -63,6 +74,7 @@ export async function readSite(): Promise<SiteRuntime> {
     if (c.description) site.description = c.description;
     if (c.copyright) site.copyright = c.copyright;
     if (c.icp) site.icp = c.icp;
+    if (c.loginLanding === "home" || c.loginLanding === "user") site.loginLanding = c.loginLanding;
     if (c.customCss) site.customCssUrl = `${publicBase}/site/custom.css`;
     if (c.customJs) site.customJsUrl = `${publicBase}/site/custom.js`;
     return site;
