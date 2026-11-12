@@ -1,5 +1,155 @@
 import { test, expect } from "@playwright/test";
 
+test("file-associated mrpack opens the modpack review and installs only after confirmation", async ({
+  page,
+}, testInfo) => {
+  await page.addInitScript(() => {
+    const commands: { command: string; args: Record<string, unknown> }[] = [];
+    let installed = false;
+    Object.assign(window, {
+      __compassCommands: commands,
+      __TAURI_INTERNALS__: {
+        transformCallback() {
+          return 1;
+        },
+        unregisterCallback() {},
+        async invoke(command: string, args: Record<string, unknown> = {}) {
+          commands.push({ command, args });
+          switch (command) {
+            case "get_config":
+              return {
+                apiUrl: "https://community.example.org",
+                hoardUrl: "",
+                language: "zh-CN",
+                theme: "dark",
+                download: { concurrency: 4, mirror: "" },
+                defaults: { memoryMb: 2048 },
+              };
+            case "auth_check":
+              return { account: null, expired: false };
+            case "cli_intent":
+              return {
+                unknown: [],
+                launch: false,
+                instance: null,
+                importModpack: "/downloads/community.mrpack",
+              };
+            case "instance_list":
+              return installed
+                ? [{ slug: "community-pack", name: "Community pack", versionId: "1.21.1" }]
+                : [];
+            case "versions_installed":
+            case "versions_list":
+              return [];
+            case "modpack_inspect":
+              return {
+                name: "Community pack",
+                packVersion: "1.0",
+                summary: null,
+                formatVersion: 1,
+                minecraft: "1.21.1",
+                loader: "fabric",
+                loaderVersion: "0.16.14",
+                filesTotal: 0,
+                filesRequired: 0,
+                filesOptional: 0,
+                filesSkipped: 0,
+                bytes: 0,
+                overrideEntries: 1,
+                warnings: [],
+              };
+            case "modpack_install":
+              installed = true;
+              return {
+                instance: { slug: args.slug, name: args.name, versionId: "1.21.1" },
+                downloaded: 0,
+                bytes: 0,
+                optionalInstalled: 0,
+                skippedUnsupported: 0,
+                overrideFiles: 1,
+                overwritten: [],
+                failed: [],
+                deps: { missing: [], conflicts: [], warnings: [] },
+              };
+            case "instance_inspect_archive":
+              throw { code: "invalid", message: "mrpack is not a Compass instance ZIP" };
+            case "instance_logs":
+              return [
+                {
+                  name: "logs/large.log.gz",
+                  kind: "gameLog",
+                  modifiedAt: 1,
+                  size: 500,
+                  compressed: true,
+                },
+              ];
+            case "instance_log_read":
+              return {
+                name: args.name,
+                text: "[20:00:00] [main/INFO]: retained line\n[20:00:01] [main/ERROR]: final failure",
+                truncated: true,
+              };
+            case "instance_diagnose":
+              return { source: "logs/large.log.gz", partial: false, findings: [] };
+            case "operation_log":
+              return "2026-11-12T00:00:00Z modpack_install community-pack ok";
+            case "update_configured":
+              return false;
+            case "java_overview":
+              return { runtimes: [], downloaded: [], available: [], availableError: null };
+            default:
+              return null;
+          }
+        },
+      },
+      __TAURI_EVENT_PLUGIN_INTERNALS__: { unregisterListener() {} },
+    });
+  });
+  await page.goto("/");
+  await expect(page.getByText("Community pack", { exact: false }).first()).toBeVisible();
+  const observed = () =>
+    page.evaluate(
+      () =>
+        (
+          window as unknown as {
+            __compassCommands: { command: string; args: Record<string, unknown> }[];
+          }
+        ).__compassCommands,
+    );
+  expect((await observed()).some((call) => call.command === "instance_inspect_archive")).toBe(
+    false,
+  );
+  expect((await observed()).some((call) => call.command === "modpack_install")).toBe(false);
+  await page.locator("section.card.warn button").first().click();
+  await expect
+    .poll(async () => (await observed()).filter((call) => call.command === "modpack_install"))
+    .toHaveLength(1);
+  const install = (await observed()).find((call) => call.command === "modpack_install");
+  expect(install?.args).toEqual({
+    path: "/downloads/community.mrpack",
+    slug: "community-pack",
+    name: "Community pack",
+  });
+  await testInfo.attach("mrpack-entry-result.json", {
+    body: JSON.stringify(
+      { reviewBeforeInstall: true, correctFormatInspector: true, install: install?.args },
+      null,
+      2,
+    ),
+    contentType: "application/json",
+  });
+  await page.getByRole("button", { name: "日志", exact: true }).click();
+  await page.getByRole("button", { name: "查看", exact: true }).click();
+  await expect(page.getByText("final failure", { exact: false })).toBeVisible();
+  await expect(page.getByRole("status")).toContainText("只显示末尾");
+  await page.getByRole("button", { name: "INFO", exact: true }).click();
+  await expect(page.getByText("retained line", { exact: false })).toHaveCount(0);
+  await expect(page.getByText("final failure", { exact: false })).toBeVisible();
+  await page.getByRole("button", { name: "设置", exact: true }).click();
+  await expect(page.getByText("这个构建没有接自动更新", { exact: false })).toBeVisible();
+  expect((await observed()).some((call) => call.command.startsWith("plugin:updater|"))).toBe(false);
+});
+
 test("grasscn launch workflow handles missing account, failure, retry, stop and Chinese labels", async ({
   page,
 }, testInfo) => {
