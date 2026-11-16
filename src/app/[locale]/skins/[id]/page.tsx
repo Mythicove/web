@@ -4,6 +4,7 @@ import { MessageCircleIcon } from "lucide-react";
 import { apiClient, ApiError, type SkinComment } from "@/lib/api";
 import { SiteHeader } from "@/components/site-header";
 import { SkinPreview } from "@/components/skin-preview";
+import { SkinViews } from "@/components/skin-views";
 import { PlayerAvatar } from "@/components/player-avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -88,6 +89,11 @@ export default async function SkinDetailPage({ params }: PageProps) {
               </CardContent>
             </Card>
           </div>
+
+          <section className="mt-10">
+            <h2 className="font-display mb-4 text-lg font-semibold">{t("views")}</h2>
+            <SkinViews playerName={item.player_name} />
+          </section>
 
           <section className="mt-10">
             <h2 className="font-display flex items-center gap-2 text-lg font-semibold">

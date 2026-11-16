@@ -1,16 +1,17 @@
 "use client";
 
-import { Suspense, useState, type FormEvent } from "react";
+import { Suspense, useEffect, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Loader2Icon } from "lucide-react";
-import { apiClient } from "@/lib/api";
+import { apiClient, type RegisterRequirements } from "@/lib/api";
 import { useErrorText } from "@/lib/errors";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { SiteHeader } from "@/components/site-header";
+import { PasswordChecklist } from "@/components/password-checklist";
 import { Link } from "@/i18n/navigation";
 
 function ResetInner() {
@@ -19,9 +20,18 @@ function ResetInner() {
   const params = useSearchParams();
   const token = params.get("token") ?? "";
   const [form, setForm] = useState({ password: "", confirm: "" });
+  const [req, setReq] = useState<RegisterRequirements | null>(null);
   const [ok, setOk] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // 复杂度策略与注册页同源（register-requirements），清单实时判定
+  useEffect(() => {
+    apiClient
+      .registerRequirements()
+      .then(setReq)
+      .catch(() => setReq(null));
+  }, []);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -73,10 +83,11 @@ function ResetInner() {
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={8}
+                minLength={req?.passwordPolicy.minLength ?? 8}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
+              {req && <PasswordChecklist policy={req.passwordPolicy} value={form.password} />}
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="confirm">{t("confirmPassword")}</Label>
@@ -86,7 +97,7 @@ function ResetInner() {
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={8}
+                minLength={req?.passwordPolicy.minLength ?? 8}
                 value={form.confirm}
                 onChange={(e) => setForm({ ...form, confirm: e.target.value })}
               />

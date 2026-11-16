@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 // 品牌标识：优先用管理后台上传的自定义明暗图（SiteConfig.brand，由 layout 服务端
 // 注入、首帧 HTML 即含正确 src），缺省回落仓库内置 /brand/logo-{light,dark}.png。
 // 明暗双图同时渲染、由 CSS 依 html[data-mode] 选其一（见 globals.css），不依赖水合、不闪。
-const tileClass = "ring-foreground/10 size-8 shrink-0 rounded-[22%] ring-1";
+const tileClass = "ring-foreground/10 size-8 shrink-0 rounded-[4px] ring-1";
 const DEFAULT_LIGHT = "/brand/logo-light.png";
 const DEFAULT_DARK = "/brand/logo-dark.png";
 

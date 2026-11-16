@@ -90,7 +90,7 @@ export default async function SkinsPage({ searchParams, params }: PageProps & Pa
                     <Card className="bg-surface group-hover:shadow-lift transition-all group-hover:-translate-y-0.5">
                       <CardContent className="p-5">
                         <SkinThumb
-                          src={apiClient.skinTextureUrl(item.texture_key)}
+                          src={apiClient.renderByNameUrl(item.player_name, "body")}
                           alt={item.player_name}
                         />
                         <div className="mt-4 flex items-center justify-between gap-2">

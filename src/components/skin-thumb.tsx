@@ -15,7 +15,7 @@ export function SkinThumb({ src, alt, className }: SkinThumbProps) {
   const [failed, setFailed] = useState(false);
   return (
     <div
-      className={cn("bg-bg relative aspect-[16/9] w-full overflow-hidden rounded-md", className)}
+      className={cn("bg-bg relative aspect-square w-full overflow-hidden rounded-md", className)}
     >
       {!loaded && !failed && <div className="bg-surface-raised absolute inset-0 animate-pulse" />}
       {!failed && (

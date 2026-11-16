@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { toast } from "sonner";
 import { CheckIcon, DownloadIcon, FlagIcon, HeartIcon, Loader2Icon, SendIcon } from "lucide-react";
 import { apiClient, type SkinLibItem } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
@@ -20,7 +21,7 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
   const [liking, setLiking] = useState(false);
   const [applying, setApplying] = useState(false);
   const [applied, setApplied] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
   const [reporting, setReporting] = useState(false);
   const [reportReason, setReportReason] = useState("");
   const [reportingBusy, setReportingBusy] = useState(false);
@@ -29,13 +30,13 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
   const like = async () => {
     if (liked || liking) return;
     setLiking(true);
-    setError(null);
+
     try {
       await apiClient.likeSkin(item.id);
       setLikes((n) => n + 1);
       setLiked(true);
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setLiking(false);
     }
@@ -44,13 +45,13 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
   const apply = async () => {
     if (applying || applied || !isAuthenticated || !auth?.playerName) return;
     setApplying(true);
-    setError(null);
+
     try {
       await apiClient.applySkin(item.id, auth.playerName);
       setApplied(true);
       router.refresh();
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setApplying(false);
     }
@@ -59,13 +60,13 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
   const submitReport = async () => {
     if (reportingBusy) return;
     setReportingBusy(true);
-    setError(null);
+
     try {
       await apiClient.report("skin", item.id, reportReason);
       setReported(true);
       setReporting(false);
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setReportingBusy(false);
     }
@@ -127,11 +128,6 @@ export function SkinActions({ item }: { item: SkinLibItem }) {
           </Button>
         </form>
       )}
-      {error && (
-        <p role="alert" className="text-danger text-sm">
-          {error}
-        </p>
-      )}
     </div>
   );
 }
@@ -143,18 +139,17 @@ export function SkinCommentBox({ itemId }: { itemId: string }) {
   const { isAuthenticated } = useAuth();
   const [comment, setComment] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
     if (busy || !isAuthenticated || !comment.trim()) return;
     setBusy(true);
-    setError(null);
+
     try {
       await apiClient.commentSkin(itemId, comment);
       setComment("");
       router.refresh();
     } catch (e) {
-      setError(errText(e));
+      toast.error(errText(e));
     } finally {
       setBusy(false);
     }
@@ -185,11 +180,6 @@ export function SkinCommentBox({ itemId }: { itemId: string }) {
           {t("submit")}
         </Button>
       </div>
-      {error && (
-        <p role="alert" className="text-danger mt-2 text-sm">
-          {error}
-        </p>
-      )}
     </form>
   );
 }

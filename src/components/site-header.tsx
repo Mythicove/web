@@ -81,7 +81,9 @@ function AccountMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         {has("skin") && (
-          <DropdownMenuItem render={<Link href="/profile" />}>{t("nav.profile")}</DropdownMenuItem>
+          <DropdownMenuItem render={<Link href="/user/skin" />}>
+            {t("nav.profile")}
+          </DropdownMenuItem>
         )}
         {allowAdjust && (
           <DropdownMenuItem render={<Link href="/settings" />}>
@@ -112,13 +114,13 @@ export function SiteHeader() {
   ];
   const linkClass = (href: string) =>
     cn(
-      "rounded-md px-3 py-1.5 text-sm transition-colors hover:bg-surface hover:text-text",
-      pathname === href ? "bg-surface text-text" : "text-text-muted",
+      "rounded-md px-3 py-2 text-sm transition-colors hover:bg-surface hover:text-text",
+      pathname === href ? "bg-surface text-text font-medium" : "text-text-muted",
     );
 
   return (
     <header className="border-border bg-bg/80 sticky top-0 z-40 border-b backdrop-blur">
-      <nav className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
+      <nav className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4 md:px-6">
         <Link href="/" aria-label="Mythicove" className="shrink-0">
           <Logo />
         </Link>
@@ -162,7 +164,7 @@ export function SiteHeader() {
               {isAuthenticated ? (
                 <>
                   {has("skin") && (
-                    <DropdownMenuItem render={<Link href="/profile" />}>
+                    <DropdownMenuItem render={<Link href="/user/skin" />}>
                       {t("nav.profile")}
                     </DropdownMenuItem>
                   )}

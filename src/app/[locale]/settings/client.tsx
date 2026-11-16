@@ -45,7 +45,7 @@ export function SettingsPageClient() {
                       className={cn(
                         "flex items-center gap-2 rounded-md border px-4 py-2 text-sm transition-colors",
                         active
-                          ? "border-primary bg-primary text-primary-foreground shadow-card"
+                          ? "border-primary bg-primary-solid text-primary-foreground shadow-card"
                           : "border-border hover:bg-surface",
                       )}
                     >
@@ -74,7 +74,7 @@ export function SettingsPageClient() {
                       className={cn(
                         "flex items-center gap-2 rounded-md border px-4 py-2 text-sm transition-colors",
                         active
-                          ? "border-primary bg-primary text-primary-foreground shadow-card"
+                          ? "border-primary bg-primary-solid text-primary-foreground shadow-card"
                           : "border-border hover:bg-surface",
                       )}
                     >

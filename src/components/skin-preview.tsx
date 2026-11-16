@@ -66,7 +66,7 @@ export function SkinPreview({ skinUrl, className, label }: SkinPreviewProps) {
       <div
         ref={wrapRef}
         // 固定宽高比：任何容器宽度下预览盒都不会退化为竖长/细条形态
-        className="border-border bg-surface shadow-card relative aspect-[10/9] w-full max-w-[320px] overflow-hidden rounded-xl border"
+        className="border-border bg-surface shadow-card relative aspect-[10/9] w-full max-w-[360px] overflow-hidden rounded-xl border"
       >
         {state === "loading" && (
           <div className="bg-surface-raised absolute inset-0 animate-pulse" aria-hidden="true" />
@@ -88,7 +88,7 @@ export function SkinPreview({ skinUrl, className, label }: SkinPreviewProps) {
       </div>
       <div
         aria-hidden="true"
-        className="h-3 w-2/3 max-w-[220px] rounded-full bg-(--shadow-tint-strong) blur-md"
+        className="-mt-1 h-4 w-3/5 max-w-[200px] rounded-[50%] bg-(--shadow-tint-strong) opacity-70 blur-lg"
       />
     </div>
   );

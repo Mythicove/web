@@ -1,16 +1,18 @@
 "use client";
 
-import { Suspense, useEffect, useState, type FormEvent } from "react";
+import { Suspense, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation";
 import { Loader2Icon, ShieldQuestionIcon } from "lucide-react";
-import { apiClient, apiBase, ApiError, type LoginMethod } from "@/lib/api";
+import { apiClient, apiBase, ApiError } from "@/lib/api";
 import { useErrorText } from "@/lib/errors";
+import { useLoginMethods } from "@/lib/use-login-methods";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { SiteHeader } from "@/components/site-header";
+import { LoadFailed } from "@/components/load-failed";
 import { Link } from "@/i18n/navigation";
 
 function InvalidChallenge() {
@@ -27,25 +29,20 @@ function InvalidChallenge() {
 
 function OAuthLoginInner() {
   const t = useTranslations("oauth");
+  const common = useTranslations("common");
   const errText = useErrorText();
   const params = useSearchParams();
   const challenge = params.get("challenge") ?? "";
   const [form, setForm] = useState({ email: "", password: "" });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [methods, setMethods] = useState<LoginMethod[] | null>(null);
-
-  useEffect(() => {
-    apiClient
-      .listLoginMethods()
-      .then((r) => setMethods(r.methods.filter((m) => m.enabled)))
-      .catch(() => setMethods([]));
-  }, []);
+  const { methods, loaded, error: methodsError, retry: retryMethods } = useLoginMethods();
 
   // 加载完成前按"可用"处理，避免先闪一段"已关闭"的提示。
   // 关闭时这张表单必然是死路（后端会以 password_login_disabled 拒绝），
   // 改为把人送去站点登录页：那里有第三方登录按钮，登录后 mirror 会直接继承 web 会话。
-  const passwordEnabled = methods === null || methods.some((m) => m.type === "password");
+  // 请求失败不等于"关闭"：失败显示加载失败+重试，不伪装成业务状态。
+  const passwordEnabled = !loaded || methods.some((m) => m.type === "password");
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -75,7 +72,13 @@ function OAuthLoginInner() {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-text-muted text-sm">{t("loginHint")}</p>
-              {passwordEnabled ? (
+              {methodsError ? (
+                <LoadFailed
+                  message={methodsError}
+                  onRetry={retryMethods}
+                  retryLabel={common("retry")}
+                />
+              ) : passwordEnabled ? (
                 <form onSubmit={(e) => void submit(e)} className="space-y-4">
                   <div className="space-y-1.5">
                     <Label htmlFor="email">{t("email")}</Label>
