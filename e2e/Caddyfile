@@ -21,7 +21,7 @@
 	reverse_proxy /api/isles/* host.docker.internal:3110
 	# 邮件落地页 GET 是 web 页面；同名 POST（/account/verify 等）是 mirror API
 	@web_landing {
-		path /account/verify /account/reset-password
+		path /account/verify /account/reset-password /account/pending
 		method GET
 	}
 	reverse_proxy @web_landing host.docker.internal:3110

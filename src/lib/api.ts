@@ -53,59 +53,68 @@ export interface UploadProgress {
   total: number;
 }
 
-// 会话失效事件：任何请求收到 401 即广播，AuthProvider 据此清本地登录态。
+// Mirror 会话失效事件；Hoard 使用独立 cookie，其匿名响应不能清除网站登录态。
 // 否则账号被删/会话被吊销后，localStorage 里的旧元数据会让页面继续装登录。
 export const SESSION_INVALID_EVENT = "mythicove-session-invalid";
 
 // request 是全站唯一的 fetch 收口：凭据、no-store、错误归一化都在这一处。
 // 会话凭 httpOnly cookie（mythic_session / hoard_session）携带；开发跨端口为 same-site，生产同源。
-async function request<T>(
-  path: string,
-  init?: RequestInit,
-  // 公开端点不带凭据：开发期跨端口下后端可能回退 ACAO:*，带凭据会被浏览器拒绝；
-  // 会话端点保持 include。生产同源两者等价。
-  credentials: RequestCredentials = "include",
-): Promise<T> {
-  const base = typeof window === "undefined" ? SERVER_API_URL : API_URL;
-  const isForm = init?.body instanceof FormData;
-  let res: Response;
-  try {
-    res = await fetch(`${base}${path}`, {
-      cache: "no-store",
-      ...init,
-      credentials,
-      headers: isForm
-        ? init?.headers
-        : {
-            "Content-Type": "application/json",
-            ...(init?.headers ?? {}),
-          },
-    });
-  } catch {
-    throw new ApiError(0, `network: ${path}`, "network");
-  }
-  if (!res.ok) {
-    // 会话失效（账号被删/被吊销/过期）：广播给 AuthProvider 清本地态，再走统一错误
-    if (res.status === 401 && typeof window !== "undefined") {
-      window.dispatchEvent(new Event(SESSION_INVALID_EVENT));
-    }
-    const text = await res.text();
-    let detail: string | undefined;
-    let code: string | undefined;
+function createRequest(onUnauthorized: () => void) {
+  return async function request<T>(
+    path: string,
+    init?: RequestInit,
+    // 公开端点不带凭据：开发期跨端口下后端可能回退 ACAO:*，带凭据会被浏览器拒绝；
+    // 会话端点保持 include。生产同源两者等价。
+    credentials: RequestCredentials = "include",
+  ): Promise<T> {
+    const base = typeof window === "undefined" ? SERVER_API_URL : API_URL;
+    const isForm = init?.body instanceof FormData;
+    let res: Response;
     try {
-      const parsed = JSON.parse(text) as { error?: string; message?: string };
-      // mirror 对"需要前端采取动作"的拒绝返回稳定错误码（不是给人看的文案），
-      // 其余 error 字段是服务端已本地化的文案，直接展示。
-      if (parsed.error && STABLE_ERROR_CODES.has(parsed.error)) code = parsed.error;
-      else detail = parsed.error ?? parsed.message ?? undefined;
+      res = await fetch(`${base}${path}`, {
+        cache: "no-store",
+        ...init,
+        credentials,
+        headers: isForm
+          ? init?.headers
+          : {
+              "Content-Type": "application/json",
+              ...(init?.headers ?? {}),
+            },
+      });
     } catch {
-      // 非 JSON body（网关/反代错误页）保留截断原文，仅供日志
+      throw new ApiError(0, `network: ${path}`, "network");
     }
-    throw new ApiError(res.status, `${res.status} ${(detail ?? text).slice(0, 200)}`, code, detail);
-  }
-  if (res.status === 204) return undefined as T;
-  return (await res.json()) as T;
+    if (!res.ok) {
+      // 会话失效（账号被删/被吊销/过期）：广播给 AuthProvider 清本地态，再走统一错误
+      if (res.status === 401 && typeof window !== "undefined") {
+        onUnauthorized();
+      }
+      const text = await res.text();
+      let detail: string | undefined;
+      let code: string | undefined;
+      try {
+        const parsed = JSON.parse(text) as { error?: string; message?: string };
+        // mirror 对"需要前端采取动作"的拒绝返回稳定错误码（不是给人看的文案），
+        // 其余 error 字段是服务端已本地化的文案，直接展示。
+        if (parsed.error && STABLE_ERROR_CODES.has(parsed.error)) code = parsed.error;
+        else detail = parsed.error ?? parsed.message ?? undefined;
+      } catch {
+        // 非 JSON body（网关/反代错误页）保留截断原文，仅供日志
+      }
+      throw new ApiError(
+        res.status,
+        `${res.status} ${(detail ?? text).slice(0, 200)}`,
+        code,
+        detail,
+      );
+    }
+    if (res.status === 204) return undefined as T;
+    return (await res.json()) as T;
+  };
 }
+
+const request = createRequest(() => window.dispatchEvent(new Event(SESSION_INVALID_EVENT)));
 
 // upload 走 XHR：fetch 无法上报上传进度，而 mod jar 可达数百 MB。
 function upload<T>(
@@ -501,144 +510,147 @@ export const apiClient = {
 };
 
 // hoardClient 是 hoard 端点的收口：SSO 会话凭 httpOnly cookie（credentials）携带。
-export const hoardClient = {
-  // status 为管理端专用的过滤参数（仅 admin 令牌/会话生效）：省略即公开语义（只回 listed）。
-  search: (
-    q = "",
-    offset = 0,
-    limit = 20,
-    facets?: string,
-    status?: NonNullable<HoardProject["status"]>,
-  ) =>
-    request<HoardSearchResponse>(
-      `/api/mods?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${
-        facets ? `&facets=${encodeURIComponent(facets)}` : ""
-      }${status ? `&status=${encodeURIComponent(status)}` : ""}`,
-      undefined,
-      "same-origin",
-    ),
+export const hoardClient = (() => {
+  const request = createRequest(() => {});
+  return {
+    // status 为管理端专用的过滤参数（仅 admin 令牌/会话生效）：省略即公开语义（只回 listed）。
+    search: (
+      q = "",
+      offset = 0,
+      limit = 20,
+      facets?: string,
+      status?: NonNullable<HoardProject["status"]>,
+    ) =>
+      request<HoardSearchResponse>(
+        `/api/mods?q=${encodeURIComponent(q)}&offset=${offset}&limit=${limit}${
+          facets ? `&facets=${encodeURIComponent(facets)}` : ""
+        }${status ? `&status=${encodeURIComponent(status)}` : ""}`,
+        undefined,
+        "same-origin",
+      ),
 
-  facets: () => request<HoardFacetOptions>("/api/mods/facets", undefined, "same-origin"),
+    facets: () => request<HoardFacetOptions>("/api/mods/facets", undefined, "same-origin"),
 
-  versions: (projectId: string) =>
-    request<HoardVersion[]>(`/v2/project/${projectId}/version`, undefined, "same-origin"),
+    versions: (projectId: string) =>
+      request<HoardVersion[]>(`/v2/project/${projectId}/version`, undefined, "same-origin"),
 
-  project: (id: string) => request<HoardProject>(`/v2/project/${id}`, undefined, "same-origin"),
+    project: (id: string) => request<HoardProject>(`/v2/project/${id}`, undefined, "same-origin"),
 
-  dependencies: (id: string) =>
-    request<HoardDependency[]>(`/v2/project/${id}/dependencies`, undefined, "same-origin"),
+    dependencies: (id: string) =>
+      request<HoardDependency[]>(`/v2/project/${id}/dependencies`, undefined, "same-origin"),
 
-  // ---- SSO 会话（httpOnly cookie，credentials 携带）----
-  // next 为登录完成后的站内回跳绝对地址（静默 SSO 回到发起页）；
-  // hoard 侧以 CORS 白名单校验 origin，防开放重定向。
-  loginUrl: (path?: string) =>
-    `${API_URL}/auth/oidc/login${
-      path
-        ? `?next=${encodeURIComponent((typeof window === "undefined" ? "" : window.location.origin) + path)}`
-        : ""
-    }`,
+    // ---- SSO 会话（httpOnly cookie，credentials 携带）----
+    // next 为登录完成后的站内回跳绝对地址（静默 SSO 回到发起页）；
+    // hoard 侧以 CORS 白名单校验 origin，防开放重定向。
+    loginUrl: (path?: string) =>
+      `${API_URL}/auth/oidc/login${
+        path
+          ? `?next=${encodeURIComponent((typeof window === "undefined" ? "" : window.location.origin) + path)}`
+          : ""
+      }`,
 
-  me: () => request<HoardUser>("/auth/me"),
+    me: () => request<HoardUser>("/auth/me"),
 
-  logoutHoard: async () => {
-    await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
-  },
+    logoutHoard: async () => {
+      await fetch(`${API_URL}/auth/logout`, { method: "POST", credentials: "include" });
+    },
 
-  // ---- 团队 ----
-  myTeams: () => request<HoardUserTeam[]>("/api/user/teams"),
+    // ---- 团队 ----
+    myTeams: () => request<HoardUserTeam[]>("/api/user/teams"),
 
-  createTeam: (name: string) =>
-    request<{ id: string }>("/api/team", {
-      method: "POST",
-      body: JSON.stringify({ name }),
-    }),
+    createTeam: (name: string) =>
+      request<{ id: string }>("/api/team", {
+        method: "POST",
+        body: JSON.stringify({ name }),
+      }),
 
-  teamMembers: (id: string) => request<HoardTeamMember[]>(`/api/team/${id}/members`),
+    teamMembers: (id: string) => request<HoardTeamMember[]>(`/api/team/${id}/members`),
 
-  // 变更已有成员角色 / 移交所有权走 POST /api/team/{id}/members（见 spec addTeamMember）；
-  // 暂无 UI，故不在此保留无调用者的包装函数。
+    // 变更已有成员角色 / 移交所有权走 POST /api/team/{id}/members（见 spec addTeamMember）；
+    // 暂无 UI，故不在此保留无调用者的包装函数。
 
-  removeTeamMember: (id: string, sub: string) =>
-    request<void>(`/api/team/${id}/members/${sub}`, { method: "DELETE" }),
+    removeTeamMember: (id: string, sub: string) =>
+      request<void>(`/api/team/${id}/members/${sub}`, { method: "DELETE" }),
 
-  // ---- 团队邀请（加入需被邀请人同意）----
-  teamInvites: (id: string) => request<HoardTeamInvite[]>(`/api/team/${id}/invites`),
+    // ---- 团队邀请（加入需被邀请人同意）----
+    teamInvites: (id: string) => request<HoardTeamInvite[]>(`/api/team/${id}/invites`),
 
-  inviteMember: (id: string, sub: string, role: "owner" | "member" = "member") =>
-    request<void>(`/api/team/${id}/invites`, {
-      method: "POST",
-      body: JSON.stringify({ sub, role }),
-    }),
+    inviteMember: (id: string, sub: string, role: "owner" | "member" = "member") =>
+      request<void>(`/api/team/${id}/invites`, {
+        method: "POST",
+        body: JSON.stringify({ sub, role }),
+      }),
 
-  revokeInvite: (id: string, sub: string) =>
-    request<void>(`/api/team/${id}/invites/${encodeURIComponent(sub)}`, { method: "DELETE" }),
+    revokeInvite: (id: string, sub: string) =>
+      request<void>(`/api/team/${id}/invites/${encodeURIComponent(sub)}`, { method: "DELETE" }),
 
-  // 变更已有成员角色 / 移交所有权（新增成员请用 inviteMember；后端对非成员返回 409，
-  // 对"降级唯一 owner"也返回 409）
-  setTeamMemberRole: (id: string, sub: string, role: "owner" | "member") =>
-    request<void>(`/api/team/${id}/members`, {
-      method: "POST",
-      body: JSON.stringify({ sub, role }),
-    }),
+    // 变更已有成员角色 / 移交所有权（新增成员请用 inviteMember；后端对非成员返回 409，
+    // 对"降级唯一 owner"也返回 409）
+    setTeamMemberRole: (id: string, sub: string, role: "owner" | "member") =>
+      request<void>(`/api/team/${id}/members`, {
+        method: "POST",
+        body: JSON.stringify({ sub, role }),
+      }),
 
-  myInvites: () => request<HoardUserInvite[]>("/api/user/invites"),
+    myInvites: () => request<HoardUserInvite[]>("/api/user/invites"),
 
-  acceptInvite: (teamId: string) =>
-    request<void>(`/api/user/invites/${teamId}/accept`, { method: "POST" }),
+    acceptInvite: (teamId: string) =>
+      request<void>(`/api/user/invites/${teamId}/accept`, { method: "POST" }),
 
-  rejectInvite: (teamId: string) =>
-    request<void>(`/api/user/invites/${teamId}`, { method: "DELETE" }),
+    rejectInvite: (teamId: string) =>
+      request<void>(`/api/user/invites/${teamId}`, { method: "DELETE" }),
 
-  // ---- PAT ----
-  listPATs: () => request<HoardPAT[]>("/api/user/pats"),
+    // ---- PAT ----
+    listPATs: () => request<HoardPAT[]>("/api/user/pats"),
 
-  createPAT: (name: string, scopes: string[], expiresInDays: number) =>
-    request<{ id: string; token: string }>("/api/user/pats", {
-      method: "POST",
-      body: JSON.stringify({ name, scopes, expires_in_days: expiresInDays }),
-    }),
+    createPAT: (name: string, scopes: string[], expiresInDays: number) =>
+      request<{ id: string; token: string }>("/api/user/pats", {
+        method: "POST",
+        body: JSON.stringify({ name, scopes, expires_in_days: expiresInDays }),
+      }),
 
-  deletePAT: (id: string) => request<void>(`/api/user/pats/${id}`, { method: "DELETE" }),
+    deletePAT: (id: string) => request<void>(`/api/user/pats/${id}`, { method: "DELETE" }),
 
-  // ---- 用户级上传（Modrinth 形 multipart）----
-  createProject: (
-    data: Record<string, unknown>,
-    file: File,
-    onProgress?: (p: UploadProgress) => void,
-  ) => {
-    const form = new FormData();
-    form.set("data", JSON.stringify(data));
-    form.set("file", file);
-    return upload<HoardProject>("/v2/project", form, { onProgress });
-  },
+    // ---- 用户级上传（Modrinth 形 multipart）----
+    createProject: (
+      data: Record<string, unknown>,
+      file: File,
+      onProgress?: (p: UploadProgress) => void,
+    ) => {
+      const form = new FormData();
+      form.set("data", JSON.stringify(data));
+      form.set("file", file);
+      return upload<HoardProject>("/v2/project", form, { onProgress });
+    },
 
-  addVersion: (
-    data: Record<string, unknown>,
-    file: File,
-    onProgress?: (p: UploadProgress) => void,
-  ) => {
-    const form = new FormData();
-    form.set("data", JSON.stringify(data));
-    form.set("file", file);
-    return upload<HoardVersion>("/v2/version", form, { onProgress });
-  },
+    addVersion: (
+      data: Record<string, unknown>,
+      file: File,
+      onProgress?: (p: UploadProgress) => void,
+    ) => {
+      const form = new FormData();
+      form.set("data", JSON.stringify(data));
+      form.set("file", file);
+      return upload<HoardVersion>("/v2/version", form, { onProgress });
+    },
 
-  deleteProject: (id: string) => request<void>(`/v2/project/${id}`, { method: "DELETE" }),
+    deleteProject: (id: string) => request<void>(`/v2/project/${id}`, { method: "DELETE" }),
 
-  // 管理端点：adminToken 传空串则凭 hoard 会话 cookie（后端认 role=admin），
-  // 非空则用静态管理令牌（bootstrap/救援通道）。
-  setStatus: (id: string, status: string, adminToken: string) =>
-    request<void>(`/api/mods/${id}/status`, {
-      method: "PATCH",
-      headers: authHeaders(adminToken),
-      body: JSON.stringify({ status }),
-    }),
+    // 管理端点：adminToken 传空串则凭 hoard 会话 cookie（后端认 role=admin），
+    // 非空则用静态管理令牌（bootstrap/救援通道）。
+    setStatus: (id: string, status: string, adminToken: string) =>
+      request<void>(`/api/mods/${id}/status`, {
+        method: "PATCH",
+        headers: authHeaders(adminToken),
+        body: JSON.stringify({ status }),
+      }),
 
-  deleteMod: (id: string, adminToken: string) =>
-    request<void>(`/api/mods/${id}`, {
-      method: "DELETE",
-      headers: authHeaders(adminToken),
-    }),
+    deleteMod: (id: string, adminToken: string) =>
+      request<void>(`/api/mods/${id}`, {
+        method: "DELETE",
+        headers: authHeaders(adminToken),
+      }),
 
-  mrpackUrl: (id: string, vid: string) => `${API_URL}/v2/project/${id}/version/${vid}/mrpack`,
-};
+    mrpackUrl: (id: string, vid: string) => `${API_URL}/v2/project/${id}/version/${vid}/mrpack`,
+  };
+})();

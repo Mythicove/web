@@ -51,10 +51,12 @@ test("report and moderation loop", async ({ page }) => {
     .first()
     .setInputFiles(path.join(process.cwd(), "public", "skins", "steve.png"));
   await page.getByRole("button", { name: /Upload skin/ }).click();
-  await expect(page.getByText("Uploaded")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Saved. Restart the game to see it in server")).toBeVisible({
+    timeout: 15_000,
+  });
   await page.fill("#publishDesc", description);
   await page.getByRole("button", { name: /Publish to skin library/ }).click();
-  await expect(page.getByText("Published to the skin library.")).toBeVisible({
+  await expect(page.getByText("Published to the skin library", { exact: true })).toBeVisible({
     timeout: 15_000,
   });
 

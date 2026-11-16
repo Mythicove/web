@@ -74,12 +74,16 @@ test("skin station full loop", async ({ page }) => {
     .nth(0)
     .setInputFiles(path.join(process.cwd(), "public", "skins", "steve.png"));
   await page.getByRole("button", { name: "Upload skin" }).click();
-  await expect(page.getByText("Uploaded")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Saved. Restart the game to see it in server")).toBeVisible({
+    timeout: 15_000,
+  });
 
   // 6. 发布到皮肤库
   await page.fill('[placeholder="Describe this skin…"]', description);
   await page.getByRole("button", { name: "Publish to skin library" }).click();
-  await expect(page.getByText("Published to the skin library.")).toBeVisible({ timeout: 15_000 });
+  await expect(page.getByText("Published to the skin library", { exact: true })).toBeVisible({
+    timeout: 15_000,
+  });
 
   // 7. 皮肤库按描述搜索命中（SSR 渲染）
   await page.goto(`/skins?q=${description}`);
