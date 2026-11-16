@@ -32,12 +32,27 @@ test("third-party client requires frontend consent", async ({ page, request }) =
   expect(resp.status()).toBeGreaterThanOrEqual(200);
   expect(resp.status()).toBeLessThan(300);
 
+  const mailpit = process.env.MAILPIT_URL ?? "http://localhost:8025";
+  let verifyUrl = "";
+  await expect(async () => {
+    const messages = await (await request.get(`${mailpit}/api/v1/search?query=to:${email}`)).json();
+    expect(messages.messages?.length ?? 0).toBeGreaterThan(0);
+    const message = await (
+      await request.get(`${mailpit}/api/v1/message/${messages.messages[0].ID}`)
+    ).json();
+    const link = /https?:\/\/\S+\/account\/verify\?token=[a-f0-9]+/.exec(message.Text ?? "");
+    expect(link).toBeTruthy();
+    verifyUrl = link![0];
+  }).toPass({ timeout: 30_000 });
+  await page.goto(verifyUrl);
+  await expect(page.getByText("Email verified")).toBeVisible();
+
   await page.goto("/login");
   await page.fill("#email", email);
   await page.fill("#password", password);
   // 限定 main：页头也有一个同名 "Sign in" 按钮（导航用），不限定会触发 strict mode 冲突
   await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/\/$/);
+  await page.waitForURL(/\/user$/);
 
   // 直接发起第三方授权：应落到前端同意页（而非直接发码）
   // state 必须 >= 8 字符：fosite 对更短的 state 直接回 invalid_state（会重定向到 redirect_uri，

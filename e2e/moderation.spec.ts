@@ -16,10 +16,11 @@ test("report and moderation loop", async ({ page }) => {
   await page.goto("/register");
   await page.fill("#email", email);
   await page.fill("#password", password);
+  await page.fill("#confirm", password);
   await page.fill("#nickname", "Mod User");
   await page.fill("#playerName", playerName);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText("Account created")).toBeVisible({ timeout: 15_000 });
+  await page.waitForURL(/\/account\/pending\?email=/);
 
   const api = await request.newContext();
   let verifyUrl = "";
@@ -41,10 +42,10 @@ test("report and moderation loop", async ({ page }) => {
   await page.fill("#password", password);
   // 限定 main：页头也有一个同名 "Sign in" 按钮（导航用），不限定会触发 strict mode 冲突
   await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
-  await page.waitForURL(/\/$/);
+  await page.waitForURL(/\/user$/);
 
   // 上传并发布到皮肤库
-  await page.goto("/profile");
+  await page.goto("/user/skin");
   await page
     .locator('input[type="file"]')
     .first()

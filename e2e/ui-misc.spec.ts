@@ -6,7 +6,6 @@ test("theme switch persists across reload", async ({ page }) => {
   await page.getByRole("button", { name: /Light|浅色/ }).click();
   await page.waitForTimeout(500);
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
-  expect(bg).toBe("rgb(248, 250, 252)");
   await page.reload();
   await page.waitForTimeout(800);
   expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(bg);

@@ -17,10 +17,11 @@ test("launcher sign-in uses a per-player credential, not the master password", a
   await page.goto("/register");
   await page.fill("#email", email);
   await page.fill("#password", password);
+  await page.fill("#confirm", password);
   await page.fill("#nickname", "Launcher Tester");
   await page.fill("#playerName", playerName);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText("Account created")).toBeVisible({ timeout: 15_000 });
+  await page.waitForURL(/\/account\/pending\?email=/);
 
   const api = await request.newContext();
   let verifyUrl = "";
@@ -42,9 +43,9 @@ test("launcher sign-in uses a per-player credential, not the master password", a
   await page.fill("#password", password);
   await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
   // 等登录真正落地（跳回首页）："Signed in." 只是跳转前的一帧，断言它会与导航赛跑
-  await page.waitForURL(/\/$/, { timeout: 15_000 });
+  await page.waitForURL(/\/user$/, { timeout: 15_000 });
 
-  await page.goto("/profile");
+  await page.goto("/user/security");
   await expect(page.getByText("Launcher sign-in")).toBeVisible({ timeout: 15_000 });
   // 没有独立密码时必须说清楚后果，而不是留一个静默的坑
   await expect(page.getByText(/no launcher password yet/)).toBeVisible();
@@ -83,6 +84,6 @@ test("launcher sign-in uses a per-player credential, not the master password", a
   expect(invalidated.status(), "session created by the revoked credential").toBe(403);
 
   // 网站会话不受影响：撤销启动器凭证不会把浏览器踢下线
-  await page.goto("/profile");
+  await page.goto("/user/security");
   await expect(page.getByText("Launcher sign-in")).toBeVisible({ timeout: 15_000 });
 });

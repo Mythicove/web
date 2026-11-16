@@ -15,10 +15,11 @@ test("mods SSO + user upload loop", async ({ page }) => {
   await page.goto("/register");
   await page.fill("#email", email);
   await page.fill("#password", password);
+  await page.fill("#confirm", password);
   await page.fill("#nickname", "SSO User");
   await page.fill("#playerName", playerName);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText("Account created")).toBeVisible({ timeout: 15_000 });
+  await page.waitForURL(/\/account\/pending\?email=/);
 
   const api = await request.newContext();
   let verifyUrl = "";
@@ -43,7 +44,7 @@ test("mods SSO + user upload loop", async ({ page }) => {
   // 必须等登录真正完成（BFF 落 httpOnly cookie + 前端把会话元数据写入 localStorage）再导航。
   // 否则 goto 会打断在途的 fetch：mirror 侧 authenticate 已 200，但前端态没落盘，
   // 下一页渲染成匿名 → mods 的静默 SSO 不触发（hoard 只会看到 /auth/me 401）。
-  await page.waitForURL(/\/$/, { timeout: 15_000 });
+  await page.waitForURL(/\/user$/, { timeout: 15_000 });
   await page.goto("/mods");
   await page.waitForURL(/\/mods/, { timeout: 20_000 });
   // 静默 SSO 会瞬时经过 IdP（:8090）再回到 /mods。**不要断言中间态 URL**：

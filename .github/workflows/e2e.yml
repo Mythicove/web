@@ -132,7 +132,7 @@ jobs:
           curl -sf http://localhost:18082/healthz >/dev/null || { echo "mirror(cap) failed to start"; cat /tmp/mirror-cap.log; exit 1; }
       - name: start mirror (captcha verifier unavailable)
         run: |
-          # 配置完整但 siteverify 不可达：服务应启动，注册必须 503 而不是静默放行。
+          # 配置完整但 siteverify 不可达：服务应启动，注册必须拒绝。
           MIRROR_LISTEN_ADDR=:18083 \
           MIRROR_KEY_PATH=/tmp/mirror-broken-key.pem \
           MIRROR_TEXTURES_DIR=/tmp/mirror-broken-tex \

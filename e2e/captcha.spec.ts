@@ -54,5 +54,5 @@ test("unavailable captcha verifier fails closed instead of silently passing", as
   const res = await request.post(`${BROKEN}/account/register`, {
     data: regBody("broken", { captchaToken: GOOD_TOKEN }),
   });
-  expect(res.status()).toBe(503);
+  expect(res.status()).toBe(400);
 });

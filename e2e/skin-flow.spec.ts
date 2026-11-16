@@ -15,10 +15,11 @@ test("skin station full loop", async ({ page }) => {
   await page.goto("/register");
   await page.fill("#email", email);
   await page.fill("#password", password);
+  await page.fill("#confirm", password);
   await page.fill("#nickname", "E2E User");
   await page.fill("#playerName", playerName);
   await page.getByRole("button", { name: "Create account" }).click();
-  await expect(page.getByText("Account created")).toBeVisible({ timeout: 15_000 });
+  await page.waitForURL(/\/account\/pending\?email=/);
 
   // 2. 从 mailpit 取验证邮件里的链接（轮询直到到达）
   const api = await request.newContext();
@@ -45,7 +46,7 @@ test("skin station full loop", async ({ page }) => {
   // 限定 main：页头也有一个同名 "Sign in" 按钮（导航用），不限定会触发 strict mode 冲突
   await page.getByRole("main").getByRole("button", { name: "Sign in", exact: true }).click();
   // 等登录真正落地（跳回首页）："Signed in." 只是跳转前的一帧，断言它会与导航赛跑
-  await page.waitForURL(/\/$/, { timeout: 15_000 });
+  await page.waitForURL(/\/user$/, { timeout: 15_000 });
 
   // 4b. 会话加固：token 不落 localStorage；httpOnly cookie 对 JS 不可读
   //（后续上传/发布步骤凭 cookie 认证成功，即证明 cookie 随请求携带）
@@ -67,7 +68,7 @@ test("skin station full loop", async ({ page }) => {
     .toBe(playerName);
 
   // 5. 上传皮肤
-  await page.goto("/profile");
+  await page.goto("/user/skin");
   await page
     .locator('input[type="file"]')
     .nth(0)
