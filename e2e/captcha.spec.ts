@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 // 这两个 mirror 实例由 e2e 工作流单独拉起（内存存储，不影响主实例）：
 // - API：driver=cap 且配置完整，siteverify 指向 e2e/fixtures/fake-cap-siteverify.mjs
-// - BROKEN：driver=cap 但缺 secret/实例地址 ⇒ 验证码无法生效
+// - BROKEN：driver=cap 配置完整但 siteverify 服务不可达 ⇒ 注册必须 fail-closed
 const API = process.env.E2E_CAP_API_URL ?? "http://localhost:18082";
 const BROKEN = process.env.E2E_CAP_BROKEN_API_URL ?? "http://localhost:18083";
 const GOOD_TOKEN = process.env.E2E_CAP_TOKEN ?? "e2e-cap-token";
@@ -40,14 +40,16 @@ test("cap captcha is advertised and enforced on register", async ({ request }) =
   expect(ok.status()).toBe(201);
 });
 
-// 回归锁：驱动配了但实例没建成时，既不能谎报"有验证码"，也不能静默放行注册。
-test("misconfigured captcha fails closed instead of silently passing", async ({ request }) => {
+// 回归锁：siteverify 不可达时，既不能静默放行注册，也不能把服务配置当成已验证。
+test("unavailable captcha verifier fails closed instead of silently passing", async ({
+  request,
+}) => {
   const req = await request.get(`${BROKEN}/api/register-requirements`);
   expect(req.ok()).toBeTruthy();
   const requirements = await req.json();
-  expect(requirements.captcha).toBe("");
-  expect(requirements.captchaSiteKey).toBe("");
-  expect(requirements.captchaCapUrl).toBe("");
+  expect(requirements.captcha).toBe("cap");
+  expect(requirements.captchaSiteKey).not.toBe("");
+  expect(requirements.captchaCapUrl).not.toBe("");
 
   const res = await request.post(`${BROKEN}/account/register`, {
     data: regBody("broken", { captchaToken: GOOD_TOKEN }),

@@ -130,9 +130,9 @@ jobs:
           nohup /tmp/mirror-server > /tmp/mirror-cap.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:18082/healthz >/dev/null && echo "mirror(cap) up" && break || sleep 1; done
           curl -sf http://localhost:18082/healthz >/dev/null || { echo "mirror(cap) failed to start"; cat /tmp/mirror-cap.log; exit 1; }
-      - name: start mirror (captcha misconfigured)
+      - name: start mirror (captcha verifier unavailable)
         run: |
-          # 故意缺 SECRET 与 CAP_URL：验证码实例建不起来，注册必须 503 而不是静默放行
+          # 配置完整但 siteverify 不可达：服务应启动，注册必须 503 而不是静默放行。
           MIRROR_LISTEN_ADDR=:18083 \
           MIRROR_KEY_PATH=/tmp/mirror-broken-key.pem \
           MIRROR_TEXTURES_DIR=/tmp/mirror-broken-tex \
@@ -143,6 +143,8 @@ jobs:
           MIRROR_BASE_URL=http://localhost:18083 \
           MIRROR_CAPTCHA_DRIVER=cap \
           MIRROR_CAPTCHA_SITE_KEY=e2e-cap-site-key \
+          MIRROR_CAPTCHA_SECRET=e2e-cap-secret \
+          MIRROR_CAPTCHA_CAP_URL=http://localhost:18098 \
           nohup /tmp/mirror-server > /tmp/mirror-broken.log 2>&1 &
           for i in $(seq 1 30); do curl -sf http://localhost:18083/healthz >/dev/null && echo "mirror(broken captcha) up" && break || sleep 1; done
           curl -sf http://localhost:18083/healthz >/dev/null || { echo "mirror(broken) failed to start"; cat /tmp/mirror-broken.log; exit 1; }
