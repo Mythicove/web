@@ -56,3 +56,26 @@ pnpm e2e
 环境变量：`E2E_BASE_URL`（默认 `http://localhost:3110`）、`MAILPIT_URL`（默认 `http://localhost:8025`）。
 
 fixtures：`fixtures/test-mod.jar`（含 fabric.mod.json 的最小 jar，用于元数据自动填充断言）。
+
+## Windows Compass 原生桌面
+
+`compass-desktop-live.mjs` 由相邻 Isles 仓库的 `scripts/compass-pack-live.mjs`
+在设置 `COMPASS_EXE` 时调用。先在 Compass 仓库执行 `pnpm tauri build --no-bundle`，
+再从 Isles 仓库运行：
+
+```powershell
+$env:COMPASS_EXE='D:\Caches\.cargo\target\release\compass.exe'
+$env:PAPER_SERVER_JAR='/absolute/path/to/paper-compatible-1.21.1.jar'
+$env:MAVEN_COMMAND='/absolute/path/to/mvn.cmd'
+node scripts/compass-pack-live.mjs /absolute/path/to/compass /absolute/path/to/mythic-mirror
+```
+
+需要本仓库已安装 Playwright 依赖，以及 Windows WebView2、Rust、Go、JDK 21 和 Maven。
+场景先真实发布并安装整合包，再启动隔离便携版 Compass，用 CDP 点击真实界面：
+主密码拒绝、独立密码登录、重启恢复、皮肤预览、启动在线进服、停止和退出登录。
+复用的实例已有首次游戏运行生成的 Quick Play 日志，覆盖再次启动的文件语义回归。
+操作走真实 Tauri IPC、Mirror 与客户端；只读 `paths_info` 确认便携目录。
+
+运行目录中的 `desktop-result.json` 保留 exe SHA-256 与结果，`desktop-*` 子目录
+保留截图和服务端观察。皮肤 canvas 截图需人工确认纹理；游戏首次提示已预先接受，
+此场景不覆盖从空实例开始的全部桌面安装操作。账号使用隔离内存 Mirror 和开发邮件日志。
