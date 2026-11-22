@@ -71,11 +71,26 @@ node scripts/compass-pack-live.mjs /absolute/path/to/compass /absolute/path/to/m
 ```
 
 需要本仓库已安装 Playwright 依赖，以及 Windows WebView2、Rust、Go、JDK 21 和 Maven。
-场景先真实发布并安装整合包，再启动隔离便携版 Compass，用 CDP 点击真实界面：
-主密码拒绝、独立密码登录、重启恢复、皮肤预览、启动在线进服、停止和退出登录。
-复用的实例已有首次游戏运行生成的 Quick Play 日志，覆盖再次启动的文件语义回归。
+场景先完成真实发布与原生核心验收，再启动空缓存、空实例的隔离便携版 Compass。
+通过 `.mrpack` 文件启动确认页，用 CDP 点击安装、配置直连、验证主密码拒绝、
+独立密码登录、重启恢复、皮肤预览、连续两次在线进服、停止和退出登录。
+启动器子进程清空 `JAVA_HOME`、隔离 `LOCALAPPDATA`，PATH 仅保留 Windows System32；
+只读 `instance_java` 确认无匹配 Java，随后验证点击启动时自动下载并使用官方 Java 21。
+第二次启动覆盖客户端已写入 Quick Play 日志后的文件语义回归。
 操作走真实 Tauri IPC、Mirror 与客户端；只读 `paths_info` 确认便携目录。
 
 运行目录中的 `desktop-result.json` 保留 exe SHA-256 与结果，`desktop-*` 子目录
-保留截图和服务端观察。皮肤 canvas 截图需人工确认纹理；游戏首次提示已预先接受，
-此场景不覆盖从空实例开始的全部桌面安装操作。账号使用隔离内存 Mirror 和开发邮件日志。
+保留截图和服务端观察。皮肤 canvas 截图需人工确认纹理。首次游戏窗口出现后，
+stdout 输出 `gameWindowReady`；场景等待实际进服，游戏首次提示需在此期间操作。
+`native-session.json` 记录本轮 Compass PID，`compass-game-window.ps1` 仅捕获或点击
+其子进程中唯一的 Java 窗口；点击坐标以该窗口客户区为准，PNG 与同名 JSON 留证：
+
+```powershell
+./e2e/compass-game-window.ps1 -RootProcessId <PID> -Screenshot <absolute-existing-directory>/prompt.png
+./e2e/compass-game-window.ps1 -RootProcessId <PID> -Screenshot <absolute-existing-directory>/prompt-click.png -Action click -X <x> -Y <y>
+```
+
+失败时保存 `failure.png`、`failure-ui.txt` 与脱敏的 `auth-errors.json`。
+认证观察仅记录真实 IPC 返回的错误码和信息，不记录调用参数或成功响应中的令牌。
+`game-driver-error.txt` 保留窗口等待中最近一次未就绪的原因。账号使用隔离内存 Mirror
+和开发邮件日志。验收发布资产时，将 `COMPASS_EXE` 指向该安装包内的可执行文件。
