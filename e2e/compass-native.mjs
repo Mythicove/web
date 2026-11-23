@@ -1,11 +1,13 @@
 // Windows native WebView2 smoke. Supply the built executable explicitly; use a
 // fresh portable deployment so real user accounts/settings are never touched.
 import { chromium } from "@playwright/test";
-import { spawn } from "node:child_process";
-import { mkdtemp, copyFile, writeFile, mkdir } from "node:fs/promises";
+import { spawn, spawnSync } from "node:child_process";
+import { mkdtemp, copyFile, writeFile, mkdir, readdir, readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 
 if (process.platform !== "win32" || !process.env.COMPASS_EXE)
   throw new Error("Set COMPASS_EXE to a built Windows Tauri executable.");
@@ -17,13 +19,14 @@ await writeFile(
   join(dir, "data", "compass.json"),
   JSON.stringify({
     apiUrl: "http://127.0.0.1:1",
-    hoardUrl: "http://127.0.0.1:1",
+    hoardUrl: process.env.COMPASS_HOARD_URL ?? "http://127.0.0.1:1",
     language: "zh-CN",
     theme: "dark",
     download: { concurrency: 4, mirror: "" },
     defaults: { memoryMb: 2048 },
   }),
 );
+const startedAt = performance.now();
 const processHandle = spawn(join(dir, "compass.exe"), [], {
   cwd: dir,
   env: {
@@ -60,6 +63,7 @@ try {
     throw new Error("No WebView page");
   })();
   await page.getByRole("heading", { name: "开始游戏", exact: true }).waitFor();
+  const coldReadyMs = Math.round(performance.now() - startedAt);
   const paths = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("paths_info"));
   assert.equal(
     paths.root.toLowerCase().replaceAll("\\", "/"),
@@ -82,6 +86,11 @@ try {
   await page.screenshot({ path: join(dir, "webview2.png"), fullPage: true });
   const manifest = {
     native: "Windows WebView2",
+    artifactSha256: createHash("sha256")
+      .update(await readFile(join(dir, "compass.exe")))
+      .digest("hex"),
+    coldReadyMs,
+    navigation: await page.evaluate(() => performance.getEntriesByType("navigation")[0]?.toJSON()),
     chineseInput: true,
     accountRequired: true,
     ...metrics,
@@ -203,8 +212,165 @@ try {
     demoToggle: true,
     saved: true,
   };
+  const fileDialog = fileURLToPath(new URL("./compass-file-dialog.ps1", import.meta.url));
+  async function selectNativeFile(button, filePath) {
+    await button.click({ noWaitAfter: true });
+    const result = spawnSync(
+      "pwsh",
+      [
+        "-NoProfile",
+        "-File",
+        fileDialog,
+        "-RootProcessId",
+        String(processHandle.pid),
+        "-FilePath",
+        filePath,
+      ],
+      { encoding: "utf8" },
+    );
+    assert.equal(result.status, 0, result.stderr);
+  }
+  await page.getByRole("main").getByRole("button", { name: "Content", exact: true }).click();
+  const sourceMod = fileURLToPath(new URL("./fixtures/test-mod.jar", import.meta.url));
+  await selectNativeFile(page.getByRole("button", { name: "Import", exact: true }), sourceMod);
+  const content = await page.evaluate(
+    (slug) => window.__TAURI_INTERNALS__.invoke("content_list", { slug, kind: "mods" }),
+    savedInstance.slug,
+  );
+  assert.equal(content.items.length, 1);
+  assert(content.items[0].meta?.id);
+  const modRow = page.getByRole("row").filter({ hasText: content.items[0].displayName });
+  await modRow.getByRole("button", { name: "Disable", exact: true }).click();
+  await modRow.getByRole("button", { name: "Enable", exact: true }).click();
+  await page.getByRole("button", { name: "Check dependencies & conflicts", exact: true }).click();
+  await page.getByRole("heading", { name: "Dependency check", exact: true }).waitFor();
+  await page.screenshot({ path: join(dir, "imported-content.png"), fullPage: true });
+  page.once("dialog", (dialog) => dialog.accept());
+  await modRow.getByRole("button", { name: "Delete", exact: true }).click();
+  await modRow.waitFor({ state: "detached" });
+  assert.deepEqual(
+    (await readdir(content.dir)).filter((name) => name !== "disabled"),
+    [],
+  );
+  assert.deepEqual(await readdir(join(content.dir, "disabled")), []);
+  if (process.env.COMPASS_HOARD_URL) {
+    await page
+      .getByRole("textbox", { name: "Search mods…", exact: true })
+      .fill("Compass acceptance mod");
+    await page.getByRole("button", { name: "Search", exact: true }).click();
+    const project = page.locator("section.clickable").filter({ hasText: "Compass acceptance mod" });
+    await project.click();
+    await project.getByRole("button", { name: "Install", exact: true }).click();
+    await page.getByText("Installed test-mod.jar", { exact: true }).waitFor();
+    const downloaded = await page.evaluate(
+      (slug) => window.__TAURI_INTERNALS__.invoke("content_list", { slug, kind: "mods" }),
+      savedInstance.slug,
+    );
+    assert.equal(downloaded.items.length, 1);
+    assert.deepEqual(
+      await readFile(join(downloaded.dir, "test-mod.jar")),
+      await readFile(sourceMod),
+    );
+    manifest.hoard = { realServiceSearch: true, installButton: true, downloadedBytesMatch: true };
+  }
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Instances", exact: true })
+    .click();
+  const instanceCard = page
+    .locator(".card")
+    .filter({ has: page.getByText("中文实例验收", { exact: true }) });
+  await instanceCard.getByRole("button", { name: "Duplicate", exact: true }).click();
+  await page.getByLabel("Name for the copy", { exact: true }).fill("中文副本验收");
+  await instanceCard.getByRole("button", { name: "Duplicate", exact: true }).last().click();
+  await page.getByText("中文副本验收", { exact: true }).waitFor();
+  const duplicated = await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("instance_list"));
+  assert.equal(duplicated.length, 2);
+  assert.deepEqual(
+    duplicated.find((instance) => instance.name === "中文副本验收").extraJvmArgs,
+    savedInstance.extraJvmArgs,
+  );
+  const copyCard = page
+    .locator(".card")
+    .filter({ has: page.getByText("中文副本验收", { exact: true }) });
+  await copyCard.getByRole("button", { name: "Export", exact: true }).click();
+  await copyCard.getByRole("checkbox", { name: "Include worlds", exact: true }).waitFor();
+  const archivePath = join(dir, "roundtrip.zip");
+  await selectNativeFile(
+    copyCard.getByRole("button", { name: "Export", exact: true }).last(),
+    archivePath,
+  );
+  await page.getByText("Exported", { exact: false }).waitFor();
+  assert((await readFile(archivePath)).length > 0);
+  await selectNativeFile(
+    page.getByRole("button", { name: "Import instance", exact: true }),
+    archivePath,
+  );
+  const importReview = page
+    .locator(".card")
+    .filter({ has: page.getByRole("heading", { name: "Confirm import", exact: true }) });
+  await importReview.getByLabel("Name", { exact: true }).fill("导入副本验收");
+  assert.equal(
+    (await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("instance_list"))).length,
+    2,
+  );
+  await importReview.getByRole("button", { name: "Import", exact: true }).click();
+  await page.getByText("导入副本验收", { exact: true }).waitFor();
+  const imported = (
+    await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("instance_list"))
+  ).find((instance) => instance.name === "导入副本验收");
+  assert.deepEqual(imported.extraJvmArgs, savedInstance.extraJvmArgs);
+  if (process.env.COMPASS_HOARD_URL) {
+    const importedContent = await page.evaluate(
+      (slug) => window.__TAURI_INTERNALS__.invoke("content_list", { slug, kind: "mods" }),
+      imported.slug,
+    );
+    assert.deepEqual(
+      await readFile(join(importedContent.dir, "test-mod.jar")),
+      await readFile(sourceMod),
+    );
+  }
+  manifest.business = {
+    nativeFileImport: true,
+    modMetadata: true,
+    enableDisable: true,
+    dependencyCheck: true,
+    removal: true,
+    duplicate: true,
+    nativeArchiveExport: true,
+    reviewedArchiveImport: true,
+  };
+  manifest.resources = await page.evaluate(() =>
+    performance
+      .getEntriesByType("resource")
+      .filter(({ name }) => name.includes("/assets/"))
+      .map(({ name, duration, transferSize, decodedBodySize }) => ({
+        name,
+        duration,
+        transferSize,
+        decodedBodySize,
+      })),
+  );
+  const session = await page.context().newCDPSession(page);
+  await session.send("Performance.enable");
+  manifest.rendererMetrics = (await session.send("Performance.getMetrics")).metrics;
+  const warmStart = performance.now();
+  await page.reload();
+  await page.getByRole("heading", { name: "Play Minecraft", exact: true }).waitFor();
+  manifest.warmReloadReadyMs = Math.round(performance.now() - warmStart);
   await writeFile(join(dir, "scenario-result.json"), JSON.stringify(manifest, null, 2));
   console.log(JSON.stringify({ directory: dir, ...manifest }));
+} catch (error) {
+  const page = browser
+    ?.contexts()
+    .flatMap((context) => context.pages())
+    .find((candidate) => !candidate.url().startsWith("devtools:"));
+  if (page) {
+    await page.screenshot({ path: join(dir, "failure.png"), fullPage: true });
+    await writeFile(join(dir, "failure-ui.txt"), await page.locator("body").innerText());
+  }
+  console.error(`Native artifacts: ${dir}`);
+  throw error;
 } finally {
   await browser?.close();
   processHandle.kill();
