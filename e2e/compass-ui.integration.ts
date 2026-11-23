@@ -3,9 +3,18 @@ import { test, expect } from "@playwright/test";
 test("file-associated mrpack opens the modpack review and installs only after confirmation", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(120_000);
   await page.addInitScript(() => {
     const commands: { command: string; args: Record<string, unknown> }[] = [];
     let installed = false;
+    let config = {
+      apiUrl: "https://community.example.org",
+      hoardUrl: "",
+      language: "zh-CN",
+      theme: "dark",
+      download: { concurrency: 4, mirror: "" },
+      defaults: { memoryMb: 2048 },
+    };
     Object.assign(window, {
       __compassCommands: commands,
       __TAURI_INTERNALS__: {
@@ -17,13 +26,22 @@ test("file-associated mrpack opens the modpack review and installs only after co
           commands.push({ command, args });
           switch (command) {
             case "get_config":
+              return config;
+            case "set_config":
+              config = args.config as typeof config;
+              return config;
+            case "accounts_list":
               return {
-                apiUrl: "https://community.example.org",
-                hoardUrl: "",
-                language: "zh-CN",
-                theme: "dark",
-                download: { concurrency: 4, mirror: "" },
-                defaults: { memoryMb: 2048 },
+                accounts: [],
+                activeId: null,
+                store: { kind: "file", encrypted: false, path: "fixture" },
+              };
+            case "content_list":
+              return {
+                kind: args.kind,
+                dir: "/fixture/content",
+                items: [],
+                stats: { kind: args.kind, total: 0, enabled: 0, bytes: 0 },
               };
             case "auth_check":
               return { account: null, expired: false };
@@ -147,7 +165,93 @@ test("file-associated mrpack opens the modpack review and installs only after co
   await expect(page.getByText("final failure", { exact: false })).toBeVisible();
   await page.getByRole("button", { name: "设置", exact: true }).click();
   await expect(page.getByText("这个构建没有接自动更新", { exact: false })).toBeVisible();
+  // A long settings page previously painted viewport-external Chinese glyphs
+  // as transparent pixels. Check the rendered bitmap before scrolling to it.
+  await page.setViewportSize({ width: 1200, height: 800 });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect
+    .poll(() =>
+      page.getByRole("button", { name: "保存", exact: true }).evaluate((button) => {
+        const canvas = button.querySelector("canvas");
+        const context = canvas?.getContext("2d");
+        if (!canvas || !context) return false;
+        return context
+          .getImageData(0, 0, canvas.width, canvas.height)
+          .data.some((value, index) => index % 4 === 3 && value > 0);
+      }),
+    )
+    .toBe(true);
   expect((await observed()).some((call) => call.command.startsWith("plugin:updater|"))).toBe(false);
+
+  // Previous coverage only inspected the launch page. Exercise navigation and
+  // saved appearance through the public UI on all five pages at both widths.
+  const matrix: { locale: string; theme: string; width: number; view: string }[] = [];
+  let labels = ["首页", "实例", "内容", "日志", "设置"];
+  for (const locale of ["zh-CN", "en"]) {
+    for (const theme of ["dark", "light"]) {
+      await page
+        .getByRole("navigation")
+        .getByRole("button", { name: labels[4], exact: true })
+        .click();
+      await page
+        .getByRole("combobox", {
+          name: labels[4] === "Settings" ? "Language" : "语言",
+          exact: true,
+        })
+        .selectOption(locale);
+      await page
+        .getByRole("combobox", { name: labels[4] === "Settings" ? "Theme" : "主题", exact: true })
+        .selectOption(theme);
+      await page
+        .getByRole("button", { name: labels[4] === "Settings" ? "Save" : "保存", exact: true })
+        .click();
+      labels =
+        locale === "en"
+          ? ["Home", "Instances", "Content", "Logs", "Settings"]
+          : ["首页", "实例", "内容", "日志", "设置"];
+      await expect(page.locator("html")).toHaveAttribute("data-theme", theme);
+      for (const width of [1200, 760]) {
+        await page.setViewportSize({ width, height: 800 });
+        for (const [index, view] of [
+          "home",
+          "instances",
+          "content",
+          "logs",
+          "settings",
+        ].entries()) {
+          await page
+            .getByRole("navigation")
+            .getByRole("button", { name: labels[index], exact: true })
+            .click();
+          await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+          // Some Unicode symbols use the supported text fallback rather than
+          // a bitmap. Await browser paints without requiring bitmap mode.
+          await page.evaluate(
+            () =>
+              new Promise<void>((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+              ),
+          );
+          await expect
+            .poll(() =>
+              page.evaluate(
+                () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+              ),
+            )
+            .toBe(true);
+          await testInfo.attach(`${locale}-${theme}-${width}-${view}.png`, {
+            body: await page.screenshot({ fullPage: true }),
+            contentType: "image/png",
+          });
+          matrix.push({ locale, theme, width, view });
+        }
+      }
+    }
+  }
+  await testInfo.attach("all-pages-matrix.json", {
+    body: JSON.stringify(matrix, null, 2),
+    contentType: "application/json",
+  });
 });
 
 test("grasscn launch workflow handles missing account, failure, retry, stop and Chinese labels", async ({
@@ -285,7 +389,7 @@ test("grasscn launch workflow handles missing account, failure, retry, stop and 
   await expect(page.getByRole("button", { name: "停止游戏", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "停止游戏", exact: true }).click();
   await expect(launch).toBeEnabled();
-  await page.getByLabel("界面音效").uncheck();
+  await page.getByRole("checkbox", { name: "界面音效", exact: true }).uncheck();
   for (const zoom of [1.25, 1.5]) {
     await page.setViewportSize({ width: 960, height: 640 });
     await page.evaluate((value) => {

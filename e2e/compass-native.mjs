@@ -70,7 +70,7 @@ try {
   await page.getByLabel("启动器独立密码", { exact: true }).fill("not-submitted");
   assert.equal(await page.getByLabel("玩家名", { exact: true }).inputValue(), "中文输入测试Alex");
   assert(await page.getByRole("button", { name: "启动游戏", exact: true }).isDisabled());
-  await page.getByLabel("界面音效").uncheck();
+  await page.getByRole("checkbox", { name: "界面音效", exact: true }).uncheck();
   await page.waitForTimeout(1500);
   const metrics = await page.evaluate(() => ({
     width: innerWidth,
@@ -85,6 +85,123 @@ try {
     chineseInput: true,
     accountRequired: true,
     ...metrics,
+  };
+  const matrix = [];
+  let labels = ["首页", "实例", "内容", "日志", "设置"];
+  for (const locale of ["zh-CN", "en"]) {
+    for (const theme of ["dark", "light"]) {
+      await page
+        .getByRole("navigation")
+        .getByRole("button", { name: labels[4], exact: true })
+        .click();
+      await page
+        .getByRole("combobox", {
+          name: labels[4] === "Settings" ? "Language" : "语言",
+          exact: true,
+        })
+        .selectOption(locale);
+      await page
+        .getByRole("combobox", { name: labels[4] === "Settings" ? "Theme" : "主题", exact: true })
+        .selectOption(theme);
+      await page
+        .getByRole("button", { name: labels[4] === "Settings" ? "Save" : "保存", exact: true })
+        .click();
+      labels =
+        locale === "en"
+          ? ["Home", "Instances", "Content", "Logs", "Settings"]
+          : ["首页", "实例", "内容", "日志", "设置"];
+      await page.waitForFunction(
+        (value) => document.documentElement.dataset.theme === value,
+        theme,
+      );
+      for (const width of [1200, 760]) {
+        await page.setViewportSize({ width, height: 800 });
+        for (const [index, view] of [
+          "home",
+          "instances",
+          "content",
+          "logs",
+          "settings",
+        ].entries()) {
+          await page
+            .getByRole("navigation")
+            .getByRole("button", { name: labels[index], exact: true })
+            .click();
+          await page.getByRole("heading", { level: 1 }).waitFor();
+          // Unsupported glyphs intentionally keep the readable text fallback;
+          // bitmap-ready is not a universal component-settled signal.
+          await page.evaluate(() => window.scrollTo(0, 0));
+          await page.evaluate(
+            () =>
+              new Promise((resolve) =>
+                requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+              ),
+          );
+          const overflow = await page.evaluate(
+            () => document.documentElement.scrollWidth > document.documentElement.clientWidth,
+          );
+          assert.equal(overflow, false, `${locale}/${theme}/${width}/${view} overflows`);
+          await page.screenshot({
+            path: join(dir, `${locale}-${theme}-${width}-${view}.png`),
+            fullPage: true,
+          });
+          matrix.push({ locale, theme, width, view, overflow });
+        }
+      }
+    }
+  }
+  manifest.matrix = matrix;
+  // Real filesystem-backed creation and settings cover the controls that an
+  // empty-instance matrix cannot reach. Versions come from the normal backend.
+  await page
+    .getByRole("navigation")
+    .getByRole("button", { name: "Instances", exact: true })
+    .click();
+  await page.getByRole("button", { name: "New instance", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("UIAcceptance");
+  await page
+    .getByRole("combobox", { name: "Game version", exact: true })
+    .selectOption("1.21.1", { timeout: 90_000 });
+  await page.getByRole("checkbox", { name: "Include snapshots", exact: true }).check();
+  await page.getByRole("checkbox", { name: "Include snapshots", exact: true }).uncheck();
+  await page.getByRole("button", { name: "Create", exact: true }).click();
+  await page.getByText("UIAcceptance", { exact: true }).waitFor();
+  await page.getByRole("main").getByRole("button", { name: "Settings", exact: true }).click();
+  await page.getByLabel("Name", { exact: true }).fill("中文实例验收");
+  await page
+    .getByLabel("Extra JVM arguments (one per line)", { exact: true })
+    .fill("-Dcompass.ui=中文");
+  await page.getByRole("checkbox", { name: "Window size on launch", exact: true }).check();
+  await page.getByLabel("Width", { exact: true }).fill("854");
+  await page.getByLabel("Height", { exact: true }).fill("480");
+  await page.getByRole("checkbox", { name: "Join a server on launch", exact: true }).check();
+  await page.getByLabel("Address", { exact: true }).fill("127.0.0.1");
+  await page.getByRole("checkbox", { name: "Demo mode", exact: true }).check();
+  await page.getByRole("checkbox", { name: "Demo mode", exact: true }).uncheck();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.evaluate(
+    () =>
+      new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+  );
+  await page.screenshot({ path: join(dir, "instance-settings-edited.png"), fullPage: true });
+  await page.getByRole("button", { name: "Save settings", exact: true }).click();
+  await page.getByText("中文实例验收", { exact: true }).waitFor();
+  const savedInstances = await page.evaluate(() =>
+    window.__TAURI_INTERNALS__.invoke("instance_list"),
+  );
+  const savedInstance = savedInstances.find((instance) => instance.name === "中文实例验收");
+  assert(savedInstance, "Edited instance was not saved through the UI");
+  assert.deepEqual(savedInstance.extraJvmArgs, ["-Dcompass.ui=中文"]);
+  assert.deepEqual(savedInstance.resolution, { width: 854, height: 480 });
+  assert.equal(savedInstance.server.host, "127.0.0.1");
+  assert.equal(savedInstance.demo, false);
+  manifest.instanceSettings = {
+    chineseName: true,
+    unicodeTextarea: true,
+    resolution: true,
+    server: true,
+    demoToggle: true,
+    saved: true,
   };
   await writeFile(join(dir, "scenario-result.json"), JSON.stringify(manifest, null, 2));
   console.log(JSON.stringify({ directory: dir, ...manifest }));
