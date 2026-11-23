@@ -81,7 +81,8 @@ node scripts/compass-pack-live.mjs /absolute/path/to/compass /absolute/path/to/m
 
 运行目录中的 `desktop-result.json` 保留 exe SHA-256 与结果，`desktop-*` 子目录
 保留截图和服务端观察。皮肤 canvas 截图需人工确认纹理。首次游戏窗口出现后，
-stdout 输出 `gameWindowReady`；场景等待实际进服，游戏首次提示需在此期间操作。
+stdout 输出 `gameWindowReady`；场景等待实际进服。854×480 的 Minecraft 1.21.1
+首次欢迎面板经四处白色边缘像素确认后，驱动点击 Continue，并保存点击前截图。
 `native-session.json` 记录本轮 Compass PID，`compass-game-window.ps1` 仅捕获或点击
 其子进程中唯一的 Java 窗口；点击坐标以该窗口客户区为准，PNG 与同名 JSON 留证：
 
@@ -90,7 +91,49 @@ stdout 输出 `gameWindowReady`；场景等待实际进服，游戏首次提示�
 ./e2e/compass-game-window.ps1 -RootProcessId <PID> -Screenshot <absolute-existing-directory>/prompt-click.png -Action click -X <x> -Y <y>
 ```
 
-失败时保存 `failure.png`、`failure-ui.txt` 与脱敏的 `auth-errors.json`。
+失败时先保存 `failure-error.txt`，再尝试保存 `failure.png`、`failure-ui.txt`
+与脱敏的 `auth-errors.json`；renderer 无响应时截图可能无法取得。
 认证观察仅记录真实 IPC 返回的错误码和信息，不记录调用参数或成功响应中的令牌。
 `game-driver-error.txt` 保留窗口等待中最近一次未就绪的原因。账号使用隔离内存 Mirror
 和开发邮件日志。验收发布资产时，将 `COMPASS_EXE` 指向该安装包内的可执行文件。
+
+真实进服后继续检查 Fabric API 禁用/恢复与依赖体检、实际客户端日志归档查看、
+搜索及 INFO 过滤切换、复制按钮、窄窗口布局；复制已安装实例，再通过 UI 更改
+Fabric loader 版本并卸载回原版，由只读 IPC 核对结果。
+
+## Compass 全页面与原生文件业务
+
+从 Web 仓库运行浏览器矩阵（外部 Tauri transport fixture）：
+
+```powershell
+pnpm exec playwright test --config e2e/compass.config.ts --browser chromium
+pnpm exec playwright install webkit
+pnpm exec playwright test --config e2e/compass.config.ts --browser webkit
+```
+
+Windows 实际 WebView2、文件对话框与 Hoard 业务验收：
+
+```powershell
+$env:COMPASS_EXE='/absolute/path/to/packaged/compass.exe'
+node e2e/compass-hoard-live.mjs
+```
+
+需要 Go 和相邻 `mythic-hoard` 源码。入口编译生产 Hoard 服务，使用独立内存
+store、临时文件目录和随机管理令牌，上传 `fixtures/test-mod.jar` 后运行
+`compass-native.mjs`。通过 UI 导入、启停、检查与删除本地 JAR，搜索 Hoard
+并安装版本；核对下载字节，再复制、原生 ZIP 导出、确认页导入并核对内容字节。
+`compass-file-dialog.ps1` 只操作所属 Compass PID 的原生 Open/Save 对话框。
+
+结果目录打印到 stdout，`scenario-result.json` 记录 exe SHA-256、40 项页面矩阵、
+实例设置、业务断言、冷启动及暖重载就绪耗时、资源加载和 renderer JS heap。
+冷启动耗时包括进程启动、CDP 发现和 UI 等待；暖重载是同进程页面重载，
+JS heap 不是进程总内存。桌面驱动会取得所属窗口焦点，请逐个运行原生场景。
+
+macOS 包启动及所属窗口截图由 Compass 仓库
+`src-tauri/tests/macos-desktop.swift` 在打包 CI 中执行，保存为
+`macos-native-acceptance` artifact。截图权限不足时明确记录 unavailable；
+该检查的范围是原生包启动和窗口，不包含完整玩家链路。
+
+桌面退出清理异步执行 taskkill，并依据所属子进程的实际 exit 确认结束；
+应用清理失败时仍执行服务端 finally。完整场景应以入口命令成功退出为准，
+业务结果 JSON 已写入但随后的清理失败时，整条场景仍然失败。

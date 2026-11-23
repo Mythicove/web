@@ -74,10 +74,21 @@ async function closeApplication() {
   browser = undefined;
   if (application?.exitCode === null) {
     // The fresh WebView profile and any launched game belong to this app subtree.
-    const result = spawnSync("taskkill", ["/PID", String(application.pid), "/T", "/F"], {
-      encoding: "utf8",
+    // Keep the event loop running so the owned child's exit can be observed.
+    // Closing CDP can already have exited it before taskkill reaches the PID.
+    const termination = spawn("taskkill", ["/PID", String(application.pid), "/T", "/F"]);
+    let diagnostics = "";
+    for (const stream of [termination.stdout, termination.stderr])
+      stream.on("data", (data) => {
+        diagnostics += data;
+      });
+    await new Promise((resolve, reject) => {
+      termination.once("error", reject);
+      termination.once("close", resolve);
     });
-    assert.equal(result.status, 0, "owned desktop application cleanup failed");
+    await waitFor(() => application.exitCode !== null, 10_000).catch((error) => {
+      throw new Error(`Owned desktop application did not exit: ${diagnostics}`, { cause: error });
+    });
   }
 }
 async function openApplication(importPack = false) {
@@ -111,6 +122,7 @@ async function openApplication(importPack = false) {
       .find((candidate) => !candidate.url().startsWith("devtools:"));
     return !!page;
   });
+  await page.setViewportSize({ width: 1200, height: 800 });
   await page
     .getByRole("heading", { name: importPack ? "确认安装整合包" : "开始游戏", exact: true })
     .waitFor();
@@ -129,7 +141,7 @@ async function openApplication(importPack = false) {
     };
   });
 }
-function captureGame(name) {
+function captureGame(name, action = "capture") {
   const captured = spawnSync(
     "pwsh",
     [
@@ -140,8 +152,10 @@ function captureGame(name) {
       String(application.pid),
       "-Screenshot",
       join(dir, name),
+      "-Action",
+      action,
     ],
-    { encoding: "utf8" },
+    { encoding: "utf8", windowsHide: true },
   );
   return captured;
 }
@@ -181,7 +195,7 @@ try {
   await review.getByLabel("名称", { exact: true }).fill("Isles live");
   await page.screenshot({ path: join(dir, "pack-review.png"), fullPage: true });
   await review.getByRole("button", { name: "安装", exact: true }).click();
-  await page.getByText("Isles live", { exact: true }).waitFor({ timeout: 300_000 });
+  await page.getByText("Isles live", { exact: true }).waitFor({ timeout: 900_000 });
   assert.deepEqual(await readdir(join(data, "instances")), ["isles-live"]);
   const instancePath = join(data, "instances/isles-live/instance.json");
   const installed = JSON.parse(await readFile(instancePath, "utf8"));
@@ -196,7 +210,7 @@ try {
   });
   const card = page.locator(".card").filter({ has: page.getByText("Isles live", { exact: true }) });
   await card.getByRole("button", { name: "设置", exact: true }).click();
-  await page.getByLabel("启动后直连服务器", { exact: true }).check();
+  await page.getByRole("checkbox", { name: "启动后直连服务器", exact: true }).check();
   await page.getByLabel("地址", { exact: true }).fill(sourceInstance.server.host);
   await page
     .getByLabel("端口（留空 = 25565）", { exact: true })
@@ -205,7 +219,7 @@ try {
   await page.getByRole("button", { name: "首页", exact: true }).click();
   await page.getByRole("heading", { name: "开始游戏", exact: true }).waitFor();
   await expect(page.getByRole("button", { name: "启动游戏", exact: true })).toBeDisabled();
-  await page.getByLabel("界面音效").uncheck();
+  await page.getByRole("checkbox", { name: "界面音效", exact: true }).uncheck();
   await page.getByLabel("玩家名", { exact: true }).fill("中文输入测试Alex");
   assert.equal(await page.getByLabel("玩家名", { exact: true }).inputValue(), "中文输入测试Alex");
   await page.getByLabel("玩家名", { exact: true }).fill(player);
@@ -274,6 +288,7 @@ try {
       }),
     );
     await waitFor(async () => {
+      if (attempt === 1) captureGame("first-run-current.png", "continue-first-run");
       try {
         return !!JSON.parse(await readFile(join(serverWork, "server-player.json"), "utf8"));
       } catch {
@@ -293,7 +308,8 @@ try {
       join(serverWork, "server-player.json"),
       join(dir, `server-player-${attempt}.json`),
     );
-    assert.equal(captureGame(`game-joined-${attempt}.png`).status, 0);
+    const joinedCapture = captureGame(`game-joined-${attempt}.png`);
+    assert.equal(joinedCapture.status, 0, joinedCapture.stderr);
     await page.getByRole("button", { name: "停止游戏", exact: true }).click();
     await expect(page.getByRole("button", { name: "启动游戏", exact: true })).toBeEnabled({
       timeout: 30_000,
@@ -309,6 +325,91 @@ try {
   const secrets = JSON.parse(await readFile(join(data, "secrets.json"), "utf8"));
   const token = secrets[accounts.activeId];
   assert(token.accessToken && token.clientToken);
+  // Inspect the content installed by the real publisher/installer and the logs
+  // produced by the two real clients, then exercise their public controls.
+  await page.getByRole("navigation").getByRole("button", { name: "内容", exact: true }).click();
+  await page.getByRole("combobox", { name: "实例", exact: true }).selectOption("isles-live");
+  const modRow = page.getByRole("row").filter({ hasText: "Fabric API" });
+  await expect(modRow).toBeVisible();
+  await modRow.getByRole("button", { name: "禁用", exact: true }).click();
+  await expect(modRow.getByRole("button", { name: "启用", exact: true })).toBeEnabled();
+  const disabledContent = await page.evaluate(() =>
+    window.__TAURI_INTERNALS__.invoke("content_list", { slug: "isles-live", kind: "mods" }),
+  );
+  assert(disabledContent.items.some((item) => !item.enabled));
+  await modRow.getByRole("button", { name: "启用", exact: true }).click();
+  await expect(modRow.getByRole("button", { name: "禁用", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "检查依赖与冲突", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "依赖体检", exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 760, height: 800 });
+  assert(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  );
+  await page.screenshot({ path: join(dir, "installed-content-narrow.png"), fullPage: true });
+  await page.getByRole("navigation").getByRole("button", { name: "日志", exact: true }).click();
+  await page.getByRole("combobox", { name: "实例", exact: true }).selectOption("isles-live");
+  const archive = page.getByRole("row").filter({ hasText: "latest.log" });
+  await archive.getByRole("button", { name: "查看", exact: true }).click();
+  await expect(page.locator(".log-line").first()).toBeVisible();
+  await expect(page.getByRole("checkbox", { name: "跟随末尾", exact: true })).toBeDisabled();
+  await page.getByRole("searchbox", { name: "搜索…", exact: true }).fill("Fabric");
+  await expect(page.locator(".log-line").first()).toContainText("Fabric");
+  await page.getByRole("button", { name: "INFO", exact: true }).click();
+  await expect(page.getByRole("button", { name: "INFO", exact: true })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
+  await page.getByRole("button", { name: "INFO", exact: true }).click();
+  await page.getByRole("searchbox", { name: "搜索…", exact: true }).fill("");
+  await page.getByRole("button", { name: "复制全文", exact: true }).click();
+  assert(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+    ),
+  );
+  await page.screenshot({ path: join(dir, "real-client-logs-narrow.png"), fullPage: true });
+  await page.getByRole("navigation").getByRole("button", { name: "实例", exact: true }).click();
+  const liveCard = page
+    .locator(".card")
+    .filter({ has: page.getByText("Isles live", { exact: true }) });
+  await liveCard.getByRole("button", { name: "复制", exact: true }).click();
+  await page.getByLabel("副本名称", { exact: true }).fill("Loader UI acceptance");
+  await liveCard.getByRole("button", { name: "复制", exact: true }).last().click();
+  const loaderCard = page
+    .locator(".card")
+    .filter({ has: page.getByText("Loader UI acceptance", { exact: true }) });
+  await loaderCard.getByRole("button", { name: "Mod loader", exact: true }).click();
+  await loaderCard
+    .getByRole("combobox", { name: "loader 版本", exact: true })
+    .selectOption("0.16.13", { timeout: 60_000 });
+  await loaderCard.getByRole("button", { name: "换 loader 版本", exact: true }).click();
+  await expect
+    .poll(
+      async () =>
+        (await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("instance_list"))).find(
+          (instance) => instance.name === "Loader UI acceptance",
+        )?.loader?.version,
+      { timeout: 180_000 },
+    )
+    .toBe("0.16.13");
+  await loaderCard
+    .getByRole("combobox", { name: "loader 版本", exact: true })
+    .waitFor({ state: "detached" });
+  await loaderCard.getByRole("button", { name: "Mod loader", exact: true }).click();
+  await loaderCard.getByRole("button", { name: "卸载 loader（回到原版）", exact: true }).click();
+  await expect
+    .poll(
+      async () =>
+        (await page.evaluate(() => window.__TAURI_INTERNALS__.invoke("instance_list"))).find(
+          (instance) => instance.name === "Loader UI acceptance",
+        )?.loader,
+      { timeout: 30_000 },
+    )
+    .toBe(null);
+  await page.screenshot({ path: join(dir, "loader-removed.png"), fullPage: true });
+  await page.getByRole("navigation").getByRole("button", { name: "首页", exact: true }).click();
   await page.getByRole("button", { name: "退出登录", exact: true }).click();
   await expect(page.getByLabel("玩家名", { exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "启动游戏", exact: true })).toBeDisabled();
@@ -345,11 +446,15 @@ try {
     serverSkin: "signed-slim-profile",
     stop: "button-stopped-client",
     logout: "button-invalidated-token",
+    content: "real-fabric-api-disabled-reenabled-and-dependency-check",
+    logs: "real-client-archive-search-level-toggle-and-copy-button",
+    loader: "copied-instance-fabric-version-changed-and-removed-through-ui",
     scope: "native-empty-directory-install-and-two-online-launches-with-game-window-captures",
   };
   await writeFile(join(run, "desktop-result.json"), JSON.stringify(result, null, 2));
   console.log(JSON.stringify({ directory: dir, ...result }));
 } catch (error) {
+  await writeFile(join(dir, "failure-error.txt"), String(error));
   if (page && browser) {
     await page.screenshot({ path: join(dir, "failure.png"), fullPage: true });
     await writeFile(join(dir, "failure-ui.txt"), await page.locator("body").innerText());
@@ -361,11 +466,14 @@ try {
   }
   throw error;
 } finally {
-  await closeApplication();
-  if (server?.exitCode === null) {
-    server.stdin.write("stop\n");
-    await Promise.race([new Promise((done) => server.once("exit", done)), pause(30_000)]);
-    if (server.exitCode === null) server.kill();
+  try {
+    await closeApplication();
+  } finally {
+    if (server?.exitCode === null) {
+      server.stdin.write("stop\n");
+      await Promise.race([new Promise((done) => server.once("exit", done)), pause(30_000)]);
+      if (server.exitCode === null) server.kill();
+    }
+    await writeFile(join(dir, "desktop-server.log"), serverLogs);
   }
-  await writeFile(join(dir, "desktop-server.log"), serverLogs);
 }
